@@ -52,7 +52,7 @@ jobs:
         run: npx --yes @cyclonedx/cyclonedx-npm --package-lock-only --output-file sbom.cdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx-${{ matrix.os }}-node-${{ matrix.node-version }}
           path: sbom.cdx.json
