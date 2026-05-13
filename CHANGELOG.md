@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Future releases are managed automatically by [release-please](https://github.com/googleapis/release-please).
+Tagged releases are published to npm from GitHub Actions when a **GitHub Release** is published (see `.github/workflows/publish.yml`).
 
 ## [Unreleased]
 
@@ -16,11 +16,9 @@ Future releases are managed automatically by [release-please](https://github.com
 - `SERVER_VERSION` is now read from `package.json` at runtime so MCP `serverInfo` always matches the published package version.
 - `--version` CLI flag prints the package version and exits.
 - `list_namespaces` response now includes `expires_at_iso` so clients see the cache expiry as an ISO-8601 timestamp without converting `cache_ttl_seconds`.
-- `docs/` handbook: `TOOLS.md`, `CONFIGURATION.md`, `FAQ.md`, `MIGRATION.md`, `CI_CD.md`, and `docs/README.md` index; root `RELEASING.md` stub points to `docs/RELEASING.md`.
-- `SECURITY.md`, `CONTRIBUTING.md`, and `CODE_OF_CONDUCT.md` for OSS hygiene.
 - `examples/README.md` describing the library embedding sample.
-- GitHub Actions: **multi-OS** CI matrix (Ubuntu, Windows, macOS × Node 18/20/22), **Codecov** upload (Ubuntu + Node 20), **CycloneDX SBOM** artifact, **Release Please**, and **Docker** multi-arch publish to **GHCR**.
-- `src/config.test.ts` and `npm run test:coverage` with Vitest coverage thresholds (see `vitest.config.ts`).
+- GitHub Actions **CI** on **Ubuntu** with a **Node.js** matrix (**18.x**, **20.x**, **22.x**): typecheck, lint, Prettier, build, tests, **CycloneDX** SBOM artifact upload (per Node version), **Codecov** upload (Node **20.x** only), plus a separate **quality** job (`npm audit`, `npm pack --dry-run`).
+- `npm run test:coverage` with Vitest coverage thresholds (see `vitest.config.ts`).
 - `@vitest/coverage-v8` devDependency for coverage reports (`lcov`, `json-summary`, HTML).
 
 ### Changed
@@ -39,7 +37,6 @@ Future releases are managed automatically by [release-please](https://github.com
 - CI: on Node **18.x**, run `npm test` only; **`test:coverage`** runs on **20.x** / **22.x** because Vitest V8 coverage uses `node:inspector/promises` (Node **≥19**).
 - Dependabot groups related **vitest**, **typescript-eslint**, and **eslint/prettier** updates.
 
-
 ### Removed
 
 - Dead `test:mcp` npm script (referenced a `test-mcp-server.js` file that has never existed).
@@ -51,7 +48,7 @@ Historical 0.1.x releases (0.1.0 → 0.1.6) shipped the full tool surface
 `query`, `query_fast`, `query_detailed`, `keyword_search`, `query_documents`,
 `guided_query`, `generate_urls`), the structured `src/logger.ts`, the
 `Dockerfile`, and the modularised `src/server/` layout. See git history for
-details — going forward, all changes are tracked here by release-please.
+details. Newer shipped changes are recorded in this changelog by version.
 
 ## [0.1.1] - 2026-01-27
 
