@@ -13,7 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        # Do not add 18.x: Vitest 4 → rolldown imports `styleText` from `node:util` (Node >=20.12 only).
+        # `@vitest/coverage-v8` needs `node:inspector/promises` (Node >=19). Matches `package.json` engines.
+        node-version: [20.x, 22.x]
 
     steps:
       - uses: actions/checkout@v6
@@ -42,14 +44,8 @@ jobs:
       - name: Smoke test CLI
         run: node dist/index.js --help
 
-      # @vitest/coverage-v8 imports node:inspector/promises (Node 19+). Keep 18.x in the matrix for runtime smoke but skip coverage there.
       - name: Run tests with coverage
-        if: matrix.node-version != '18.x'
         run: npm run test:coverage
-
-      - name: Run tests (Node 18, no coverage)
-        if: matrix.node-version == '18.x'
-        run: npm test
 
       - name: Generate CycloneDX SBOM (lockfile-based)
         run: npx --yes @cyclonedx/cyclonedx-npm --package-lock-only --output-file sbom.cdx.json

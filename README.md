@@ -33,6 +33,8 @@ A Model Context Protocol (MCP) server that provides semantic search over Pinecon
 
 ## Installation
 
+**Node.js [20.12](https://nodejs.org/en/download) or later** is required (`engines` in `package.json`).
+
 ### As a Package
 
 ```bash

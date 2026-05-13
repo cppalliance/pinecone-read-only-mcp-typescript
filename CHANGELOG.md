@@ -17,7 +17,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - `--version` CLI flag prints the package version and exits.
 - `list_namespaces` response now includes `expires_at_iso` so clients see the cache expiry as an ISO-8601 timestamp without converting `cache_ttl_seconds`.
 - `examples/README.md` describing the library embedding sample.
-- GitHub Actions **CI** on **Ubuntu** with a **Node.js** matrix (**18.x**, **20.x**, **22.x**): typecheck, lint, Prettier, build, tests, **CycloneDX** SBOM artifact upload (per Node version), **Codecov** upload (Node **20.x** only), plus a separate **quality** job (`npm audit`, `npm pack --dry-run`).
+- GitHub Actions **CI** on **Ubuntu** with a **Node.js** matrix (**20.x**, **22.x**): typecheck, lint, Prettier, build, `test:coverage`, **CycloneDX** SBOM artifact upload (per Node version), **Codecov** upload (Node **20.x** only), plus a separate **quality** job (`npm audit`, `npm pack --dry-run`).
 - `npm run test:coverage` with Vitest coverage thresholds (see `vitest.config.ts`).
 - `@vitest/coverage-v8` devDependency for coverage reports (`lcov`, `json-summary`, HTML).
 
@@ -34,7 +34,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - README Slack URL example now matches the generator output (`https://app.slack.com/client/{team_id}/{channel_id}/p{messageId}`).
 - README "Comparison with Python Version" no longer claims an identical API interface; the new TypeScript-only tools (`guided_query`, `query_documents`, `keyword_search`, `namespace_router`, `suggest_query_params`, `count`, `generate_urls`) are listed explicitly.
 - `npm run ci` now runs `test:coverage` so merges are gated on coverage thresholds.
-- CI: on Node **18.x**, run `npm test` only; **`test:coverage`** runs on **20.x** / **22.x** because Vitest V8 coverage uses `node:inspector/promises` (Node **≥19**).
+- **Breaking (runtime / tooling):** `engines.node` is now **>=20.12.0**. Vitest **4** (bundled **rolldown**) imports `util.styleText` from `node:util` (added in Node **20.12**), and **`@vitest/coverage-v8`** uses `node:inspector/promises` (Node **≥19**). CI tests only **20.x** and **22.x**.
 - Dependabot groups related **vitest**, **typescript-eslint**, and **eslint/prettier** updates.
 
 ### Removed

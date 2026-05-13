@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/CppDigest/pinecone-read-only-mcp-typescript#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.12.0"
   },
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true});\"",
