@@ -155,7 +155,11 @@ async function test() {
     // Test 5: Keyword (sparse-only) search — use namespace from sparse index, not dense
     let duration5: number | undefined;
     let test5Skipped = false;
-    const sparseNamespaces = await client.listNamespacesFromKeywordIndex();
+    const sparseResult = await client.listNamespacesFromKeywordIndex();
+    const sparseNamespaces = sparseResult.ok ? sparseResult.namespaces : [];
+    if (!sparseResult.ok) {
+      console.warn(`⚠️ listNamespacesFromKeywordIndex failed: ${sparseResult.error}`);
+    }
     if (sparseNamespaces.length === 0) {
       test5Skipped = true;
       console.log(`\n🔤 Test 5: Keyword search (sparse-only index)`);

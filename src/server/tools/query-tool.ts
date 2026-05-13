@@ -107,73 +107,62 @@ const baseSchema = {
     ),
 };
 
-/** Register the unified query tool (query_fast / query_detailed) on the MCP server. */
+/**
+ * Single hybrid `query` tool (replaces separate `query_fast` / `query_detailed` MCP tools).
+ * Presets mirror the old defaults.
+ */
 export function registerQueryTool(server: McpServer): void {
   server.registerTool(
     'query',
     {
       description:
-        'Full query tool with optional reranking. Mandatory flow: call suggest_query_params first. ' +
-        'For lighter retrieval use query_fast; for content-heavy retrieval use query_detailed.',
+        'Hybrid semantic search (dense + sparse) with optional reranking. Mandatory flow: call suggest_query_params first. ' +
+        'Use preset=`fast` for low-latency retrieval without reranking and lightweight fields; `detailed` for reranked, content-oriented retrieval; `full` to set use_reranking and fields explicitly.',
       inputSchema: {
         ...baseSchema,
+        preset: z
+          .enum(['fast', 'detailed', 'full'])
+          .default('full')
+          .describe(
+            'fast: no reranking + lightweight fields (former query_fast). detailed: reranking on (former query_detailed). full: use use_reranking and fields below.'
+          ),
         use_reranking: z
           .boolean()
-          .default(true)
+          .optional()
           .describe(
-            'Whether to use semantic reranking for better relevance. Slower but more accurate.'
+            'Used when preset is detailed or full (default true). Ignored when preset is fast.'
           ),
       },
     },
-    async (params) =>
-      executeQuery({
-        ...params,
-        top_k: params.top_k,
-        use_reranking: params.use_reranking,
-        mode: 'query',
-      })
-  );
+    async (params) => {
+      const preset = params.preset;
+      let use_reranking: boolean;
+      let fields: string[] | undefined;
+      let mode: QueryMode;
 
-  server.registerTool(
-    'query_fast',
-    {
-      description:
-        'Fast query preset. Mandatory flow: call suggest_query_params first. ' +
-        'Defaults to no reranking and lightweight fields for lower latency/cost.',
-      inputSchema: {
-        ...baseSchema,
-      },
-    },
-    async (params) =>
-      executeQuery({
-        ...params,
-        top_k: params.top_k,
-        use_reranking: false,
-        fields: params.fields?.length ? params.fields : [...FAST_QUERY_FIELDS],
-        mode: 'query_fast',
-      })
-  );
+      if (preset === 'fast') {
+        use_reranking = false;
+        fields = params.fields?.length ? params.fields : [...FAST_QUERY_FIELDS];
+        mode = 'query_fast';
+      } else if (preset === 'detailed') {
+        use_reranking = params.use_reranking ?? true;
+        fields = params.fields?.length ? params.fields : undefined;
+        mode = 'query_detailed';
+      } else {
+        use_reranking = params.use_reranking ?? true;
+        fields = params.fields?.length ? params.fields : undefined;
+        mode = 'query';
+      }
 
-  server.registerTool(
-    'query_detailed',
-    {
-      description:
-        'Detailed query preset. Mandatory flow: call suggest_query_params first. ' +
-        'Designed for reading/summarization workflows with content snippets.',
-      inputSchema: {
-        ...baseSchema,
-        use_reranking: z
-          .boolean()
-          .default(true)
-          .describe('Whether to use semantic reranking for better precision (default true).'),
-      },
-    },
-    async (params) =>
-      executeQuery({
-        ...params,
-        top_k: params.top_k ?? 10,
-        use_reranking: params.use_reranking ?? true,
-        mode: 'query_detailed',
-      })
+      return executeQuery({
+        query_text: params.query_text,
+        namespace: params.namespace,
+        top_k: params.top_k,
+        use_reranking,
+        metadata_filter: params.metadata_filter,
+        fields,
+        mode,
+      });
+    }
   );
 }

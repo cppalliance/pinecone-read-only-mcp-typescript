@@ -10,6 +10,21 @@ updates:
     labels:
       - "dependencies"
       - "automated"
+    groups:
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      typescript-eslint:
+        patterns:
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+      eslint-prettier:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "prettier"
+          - "eslint-config-prettier"
 
   - package-ecosystem: "github-actions"
     directory: "/"
