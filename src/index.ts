@@ -1,162 +1,106 @@
 #!/usr/bin/env node
 
 /**
- * Pinecone Read-Only MCP CLI
+ * Pinecone Read-Only MCP CLI entry point.
  *
- * Entry point for the Pinecone Read-Only MCP server.
- * Provides semantic search over Pinecone vector indexes using hybrid
- * search with automatic namespace discovery.
+ * Thin composition root: parseCli() -> resolveConfig() -> setupServer(config)
+ * -> connect to stdio transport. All argv parsing lives in `src/cli.ts`;
+ * all configuration/defaults live in `src/config.ts`.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import * as dotenv from 'dotenv';
+import { parseCli, printHelp, printVersion } from './cli.js';
+import { resolveConfig, type ServerConfig } from './config.js';
 import { PineconeClient } from './pinecone-client.js';
 import { setupServer, setPineconeClient } from './server.js';
-import { DEFAULT_INDEX_NAME, DEFAULT_RERANK_MODEL } from './constants.js';
-import type { LogLevel } from './config.js';
-import { setLogLevel } from './logger.js';
-import * as dotenv from 'dotenv';
+import { setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
 
-// Load environment variables
 dotenv.config();
 
-interface CLIOptions {
-  apiKey?: string;
-  indexName?: string;
-  rerankModel?: string;
-  logLevel?: string;
-}
-
-/** Parse argv into API key, index name, rerank model, and log level. */
-function parseArgs(): CLIOptions {
-  const args = process.argv.slice(2);
-  const options: CLIOptions = {};
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const nextArg = args[i + 1];
-
-    switch (arg) {
-      case '--api-key':
-        options.apiKey = nextArg;
-        i++;
-        break;
-      case '--index-name':
-        options.indexName = nextArg;
-        i++;
-        break;
-      case '--rerank-model':
-        options.rerankModel = nextArg;
-        i++;
-        break;
-      case '--log-level':
-        options.logLevel = nextArg;
-        i++;
-        break;
-      case '--help':
-      case '-h':
-        printHelp();
-        process.exit(0);
-        break;
-    }
+/**
+ * Build a config from CLI argv + environment, exiting fast on
+ * --help, --version, or missing API key.
+ */
+function buildConfigOrExit(): ServerConfig {
+  const parsed = parseCli();
+  if (parsed.kind === 'help') {
+    printHelp();
+    process.exit(0);
+  }
+  if (parsed.kind === 'version') {
+    printVersion();
+    process.exit(0);
   }
 
-  return options;
+  try {
+    return resolveConfig(parsed.overrides);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`Error: ${message}\n`);
+    process.exit(1);
+  }
 }
 
-/** Print CLI usage and exit. */
-function printHelp(): void {
-  console.log(`
-Pinecone Read-Only MCP Server
-
-Usage: pinecone-read-only-mcp [options]
-
-Options:
-  --api-key TEXT           Pinecone API key (or set PINECONE_API_KEY env var)
-  --index-name TEXT        Pinecone index name [default: ${DEFAULT_INDEX_NAME}]; sparse index is {index-name}-sparse
-  --rerank-model TEXT      Reranking model [default: ${DEFAULT_RERANK_MODEL}]
-  --log-level TEXT         Logging level [default: INFO]
-  --help, -h               Show this help message
-
-Environment Variables:
-  PINECONE_API_KEY              Pinecone API key
-  PINECONE_INDEX_NAME           Pinecone index name (sparse index: {name}-sparse)
-  PINECONE_RERANK_MODEL         Reranking model name
-  PINECONE_READ_ONLY_MCP_LOG_LEVEL  Logging level
-
-Examples:
-  # Using command line options
-  pinecone-read-only-mcp --api-key YOUR_API_KEY
-
-  # Using environment variables
-  export PINECONE_API_KEY=YOUR_API_KEY
-  pinecone-read-only-mcp
-
-  # With custom index
-  pinecone-read-only-mcp --api-key YOUR_API_KEY --index-name my-index
-`);
-}
-
-/** Initialize config, Pinecone client, MCP server, and stdio transport. */
 async function main(): Promise<void> {
   try {
-    const options = parseArgs();
+    const config = buildConfigOrExit();
 
-    // Set log level (env + logger singleton so tools get correct level)
-    const rawLevel = options.logLevel || process.env['PINECONE_READ_ONLY_MCP_LOG_LEVEL'] || 'INFO';
-    const logLevel = (
-      ['DEBUG', 'INFO', 'WARN', 'ERROR'].includes(rawLevel) ? rawLevel : 'INFO'
-    ) as LogLevel;
-    setLogLevel(logLevel);
+    setLogLevel(config.logLevel);
+    setLogFormat(config.logFormat);
 
-    // Get API key
-    const apiKey = options.apiKey || process.env['PINECONE_API_KEY'];
-    if (!apiKey) {
-      console.error(
-        'Error: Pinecone API key is required. Set PINECONE_API_KEY environment variable or use --api-key option.'
+    if (config.disableSuggestFlow) {
+      logWarn(
+        '--disable-suggest-flow is active: the suggest_query_params safety guard is bypassed for this session.'
       );
-      process.exit(1);
     }
 
-    // Get configuration
-    const indexName = options.indexName || process.env['PINECONE_INDEX_NAME'] || DEFAULT_INDEX_NAME;
-    const rerankModel =
-      options.rerankModel || process.env['PINECONE_RERANK_MODEL'] || DEFAULT_RERANK_MODEL;
-
-    // Initialize Pinecone client
     const client = new PineconeClient({
-      apiKey,
-      indexName,
-      rerankModel,
+      apiKey: config.apiKey,
+      indexName: config.indexName,
+      sparseIndexName: config.sparseIndexName,
+      rerankModel: config.rerankModel,
+      defaultTopK: config.defaultTopK,
+      requestTimeoutMs: config.requestTimeoutMs,
     });
     setPineconeClient(client);
 
-    console.error(`Starting Pinecone Read-Only MCP server with stdio transport`);
-    console.error(`Using Pinecone index: ${indexName} (sparse: ${indexName}-sparse)`);
-    console.error(`Log level: ${logLevel}`);
+    if (config.checkIndexes) {
+      const result = await client.checkIndexes();
+      if (!result.ok) {
+        for (const err of result.errors) {
+          process.stderr.write(`--check-indexes: ${err}\n`);
+        }
+        process.exit(1);
+      }
+      process.stderr.write(
+        `--check-indexes: dense index "${config.indexName}" and sparse index "${config.sparseIndexName}" reachable.\n`
+      );
+    }
 
-    // Setup server
-    const server = await setupServer();
+    process.stderr.write(`Starting Pinecone Read-Only MCP server with stdio transport\n`);
+    process.stderr.write(
+      `Using Pinecone index: ${config.indexName} (sparse: ${config.sparseIndexName})\n`
+    );
+    process.stderr.write(`Log level: ${config.logLevel} (format: ${config.logFormat})\n`);
 
-    // Create transport
+    const server = await setupServer(config);
     const transport = new StdioServerTransport();
-
-    // Connect server to transport
     await server.connect(transport);
 
-    console.error('Pinecone Read-Only MCP Server running on stdio');
+    process.stderr.write('Pinecone Read-Only MCP Server running on stdio\n');
 
-    // Handle shutdown gracefully
     process.on('SIGINT', () => {
-      console.error('Server stopped by user');
+      process.stderr.write('Server stopped by user\n');
       process.exit(0);
     });
 
     process.on('SIGTERM', () => {
-      console.error('Server stopped by signal');
+      process.stderr.write('Server stopped by signal\n');
       process.exit(0);
     });
   } catch (error) {
-    console.error('Fatal error in main():', error);
+    process.stderr.write(`Fatal error in main(): ${(error as Error)?.stack ?? String(error)}\n`);
     process.exit(1);
   }
 }

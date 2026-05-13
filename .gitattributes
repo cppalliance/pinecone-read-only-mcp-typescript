@@ -1,0 +1,2 @@
+# Match EditorConfig / Prettier so Linux CI and Windows devs agree on line endings.
+* text=auto eol=lf

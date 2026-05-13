@@ -5,14 +5,18 @@ on:
     branches: [main]
   push:
     branches: [main]
-  workflow_call: # Allow this workflow to be called by other workflows
+  workflow_call:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Do not add 18.x: Vitest 4 → rolldown imports `styleText` from `node:util` (Node >=20.12 only).
+        # `@vitest/coverage-v8` needs `node:inspector/promises` (Node >=19). Matches `package.json` engines.
+        node-version: [20.x, 22.x]
 
     steps:
       - uses: actions/checkout@v6
@@ -41,8 +45,24 @@ jobs:
       - name: Smoke test CLI
         run: node dist/index.js --help
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Generate CycloneDX SBOM (lockfile-based)
+        run: npx --yes @cyclonedx/cyclonedx-npm --package-lock-only --output-file sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: sbom.cdx.json
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
 
   quality:
     runs-on: ubuntu-latest

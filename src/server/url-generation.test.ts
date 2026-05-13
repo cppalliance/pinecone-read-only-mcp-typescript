@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { generateUrlForNamespace } from './url-generation.js';
+import { describe, expect, it, beforeAll } from 'vitest';
+import { generateUrlForNamespace, registerBuiltinUrlGenerators } from './url-generation.js';
+
+beforeAll(() => {
+  registerBuiltinUrlGenerators();
+});
 
 describe('generateUrlForNamespace', () => {
   it('uses existing metadata.url when present', () => {

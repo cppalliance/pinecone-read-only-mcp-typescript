@@ -28,6 +28,7 @@ export function registerQueryDocumentsTool(server: McpServer): void {
     {
       description:
         'Run a semantic query and return whole documents (reassembled from chunks). ' +
+        'Always uses semantic reranking for document-level relevance (higher latency/cost than chunk-only query). ' +
         'Use for content analysis, summarization, or when you need full-document context. ' +
         'Chunks are grouped by document_number/doc_id/url, ordered by chunk_index when present (e.g. from RecursiveCharacterTextSplitter), and merged into one content per document. ' +
         'Mandatory flow: call suggest_query_params first. Use list_namespaces to discover namespaces.',

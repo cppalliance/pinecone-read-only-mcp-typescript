@@ -13,6 +13,7 @@ describe('suggestQueryParams', () => {
 
   it('suggests count tool and minimal fields for count-style queries', () => {
     const r = suggestQueryParams(wg21Fields, 'How many papers by John Doe?');
+    expect(r.recommended_tool).toBe('count');
     expect(r.use_count_tool).toBe(true);
     expect(r.suggested_fields).toContain('document_number');
     expect(r.suggested_fields).toContain('url');
@@ -21,6 +22,7 @@ describe('suggestQueryParams', () => {
 
   it('suggests chunk_text for content-style queries', () => {
     const r = suggestQueryParams(wg21Fields, 'What does the paper say about contracts?');
+    expect(r.recommended_tool).toBe('detailed');
     expect(r.use_count_tool).toBe(false);
     expect(r.suggested_fields).toContain('chunk_text');
     expect(r.namespace_found).toBe(true);
@@ -28,6 +30,7 @@ describe('suggestQueryParams', () => {
 
   it('suggests minimal fields for list-style queries', () => {
     const r = suggestQueryParams(wg21Fields, 'List papers by Michael Wong with titles and links');
+    expect(r.recommended_tool).toBe('fast');
     expect(r.use_count_tool).toBe(false);
     expect(r.suggested_fields).not.toContain('chunk_text');
     expect(r.suggested_fields).toContain('title');
@@ -37,6 +40,7 @@ describe('suggestQueryParams', () => {
 
   it('returns namespace_found false when metadata is null', () => {
     const r = suggestQueryParams(null, 'list papers');
+    expect(r.recommended_tool).toBe('fast');
     expect(r.namespace_found).toBe(false);
     expect(r.suggested_fields).toEqual([]);
   });
@@ -62,12 +66,26 @@ describe('validateMetadataFilter', () => {
     expect(result).toBeNull();
   });
 
+  it('accepts boolean arrays for $in', () => {
+    const result = validateMetadataFilter({
+      active: { $in: [true, false] },
+    });
+    expect(result).toBeNull();
+  });
+
   it('rejects unsupported operators', () => {
     const result = validateMetadataFilter({
       year: { $regex: '^202' },
     });
 
-    expect(result).toContain('Unsupported filter operator');
+    expect(result).toContain('Unknown filter operator');
+  });
+
+  it('accepts numeric arrays for $in', () => {
+    const result = validateMetadataFilter({
+      year: { $in: [2023, 2024] },
+    });
+    expect(result).toBeNull();
   });
 
   it('rejects non-array values for $in/$nin', () => {

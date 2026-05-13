@@ -24,13 +24,13 @@ export function registerCountTool(server: McpServer): void {
     {
       description:
         'Get the number of unique documents matching a metadata filter and semantic query. ' +
-        'Use when the user asks for a count (e.g. "how many papers by J. John Doe?", "John\'s paper count"). ' +
+        'Use when the user asks for a count (e.g. "how many documents by author X?", "how many records tagged Y?"). ' +
         'Uses semantic (dense) search only and requests only document identifiers (no content) for performance. ' +
         'Returns the number of unique documents (deduped by document_number/url/doc_id) up to 10,000; truncated=true if at least that many. ' +
         'Mandatory flow: call suggest_query_params first, then count. ' +
         'Use list_namespaces to discover namespace and metadata fields. ' +
-        'For count-by-metadata only, use a broad query_text (e.g. "paper" or "document"). ' +
-        'Same metadata_filter operators as query: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin.',
+        'For count-by-metadata only, use a broad query_text (e.g. "document" or "record"). ' +
+        'Same metadata_filter operators as query: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $and, $or.',
       inputSchema: {
         namespace: z
           .string()
@@ -38,12 +38,12 @@ export function registerCountTool(server: McpServer): void {
         query_text: z
           .string()
           .describe(
-            'Search query text. Use a broad term (e.g. "paper", "document") when counting by metadata only.'
+            'Search query text. Use a broad term (e.g. "document", "record") when counting by metadata only.'
           ),
         metadata_filter: metadataFilterSchema
           .optional()
           .describe(
-            'Optional metadata filter. Use exact field names from list_namespaces. E.g. {"author": {"$in": ["John Doe", "J. John Doe"]}} for author count.'
+            'Optional metadata filter. Use exact field names from list_namespaces. E.g. {"author": {"$in": ["Alex Doe", "A. Doe"]}} to count by author.'
           ),
       },
     },

@@ -12,7 +12,18 @@ import { markSuggested } from '../suggestion-flow.js';
 import { getToolErrorMessage, logToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
-type GuidedToolName = 'count' | 'query_fast' | 'query_detailed';
+type GuidedToolName = 'count' | 'fast' | 'detailed' | 'full';
+
+function resolveGuidedToolName(
+  preferred: 'auto' | 'count' | 'fast' | 'detailed' | 'full',
+  suggestion: { recommended_tool: GuidedToolName }
+): GuidedToolName {
+  if (preferred === 'auto') return suggestion.recommended_tool;
+  if (preferred === 'count') return 'count';
+  if (preferred === 'fast') return 'fast';
+  if (preferred === 'detailed') return 'detailed';
+  return 'full';
+}
 
 /** Register the guided_query orchestrator tool on the MCP server. */
 export function registerGuidedQueryTool(server: McpServer): void {
@@ -21,7 +32,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
     {
       description:
         'Single orchestrator that runs routing + suggestion + execution in one call. ' +
-        'Flow: optional namespace_router logic -> suggest_query_params logic -> executes count/query_fast/query_detailed. ' +
+        'Flow: optional namespace_router logic -> suggest_query_params logic -> executes count or hybrid query (fast / detailed / full presets). ' +
         'Returns decision_trace so behavior stays transparent and debuggable.',
       inputSchema: {
         user_query: z.string().describe('User question or intent.'),
@@ -40,11 +51,13 @@ export function registerGuidedQueryTool(server: McpServer): void {
           .min(MIN_TOP_K)
           .max(MAX_TOP_K)
           .default(10)
-          .describe('Result count for query_fast/query_detailed paths (1-100).'),
+          .describe('Result count for hybrid query paths (1-100).'),
         preferred_tool: z
-          .enum(['auto', 'count', 'query_fast', 'query_detailed'])
+          .enum(['auto', 'count', 'fast', 'detailed', 'full'])
           .default('auto')
-          .describe('Optional override. Use auto to follow suggestion logic.'),
+          .describe(
+            'Optional override: count, fast (no rerank / light fields), detailed (reranked), full (explicit rerank + fields), or auto from suggestion.'
+          ),
         enrich_urls: z
           .boolean()
           .default(true)
@@ -96,8 +109,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
           });
         }
 
-        const selectedTool: GuidedToolName =
-          preferred_tool === 'auto' ? suggestion.recommended_tool : preferred_tool;
+        const selectedTool: GuidedToolName = resolveGuidedToolName(preferred_tool, suggestion);
         markSuggested(namespace, {
           recommended_tool: selectedTool,
           suggested_fields: suggestion.suggested_fields,
@@ -138,7 +150,13 @@ export function registerGuidedQueryTool(server: McpServer): void {
           });
         }
 
-        const isFast = selectedTool === 'query_fast';
+        const isFast = selectedTool === 'fast';
+        const mode: QueryResponse['mode'] =
+          selectedTool === 'fast'
+            ? 'query_fast'
+            : selectedTool === 'detailed'
+              ? 'query_detailed'
+              : 'query';
         const fields =
           suggestion.suggested_fields.length > 0
             ? suggestion.suggested_fields
@@ -159,7 +177,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
         });
         const result: QueryResponse = {
           status: 'success',
-          mode: isFast ? 'query_fast' : 'query_detailed',
+          mode,
           query: queryText,
           namespace,
           metadata_filter: metadata_filter,
