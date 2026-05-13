@@ -90,7 +90,10 @@ async function executeKeywordSearch(params: {
   return response;
 }
 
-/** Register the keyword_search tool on the MCP server. */
+/**
+ * Registers `keyword_search` (lexical/sparse-only retrieval).
+ * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
+ */
 export function registerKeywordSearchTool(server: McpServer): void {
   server.registerTool(
     'keyword_search',
@@ -98,7 +101,7 @@ export function registerKeywordSearchTool(server: McpServer): void {
       description:
         'Keyword (lexical/sparse-only) search over the Pinecone sparse index (default: rag-hybrid-sparse). ' +
         'Use for exact or keyword-style queries. Does not use semantic reranking. ' +
-        'Call list_namespaces first to discover namespaces; suggest_query_params is optional.',
+        'Call list_namespaces first to discover namespaces. Does not require suggest_query_params.',
       inputSchema: {
         query_text: z.string().describe('Search query text (keyword/lexical match).'),
         namespace: z

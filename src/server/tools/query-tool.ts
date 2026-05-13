@@ -107,13 +107,16 @@ const baseSchema = {
     ),
 };
 
-/** Register the unified query tool (query_fast / query_detailed) on the MCP server. */
+/**
+ * Registers semantic chunk query tools (`query`, `query_fast`, `query_detailed`).
+ * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
+ */
 export function registerQueryTool(server: McpServer): void {
   server.registerTool(
     'query',
     {
       description:
-        'Full query tool with optional reranking. Mandatory flow: call suggest_query_params first. ' +
+        'Full query tool with optional reranking. Requires suggest_query_params to be called first for the target namespace. ' +
         'For lighter retrieval use query_fast; for content-heavy retrieval use query_detailed.',
       inputSchema: {
         ...baseSchema,
@@ -138,7 +141,7 @@ export function registerQueryTool(server: McpServer): void {
     'query_fast',
     {
       description:
-        'Fast query preset. Mandatory flow: call suggest_query_params first. ' +
+        'Fast query preset. Requires suggest_query_params to be called first for the target namespace. ' +
         'Defaults to no reranking and lightweight fields for lower latency/cost.',
       inputSchema: {
         ...baseSchema,
@@ -158,7 +161,7 @@ export function registerQueryTool(server: McpServer): void {
     'query_detailed',
     {
       description:
-        'Detailed query preset. Mandatory flow: call suggest_query_params first. ' +
+        'Detailed query preset. Requires suggest_query_params to be called first for the target namespace. ' +
         'Designed for reading/summarization workflows with content snippets.',
       inputSchema: {
         ...baseSchema,
