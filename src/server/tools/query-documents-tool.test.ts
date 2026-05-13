@@ -62,10 +62,7 @@ describe('query_documents tool handler', () => {
       })
     );
 
-    const expectedTopK = Math.min(
-      QUERY_DOCUMENTS_MAX_CHUNKS,
-      DEFAULT_QUERY_DOCUMENTS_TOP_K * 50
-    );
+    const expectedTopK = Math.min(QUERY_DOCUMENTS_MAX_CHUNKS, DEFAULT_QUERY_DOCUMENTS_TOP_K * 50);
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
         query: 'semantic question',

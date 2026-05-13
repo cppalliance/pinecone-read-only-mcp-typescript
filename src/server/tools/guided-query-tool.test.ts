@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPineconeClient } from '../client-context.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
-import { createMockServer, makeNamespaceCacheEntry, makeSearchResult, parseToolJson } from './test-helpers.js';
+import {
+  createMockServer,
+  makeNamespaceCacheEntry,
+  makeSearchResult,
+  parseToolJson,
+} from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
