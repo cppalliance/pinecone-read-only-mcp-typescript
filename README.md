@@ -509,6 +509,16 @@ npm run build
 npm test
 ```
 
+### Benchmarks
+
+Measure server-side processing overhead with mocked Pinecone responses (no live API calls, no API key required):
+
+```bash
+npm run benchmark
+```
+
+The script prints a table of p50, p95, and p99 latencies in milliseconds and writes results to [`benchmarks/baseline.json`](benchmarks/baseline.json). Compare a new run to the committed baseline (for example with `git diff benchmarks/baseline.json` after re-running the command) to spot regressions.
+
 ### Testing the keyword_search tool
 
 1. **Connectivity and keyword search (script):**  

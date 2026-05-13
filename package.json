@@ -44,6 +44,7 @@
     "smoke": "npm run build && node dist/index.js --help",
     "test": "vitest run",
     "test:watch": "vitest",
+    "benchmark": "tsx benchmarks/latency.ts",
     "test:search": "tsx scripts/test-search.ts",
     "test:mcp": "node test-mcp-server.js",
     "lint": "eslint src/",
