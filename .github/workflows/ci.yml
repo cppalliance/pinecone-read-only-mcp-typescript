@@ -9,10 +9,11 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         # Do not add 18.x: Vitest 4 → rolldown imports `styleText` from `node:util` (Node >=20.12 only).
         # `@vitest/coverage-v8` needs `node:inspector/promises` (Node >=19). Matches `package.json` engines.
         node-version: [20.x, 22.x]
@@ -57,7 +58,7 @@ jobs:
           path: sbom.cdx.json
 
       - name: Upload coverage to Codecov
-        if: matrix.node-version == '20.x'
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info

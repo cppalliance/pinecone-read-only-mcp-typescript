@@ -10,6 +10,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Added
 
+- `.coderabbit.yaml` sets the pre-merge **docstring coverage** threshold to **79%** (default **80%**) so marginal documentation-only gaps do not block merges; adjust upward as coverage improves.
 - `registerBuiltinUrlGenerators()` for built-in URL generators; `setupServer()` invokes it so CLI/library parity stays default.
 - Discriminated result type for `listNamespacesFromKeywordIndex()` (`KeywordIndexNamespacesResult`).
 - Unit tests for `withRetry` / `withTimeout` in `src/server/retry.test.ts`.
@@ -17,14 +18,15 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - `--version` CLI flag prints the package version and exits.
 - `list_namespaces` response now includes `expires_at_iso` so clients see the cache expiry as an ISO-8601 timestamp without converting `cache_ttl_seconds`.
 - `examples/README.md` describing the library embedding sample.
-- GitHub Actions **CI** on **Ubuntu** with a **Node.js** matrix (**20.x**, **22.x**): typecheck, lint, Prettier, build, `test:coverage`, **CycloneDX** SBOM artifact upload (per Node version), **Codecov** upload (Node **20.x** only), plus a separate **quality** job (`npm audit`, `npm pack --dry-run`).
+- GitHub Actions **CI** matrix across **ubuntu-latest**, **windows-latest**, and **macos-latest**, each with **Node.js** **20.x** and **22.x**: typecheck, lint, Prettier, build, `test:coverage`, **CycloneDX** SBOM artifact upload (per job), **Codecov** upload (**Ubuntu** + Node **20.x** only), plus a separate **quality** job (`npm audit`, `npm pack --dry-run`).
 - `npm run test:coverage` with Vitest coverage thresholds (see `vitest.config.ts`).
 - `@vitest/coverage-v8` devDependency for coverage reports (`lcov`, `json-summary`, HTML).
 
 ### Changed
 
+- **Breaking (MCP):** `suggest_query_params` and in-process suggestion flow now emit `recommended_tool` as `count` | `fast` | `detailed` | `full` (aligned with the unified `query` tool `preset`), not legacy `query_fast` / `query_detailed` strings.
 - **Breaking (MCP):** Single hybrid `query` tool with `preset` (`fast` | `detailed` | `full`); removed separate `query_fast` / `query_detailed` tool registrations.
-- **Breaking (library):** Stopped re-exporting `withRetry` / `withTimeout` from the package entry (`server.ts`).
+- `resolveConfig()` throws if the Pinecone API key is missing (after trim); library callers must supply `apiKey` via overrides or set `PINECONE_API_KEY`.
 - `withTimeout` aborts an internal `AbortSignal` on deadline (cooperative cancellation).
 - `PineconeClient`: shared hit-field extraction, safer merge dedup without empty `_id` collisions, metadata sampling skips zero-vector probe when dimension is unknown, `listNamespacesFromKeywordIndex` surfaces errors via `{ ok: false }`.
 - Metadata filter manual validation accepts primitive arrays for `$in`/`$nin` including numbers (matches Zod).
@@ -32,7 +34,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - `.npmignore` no longer excludes `dist/` (still shipped via `package.json` `files`).
 - `.env.example` log-level options corrected to the four levels actually supported (`DEBUG`, `INFO`, `WARN`, `ERROR`); the stale `WARNING`/`CRITICAL` values are gone.
 - README Slack URL example now matches the generator output (`https://app.slack.com/client/{team_id}/{channel_id}/p{messageId}`).
-- README "Comparison with Python Version" no longer claims an identical API interface; the new TypeScript-only tools (`guided_query`, `query_documents`, `keyword_search`, `namespace_router`, `suggest_query_params`, `count`, `generate_urls`) are listed explicitly.
+- README "Comparison with Python Version" no longer claims an identical API; the new TypeScript-only tools (`guided_query`, `query_documents`, `keyword_search`, `namespace_router`, `suggest_query_params`, `count`, `generate_urls`) are listed explicitly.
 - `npm run ci` now runs `test:coverage` so merges are gated on coverage thresholds.
 - **Breaking (runtime / tooling):** `engines.node` is now **>=20.12.0**. Vitest **4** (bundled **rolldown**) imports `util.styleText` from `node:util` (added in Node **20.12**), and **`@vitest/coverage-v8`** uses `node:inspector/promises` (Node **≥19**). CI tests only **20.x** and **22.x**.
 - Dependabot groups related **vitest**, **typescript-eslint**, and **eslint/prettier** updates.

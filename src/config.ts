@@ -93,12 +93,19 @@ export interface ConfigOverrides {
 /**
  * Build a `ServerConfig` from CLI overrides, environment variables, and defaults.
  * CLI > env > default precedence is preserved.
+ *
+ * @throws Error when no API key is provided (empty after trim from overrides or `PINECONE_API_KEY`).
  */
 export function resolveConfig(
   overrides: ConfigOverrides,
   env: NodeJS.ProcessEnv = process.env
 ): ServerConfig {
-  const apiKey = overrides.apiKey ?? env['PINECONE_API_KEY'] ?? '';
+  const apiKey = (overrides.apiKey ?? env['PINECONE_API_KEY'] ?? '').trim();
+  if (!apiKey) {
+    throw new Error(
+      'Missing Pinecone API key: set PINECONE_API_KEY or pass --api-key (or apiKey in ConfigOverrides for library use).'
+    );
+  }
   const indexName = overrides.indexName ?? env['PINECONE_INDEX_NAME'] ?? DEFAULT_INDEX_NAME;
   const sparseIndexName =
     overrides.sparseIndexName ?? env['PINECONE_SPARSE_INDEX_NAME'] ?? `${indexName}-sparse`;

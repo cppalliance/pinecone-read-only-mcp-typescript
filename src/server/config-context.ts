@@ -13,7 +13,8 @@ export function setServerConfig(config: ServerConfig): void {
  * (namespace cache TTL, suggest-flow gate, etc.).
  *
  * When `setupServer()` runs without an explicit config, falls back to `resolveConfig({})`
- * so env defaults still apply.
+ * so env defaults still apply. That requires `PINECONE_API_KEY` (or the call throws); embedders
+ * should pass `config` into `setupServer(config)` when env is not set.
  */
 export function getServerConfig(): ServerConfig {
   if (!activeConfig) {

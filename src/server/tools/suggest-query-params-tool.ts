@@ -14,7 +14,7 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
       description:
         "Suggest which fields to request and whether to use the count tool, based on the namespace schema (from list_namespaces) and the user's natural language query. " +
         'Call list_namespaces first to get available namespaces and metadata fields. Then call this tool with the target namespace and the user query; ' +
-        'it returns suggested_fields (only fields that exist in that namespace), use_count_tool (true if the query is a count question), recommended_tool (count / query_fast / query_detailed — map query_fast→query preset fast, query_detailed→preset detailed), and an explanation. ' +
+        'it returns suggested_fields (only fields that exist in that namespace), use_count_tool (true if the query is a count question), recommended_tool (count | fast | detailed | full — same vocabulary as the query tool preset), and an explanation. ' +
         'This step is mandatory before query/count tools; use the returned suggested_fields in query tools to reduce payload and cost.',
       inputSchema: {
         namespace: z

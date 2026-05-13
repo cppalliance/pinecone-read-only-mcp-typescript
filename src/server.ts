@@ -37,7 +37,7 @@ export { setPineconeClient } from './server/client-context.js';
 export { validateMetadataFilter } from './server/metadata-filter.js';
 /** Heuristic field + tool suggestions from a namespace schema + user query. */
 export { suggestQueryParams } from './server/query-suggestion.js';
-export type { SuggestQueryParamsResult } from './server/query-suggestion.js';
+export type { RecommendedTool, SuggestQueryParamsResult } from './server/query-suggestion.js';
 /** Register custom per-namespace URL synthesis used by `generate_urls` / row enrichment. */
 export {
   registerUrlGenerator,

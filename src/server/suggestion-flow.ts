@@ -1,8 +1,9 @@
 import { getServerConfig } from './config-context.js';
+import type { RecommendedTool } from './query-suggestion.js';
 
 type FlowState = {
   updatedAt: number;
-  recommended_tool: 'count' | 'query_fast' | 'query_detailed';
+  recommended_tool: RecommendedTool;
   suggested_fields: string[];
   user_query: string;
 };
@@ -55,7 +56,7 @@ export function requireSuggested(namespace: string):
       ok: true,
       flow: {
         updatedAt: Date.now(),
-        recommended_tool: 'query_fast',
+        recommended_tool: 'fast',
         suggested_fields: [],
         user_query: '',
       },

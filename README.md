@@ -27,7 +27,7 @@ A Model Context Protocol (MCP) server that provides semantic search over Pinecon
 - **Semantic Reranking**: Uses BGE reranker model for improved precision
 - **Dynamic Namespace Discovery**: Automatically discovers available namespaces in your Pinecone index
 - **Metadata Filtering**: Supports optional metadata filters for refined searches
-- **Fast presets**: Lazy initialization, connection pooling, and efficient result merging; use the `query` tool `preset=fast` / `detailed` to trade latency vs quality (no published benchmarks yet — treat descriptions as qualitative).
+- **Fast presets**: Lazy initialization, connection pooling, and efficient result merging; use the `query` tool `preset=fast | detailed | full` to trade latency vs quality (no published benchmarks yet — treat descriptions as qualitative).
 - **Production-oriented defaults**: Input validation, error handling, and configurable logging (semantic versioning is pre-1.0 — review CHANGELOG before upgrading).
 - **TypeScript Support**: Full TypeScript support with type definitions
 
@@ -260,7 +260,7 @@ Discovers and lists all available namespaces in the configured Pinecone index, i
 
 ### `suggest_query_params`
 
-Suggests which **fields** to request and which path to use (`count`, or hybrid query as **fast** vs **detailed** — implemented via the `query` tool `preset` argument), based on the namespace’s schema (from `list_namespaces`) and the user’s natural language query. This is a mandatory flow step before `count` / `query` tools.
+Suggests which **fields** to request and which path to use (`count`, or hybrid query presets **fast** / **detailed** / **full** — same vocabulary as the `query` tool `preset` argument), based on the namespace’s schema (from `list_namespaces`) and the user’s natural language query. This is a mandatory flow step before `count` / `query` tools.
 
 **Parameters:**
 
@@ -278,7 +278,7 @@ Suggests which **fields** to request and which path to use (`count`, or hybrid q
   "status": "success",
   "suggested_fields": ["document_number", "title", "url", "author"],
   "use_count_tool": false,
-  "recommended_tool": "query_fast",
+  "recommended_tool": "fast",
   "explanation": "User asked for a list or browse; use minimal fields (no chunk_text) for smaller payload and cost.",
   "namespace_found": true
 }
@@ -292,7 +292,7 @@ Single orchestrator tool that runs the full flow in one call:
 
 1. namespace routing (if namespace is omitted),
 2. query param suggestion,
-3. execution via `count` or hybrid `query` (fast vs detailed behavior).
+3. execution via `count` or hybrid `query` (`fast` / `detailed` / `full` presets).
 
 It returns both the final result and a `decision_trace` for transparency.
 
@@ -304,7 +304,7 @@ It returns both the final result and a `decision_trace` for transparency.
 | `namespace`       | string  | No       | -       | Optional explicit namespace                                                         |
 | `metadata_filter` | object  | No       | -       | Optional metadata filter                                                            |
 | `top_k`           | integer | No       | `10`    | Query result size for query paths (1-100)                                           |
-| `preferred_tool`  | enum    | No       | `auto`  | One of `auto`, `count`, `fast`, `detailed`                                          |
+| `preferred_tool`  | enum    | No       | `auto`  | One of `auto`, `count`, `fast`, `detailed`, `full`                                 |
 | `enrich_urls`     | boolean | No       | `true`  | Auto-generate URLs for `mailing` and `slack-Cpplang` when `metadata.url` is missing |
 
 **Returns:** JSON containing `decision_trace` and `result`.

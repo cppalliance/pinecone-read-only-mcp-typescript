@@ -33,14 +33,13 @@ function buildConfigOrExit(): ServerConfig {
     process.exit(0);
   }
 
-  const config = resolveConfig(parsed.overrides);
-  if (!config.apiKey) {
-    process.stderr.write(
-      'Error: Pinecone API key is required. Set PINECONE_API_KEY environment variable or use --api-key option.\n'
-    );
+  try {
+    return resolveConfig(parsed.overrides);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`Error: ${message}\n`);
     process.exit(1);
   }
-  return config;
 }
 
 async function main(): Promise<void> {

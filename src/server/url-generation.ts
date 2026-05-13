@@ -101,9 +101,9 @@ let builtinGeneratorsRegistered = false;
  */
 export function registerBuiltinUrlGenerators(): void {
   if (builtinGeneratorsRegistered) return;
-  builtinGeneratorsRegistered = true;
   urlGenerators.set('mailing', generatorMailing);
   urlGenerators.set('slack-Cpplang', generatorSlackCpplang);
+  builtinGeneratorsRegistered = true;
 }
 
 /**

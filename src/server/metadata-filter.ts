@@ -1,14 +1,13 @@
 import { z } from 'zod';
 
+const primitiveScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
+
 // Recursive Zod schema for Pinecone metadata filters
 // Supports nested objects with operators like {"timestamp": {"$gte": 123}}
 const metadataFilterValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    z.array(z.number()),
+    primitiveScalarSchema,
+    z.array(primitiveScalarSchema),
     z.array(z.lazy(() => metadataFilterSchema)),
     z.record(z.string(), metadataFilterValueSchema), // Recursive for nested operators
   ])

@@ -17,13 +17,19 @@ function parsePositiveInt(raw: string | undefined): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+/** Next argv token if it is a real value (not another flag). */
+function readOptionValue(argv: string[], i: number): string | undefined {
+  const v = argv[i + 1];
+  if (v === undefined || v.startsWith('-')) return undefined;
+  return v;
+}
+
 /** Parse `process.argv` (slice 2..) into help/version/config result. */
 export function parseCli(argv: string[] = process.argv.slice(2)): ParseCliResult {
   const overrides: ConfigOverrides = {};
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    const next = argv[i + 1];
 
     switch (arg) {
       case '--help':
@@ -32,52 +38,66 @@ export function parseCli(argv: string[] = process.argv.slice(2)): ParseCliResult
       case '--version':
       case '-v':
         return { kind: 'version' };
-      case '--api-key':
-        if (next !== undefined) {
-          overrides.apiKey = next;
+      case '--api-key': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.apiKey = v;
           i++;
         }
         break;
-      case '--index-name':
-        if (next !== undefined) {
-          overrides.indexName = next;
+      }
+      case '--index-name': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.indexName = v;
           i++;
         }
         break;
-      case '--sparse-index-name':
-        if (next !== undefined) {
-          overrides.sparseIndexName = next;
+      }
+      case '--sparse-index-name': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.sparseIndexName = v;
           i++;
         }
         break;
-      case '--rerank-model':
-        if (next !== undefined) {
-          overrides.rerankModel = next;
+      }
+      case '--rerank-model': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.rerankModel = v;
           i++;
         }
         break;
+      }
       case '--top-k': {
-        const n = parsePositiveInt(next);
+        const raw = readOptionValue(argv, i);
+        const n = parsePositiveInt(raw);
         if (n !== undefined) {
           overrides.defaultTopK = n;
           i++;
         }
         break;
       }
-      case '--log-level':
-        if (next !== undefined) {
-          overrides.logLevel = next;
+      case '--log-level': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.logLevel = v;
           i++;
         }
         break;
-      case '--log-format':
-        if (next !== undefined) {
-          overrides.logFormat = next;
+      }
+      case '--log-format': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.logFormat = v;
           i++;
         }
         break;
+      }
       case '--cache-ttl-seconds': {
-        const n = parsePositiveInt(next);
+        const raw = readOptionValue(argv, i);
+        const n = parsePositiveInt(raw);
         if (n !== undefined) {
           overrides.cacheTtlSeconds = n;
           i++;
@@ -85,7 +105,8 @@ export function parseCli(argv: string[] = process.argv.slice(2)): ParseCliResult
         break;
       }
       case '--request-timeout-ms': {
-        const n = parsePositiveInt(next);
+        const raw = readOptionValue(argv, i);
+        const n = parsePositiveInt(raw);
         if (n !== undefined) {
           overrides.requestTimeoutMs = n;
           i++;
