@@ -35,7 +35,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
     {
       description:
         'Combines namespace routing, suggestion, and query into a single call — no prerequisite tools needed. ' +
-        'Single orchestrator: optional namespace_router logic -> suggest_query_params logic -> executes count/query_fast/query_detailed. ' +
+        'Single orchestrator: optional namespace_router logic -> executes count/query/query_fast/query_detailed (query is used for full mode). ' +
         'Returns decision_trace so behavior stays transparent and debuggable.',
       inputSchema: {
         user_query: z.string().describe('User question or intent.'),
