@@ -1,10 +1,13 @@
 import { COUNT_FIELDS } from '../constants.js';
 
+/** Values returned by `suggest_query_params` / suggestion flow; align with `query` tool `preset`. */
+export type RecommendedTool = 'count' | 'fast' | 'detailed' | 'full';
+
 /** Suggested query params from namespace schema and user query. */
 export type SuggestQueryParamsResult = {
   suggested_fields: string[];
   use_count_tool: boolean;
-  recommended_tool: 'count' | 'query_fast' | 'query_detailed';
+  recommended_tool: RecommendedTool;
   explanation: string;
   namespace_found: boolean;
 };
@@ -25,7 +28,7 @@ export function suggestQueryParams(
     return {
       suggested_fields: [],
       use_count_tool: false,
-      recommended_tool: 'query_fast',
+      recommended_tool: 'fast',
       explanation:
         'Namespace not found or has no metadata fields. Call list_namespaces first, then pass a valid namespace.',
       namespace_found: false,
@@ -35,7 +38,7 @@ export function suggestQueryParams(
     return {
       suggested_fields: [],
       use_count_tool: false,
-      recommended_tool: 'query_fast',
+      recommended_tool: 'fast',
       explanation:
         'Namespace has no metadata fields. Use list_namespaces to verify the namespace is correct.',
       namespace_found: true,
@@ -43,7 +46,7 @@ export function suggestQueryParams(
   }
 
   // Count intent: "how many", "count", "number of", etc.
-  if (/\b(how many|count|number of|total number|paper count|documents? count)\b/.test(q)) {
+  if (/\b(how many|count|number of|total number|documents? count|records? count)\b/.test(q)) {
     const fields = keepOnlyAvailable([...COUNT_FIELDS]);
     return {
       suggested_fields: fields.length ? fields : available.slice(0, 5),
@@ -63,7 +66,7 @@ export function suggestQueryParams(
     return {
       suggested_fields: fields.length ? fields : available,
       use_count_tool: false,
-      recommended_tool: 'query_detailed',
+      recommended_tool: 'detailed',
       explanation: 'User asked for content or details; include chunk_text for snippets.',
       namespace_found: true,
     };
@@ -74,7 +77,7 @@ export function suggestQueryParams(
   return {
     suggested_fields: listFields.length ? listFields : available.slice(0, 5),
     use_count_tool: false,
-    recommended_tool: 'query_fast',
+    recommended_tool: 'fast',
     explanation:
       'User asked for a list or browse; use minimal fields (no chunk_text) for smaller payload and cost.',
     namespace_found: true,

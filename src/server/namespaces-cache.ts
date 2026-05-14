@@ -1,4 +1,4 @@
-import { FLOW_CACHE_TTL_MS } from '../constants.js';
+import { getServerConfig } from './config-context.js';
 import { getPineconeClient } from './client-context.js';
 
 export type NamespaceInfo = {
@@ -14,7 +14,10 @@ type CacheEntry = {
 
 let namespacesCache: CacheEntry | null = null;
 
-/** Return namespace list with metadata; uses in-memory cache for FLOW_CACHE_TTL_MS. */
+/**
+ * Return namespace list with metadata; uses an in-memory cache whose TTL is
+ * sourced from the active `ServerConfig.cacheTtlMs`.
+ */
 export async function getNamespacesWithCache(): Promise<{
   data: NamespaceInfo[];
   cache_hit: boolean;
@@ -31,7 +34,8 @@ export async function getNamespacesWithCache(): Promise<{
 
   const client = getPineconeClient();
   const data = await client.listNamespacesWithMetadata();
-  const expiresAt = now + FLOW_CACHE_TTL_MS;
+  const ttlMs = getServerConfig().cacheTtlMs;
+  const expiresAt = now + ttlMs;
   namespacesCache = { data, expiresAt };
   return { data, cache_hit: false, expires_at: expiresAt };
 }

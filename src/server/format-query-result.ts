@@ -1,14 +1,29 @@
 /**
  * Shared formatting of Pinecone SearchResult into QueryResponse result rows.
- * Used by query tool and guided_query to avoid duplicated paper_number/title/author/url logic.
+ * Used by query tool and guided_query to avoid duplicated identifier/title/author/url logic.
  */
 
 import type { PineconeMetadataValue, SearchResult } from '../types.js';
+import { warn as logWarn } from '../logger.js';
 import { generateUrlForNamespace } from './url-generation.js';
 
 const DEFAULT_CONTENT_MAX_LENGTH = 2000;
 
+/**
+ * One formatted query-result row.
+ *
+ * `document_id` is the canonical identifier. `paper_number` is a deprecated
+ * alias kept for one minor cycle for backwards compatibility — it will be
+ * removed in the next major release.
+ */
 export interface QueryResultRow {
+  /** Canonical document identifier. Prefer this in new code. */
+  document_id: string | null;
+  /**
+   * @deprecated Use `document_id`. Kept for one minor cycle and removed in
+   * the next major release. The first time a row is emitted with this alias
+   * during a session, a `WARN` log is fired so consumers see the deadline.
+   */
   paper_number: string | null;
   title: string;
   author: string;
@@ -17,6 +32,18 @@ export interface QueryResultRow {
   score: number;
   reranked: boolean;
   metadata?: Record<string, PineconeMetadataValue>;
+}
+
+let deprecationWarnedThisSession = false;
+
+/**
+ * Reset the once-per-session deprecation latch. Test-only.
+ *
+ * Production code should never need this; the latch is intentionally process-
+ * lived so noisy LLM clients only see the warning once.
+ */
+export function resetPaperNumberDeprecationLatchForTests(): void {
+  deprecationWarnedThisSession = false;
 }
 
 /**
@@ -45,15 +72,23 @@ export function formatSearchResultAsRow(
 
   const docNum = metadata['document_number'];
   const filename = metadata['filename'];
-  const paper_number =
+  const document_id =
     (typeof docNum === 'string' && docNum.length > 0 ? docNum : null) ??
     (typeof filename === 'string' && filename.length > 0
       ? filename.replace(/\.md$/i, '').toUpperCase()
       : null) ??
     null;
 
+  if (document_id !== null && !deprecationWarnedThisSession) {
+    deprecationWarnedThisSession = true;
+    logWarn(
+      'paper_number is deprecated and will be removed in the next major release; use document_id instead.'
+    );
+  }
+
   return {
-    paper_number,
+    document_id,
+    paper_number: document_id,
     title: String(metadata['title'] ?? ''),
     author: String(metadata['author'] ?? ''),
     url: String(metadata['url'] ?? ''),
