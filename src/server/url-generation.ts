@@ -122,9 +122,7 @@ export type RegisterBuiltinUrlGeneratorsOptions = {
  * Invoked from {@link setupServer} so embedders get the same defaults as the CLI;
  * pure library use without calling `setupServer` should register explicitly if needed.
  */
-export function registerBuiltinUrlGenerators(
-  options?: RegisterBuiltinUrlGeneratorsOptions
-): void {
+export function registerBuiltinUrlGenerators(options?: RegisterBuiltinUrlGeneratorsOptions): void {
   if (options?.reinstallBuiltins) {
     urlGenerators.set('mailing', generatorMailing);
     urlGenerators.set('slack-Cpplang', generatorSlackCpplang);
