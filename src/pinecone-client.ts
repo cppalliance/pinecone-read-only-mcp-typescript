@@ -9,6 +9,7 @@ import type {
   CountParams,
   CountResult,
   KeywordSearchParams,
+  KeywordIndexNamespacesResult,
   SearchableIndex,
 } from './types.js';
 import {
@@ -40,8 +41,10 @@ export class PineconeClient {
     this.indexSession = new PineconeIndexSession(config.apiKey, indexName);
     this.rerankModel =
       config.rerankModel || process.env['PINECONE_RERANK_MODEL'] || DEFAULT_RERANK_MODEL;
+    const envTopK = process.env['PINECONE_TOP_K'];
+    const parsedEnvTopK = envTopK !== undefined ? parseInt(envTopK, 10) : NaN;
     this.defaultTopK =
-      config.defaultTopK || parseInt(process.env['PINECONE_TOP_K'] || String(DEFAULT_TOP_K));
+      config.defaultTopK ?? (Number.isFinite(parsedEnvTopK) ? parsedEnvTopK : DEFAULT_TOP_K);
   }
 
   /** Sparse index name `{indexName}-sparse` (keyword / hybrid sparse). */
@@ -71,9 +74,7 @@ export class PineconeClient {
   }
 
   /** Namespaces on the sparse (keyword) index with record counts. */
-  async listNamespacesFromKeywordIndex(): Promise<
-    Array<{ namespace: string; recordCount: number }>
-  > {
+  async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {
     return this.indexSession.listNamespacesFromKeywordIndex();
   }
 

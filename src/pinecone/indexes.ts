@@ -4,7 +4,7 @@
 
 import { Pinecone } from '@pinecone-database/pinecone';
 import { error as logError, info as logInfo } from '../logger.js';
-import type { NamespaceHandle, SearchableIndex } from '../types.js';
+import type { KeywordIndexNamespacesResult, NamespaceHandle, SearchableIndex } from '../types.js';
 
 /**
  * Infers a human-readable metadata field type for namespace discovery.
@@ -84,22 +84,22 @@ export class PineconeIndexSession {
    * List namespaces present on the sparse index (same index used for hybrid sparse and keyword_search).
    * Use this to choose a namespace for sparse-only queries instead of the dense index list.
    */
-  async listNamespacesFromKeywordIndex(): Promise<
-    Array<{ namespace: string; recordCount: number }>
-  > {
+  async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {
     try {
       const { sparseIndex } = await this.ensureIndexes();
       const stats = sparseIndex.describeIndexStats
         ? await sparseIndex.describeIndexStats()
         : undefined;
       const namespaces = stats?.namespaces ?? {};
-      return Object.entries(namespaces).map(([namespace, info]) => ({
+      const rows = Object.entries(namespaces).map(([namespace, info]) => ({
         namespace,
         recordCount: info?.recordCount ?? 0,
       }));
+      return { ok: true, namespaces: rows };
     } catch (error) {
       logError('Error listing namespaces from keyword index', error);
-      return [];
+      const msg = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: msg };
     }
   }
 
