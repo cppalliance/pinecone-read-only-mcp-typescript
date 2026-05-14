@@ -21,6 +21,20 @@ A Model Context Protocol (MCP) server that provides semantic search over Pinecon
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting |
 
+## Error responses
+
+When a tool fails, the MCP tool result sets **`isError: true`**. The `text` content is JSON matching **`ToolError`** (parse with `toolErrorSchema` from `@will-cppa/pinecone-read-only-mcp`).
+
+| Field | Description |
+| ----- | ----------- |
+| `code` | `FLOW_GATE` — `suggest_query_params` was not run for this namespace (or context expired). `VALIDATION` — bad input or metadata filter. `PINECONE_ERROR` — SDK / network / server failure. `TIMEOUT` — outbound Pinecone call exceeded `--request-timeout-ms`. |
+| `message` | Human-readable detail (`DEBUG` log level may surface raw SDK messages in the message for `PINECONE_ERROR` / `TIMEOUT`). |
+| `recoverable` | Whether the client can plausibly fix the issue and retry (`true` for flow gate, validation, timeouts; typically `false` for generic Pinecone errors). |
+| `suggestion` | Optional hint. **`FLOW_GATE`** always includes: `Call suggest_query_params for namespace '<ns>' first`. **`TIMEOUT`** suggests retrying or increasing the request timeout. |
+| `field` | **Required when `code` is `VALIDATION`:** the input parameter name (e.g. `query_text`, `namespace`) or a dot-path into `metadata_filter` (e.g. `author.$in`). |
+
+Success payloads are unchanged and do **not** wrap `ToolError`. Clients that still expect `{ "status": "error", "message": "..." }` must migrate to the shape above.
+
 ## Features
 
 - **Hybrid Search**: Combines dense and sparse embeddings for superior recall

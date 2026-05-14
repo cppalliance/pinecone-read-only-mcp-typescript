@@ -123,7 +123,7 @@ export type KeywordIndexNamespacesResult =
   | { ok: false; error: string };
 
 export interface QueryResponse {
-  status: 'success' | 'error';
+  status: 'success';
   mode?: 'query' | 'query_fast' | 'query_detailed';
   query?: string;
   namespace?: string;
@@ -132,7 +132,6 @@ export interface QueryResponse {
   /** Present when the query requested specific fields. */
   fields?: string[];
   results?: QueryResultRowShape[];
-  message?: string;
 }
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */

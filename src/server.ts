@@ -10,6 +10,7 @@
  * - {@link resolveConfig} — merge CLI-style overrides with `process.env`.
  * - {@link setPineconeClient} — inject a client instance before `setupServer()`.
  * - {@link registerUrlGenerator} / {@link unregisterUrlGenerator} — extend URL synthesis.
+ * - {@link toolErrorSchema} / {@link ToolError} — parse MCP tool failures (`isError: true` JSON bodies).
  * - Built-in `mailing` / `slack-Cpplang` URL generators are registered from {@link setupServer}
  *   via {@link registerBuiltinUrlGenerators}; call it yourself if you use the library without `setupServer`.
  *
@@ -35,6 +36,12 @@ import { registerSuggestQueryParamsTool } from './server/tools/suggest-query-par
 export { setPineconeClient } from './server/client-context.js';
 /** Validate user-supplied Pinecone metadata filter objects before querying. */
 export { validateMetadataFilter } from './server/metadata-filter.js';
+/** Structured metadata filter validation (`field` dot-path); {@link validateMetadataFilter} remains a string-only wrapper. */
+export { validateMetadataFilterDetailed } from './server/metadata-filter.js';
+export type { MetadataFilterValidationError } from './server/metadata-filter.js';
+/** Zod schema and types for MCP tool error JSON bodies (`isError: true`). */
+export { toolErrorSchema } from './server/tool-error.js';
+export type { ToolError, ToolErrorCode } from './server/tool-error.js';
 /** Heuristic field + tool suggestions from a namespace schema + user query. */
 export { suggestQueryParams } from './server/query-suggestion.js';
 export type { RecommendedTool, SuggestQueryParamsResult } from './server/query-suggestion.js';
