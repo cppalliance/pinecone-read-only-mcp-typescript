@@ -4,9 +4,7 @@ import type { SearchableIndex } from '../types.js';
 
 /** Subclass so tests inject index handles without calling the real Pinecone SDK. */
 class PineconeIndexSessionTestDouble extends PineconeIndexSession {
-  constructor(
-    private readonly pair: { dense: SearchableIndex; sparse: SearchableIndex }
-  ) {
+  constructor(private readonly pair: { dense: SearchableIndex; sparse: SearchableIndex }) {
     super('test-api-key', 'test-index');
   }
 
@@ -133,8 +131,12 @@ describe('PineconeIndexSession', () => {
 
   describe('checkIndexes', () => {
     it('returns ok when describeIndexStats succeeds for dense and sparse', async () => {
-      const dense = { describeIndexStats: vi.fn().mockResolvedValue({}) } as unknown as SearchableIndex;
-      const sparse = { describeIndexStats: vi.fn().mockResolvedValue({}) } as unknown as SearchableIndex;
+      const dense = {
+        describeIndexStats: vi.fn().mockResolvedValue({}),
+      } as unknown as SearchableIndex;
+      const sparse = {
+        describeIndexStats: vi.fn().mockResolvedValue({}),
+      } as unknown as SearchableIndex;
       const session = new PineconeIndexSessionTestDouble({ dense, sparse });
 
       const result = await session.checkIndexes();
@@ -146,7 +148,9 @@ describe('PineconeIndexSession', () => {
       const dense = {
         describeIndexStats: vi.fn().mockRejectedValue(new Error('dense down')),
       } as unknown as SearchableIndex;
-      const sparse = { describeIndexStats: vi.fn().mockResolvedValue({}) } as unknown as SearchableIndex;
+      const sparse = {
+        describeIndexStats: vi.fn().mockResolvedValue({}),
+      } as unknown as SearchableIndex;
       const session = new PineconeIndexSessionTestDouble({ dense, sparse });
 
       const result = await session.checkIndexes();

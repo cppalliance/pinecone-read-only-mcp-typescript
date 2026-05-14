@@ -215,9 +215,9 @@ describe('PineconeClient', () => {
 
   describe('query (rerank and fields)', () => {
     it('rejects non-finite topK', async () => {
-      await expect(
-        client.query({ query: 'q', namespace: 'n', topK: Number.NaN })
-      ).rejects.toThrow('topK must be a finite number');
+      await expect(client.query({ query: 'q', namespace: 'n', topK: Number.NaN })).rejects.toThrow(
+        'topK must be a finite number'
+      );
     });
 
     it('adds chunk_text to requested fields when reranking', async () => {
@@ -319,9 +319,9 @@ describe('PineconeClient', () => {
 
   describe('keywordSearch', () => {
     it('throws for empty query', async () => {
-      await expect(
-        client.keywordSearch({ query: '   ', namespace: 'n' })
-      ).rejects.toThrow('Query cannot be empty');
+      await expect(client.keywordSearch({ query: '   ', namespace: 'n' })).rejects.toThrow(
+        'Query cannot be empty'
+      );
     });
 
     it('searches sparse index only and maps hits', async () => {
