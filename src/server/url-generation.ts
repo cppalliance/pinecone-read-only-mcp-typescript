@@ -154,7 +154,14 @@ export function registerBuiltinUrlGenerators(options?: RegisterBuiltinUrlGenerat
  * ```
  */
 export function registerUrlGenerator(namespace: string, generator: UrlGeneratorFn): void {
-  urlGenerators.set(namespace, generator);
+  const normalizedNamespace = namespace.trim();
+  if (normalizedNamespace.length === 0) {
+    throw new TypeError('namespace must be a non-empty string');
+  }
+  if (typeof generator !== 'function') {
+    throw new TypeError('generator must be a function');
+  }
+  urlGenerators.set(normalizedNamespace, generator);
 }
 
 /** Remove a namespace's URL generator. Returns true if a generator was removed. */
