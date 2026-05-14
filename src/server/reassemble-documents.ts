@@ -50,7 +50,7 @@ export interface ReassembledDocument {
 /**
  * Group search results by document and merge chunk content.
  * Chunks are ordered by metadata chunk_index (or similar) when present; otherwise retrieval order.
- * *
+ *
  * Document identity is derived in priority order: document_number → url → doc_id → hit.id.
  * Chunks whose metadata contains none of the first three keys are grouped by their raw vector ID,
  * so each such chunk becomes its own single-chunk "document" in the output.

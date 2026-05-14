@@ -31,7 +31,7 @@ PUBLISHING.md
 node_modules/
 .vscode/
 .idea/
-dist/
+docs/
 
 # Testing
 coverage/

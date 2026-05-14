@@ -25,6 +25,7 @@ export function registerListNamespacesTool(server: McpServer): void {
           status: 'success',
           cache_hit,
           cache_ttl_seconds: ttlSeconds,
+          expires_at_iso: new Date(expires_at).toISOString(),
           count: namespacesInfo.length,
           namespaces: namespacesInfo.map((ns) => ({
             name: ns.namespace,

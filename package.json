@@ -3,7 +3,16 @@
   "version": "0.1.6",
   "description": "A Model Context Protocol (MCP) server that provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
+  "module": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "pinecone-read-only-mcp": "dist/index.js"
   },
@@ -33,7 +42,7 @@
   },
   "homepage": "https://github.com/CppDigest/pinecone-read-only-mcp-typescript#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.12.0"
   },
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true});\"",
@@ -46,13 +55,12 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:search": "tsx scripts/test-search.ts",
-    "test:mcp": "node test-mcp-server.js",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"*.json\" \".prettierrc\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"*.json\" \".prettierrc\"",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run lint && npm run format:check && npm run build && npm test",
+    "ci": "npm run typecheck && npm run lint && npm run format:check && npm run build && npm run test:coverage",
     "release:check": "npm run ci && npm pack --dry-run --ignore-scripts",
     "ci:local": "bash scripts/ci-local.sh",
     "prepublishOnly": "npm run ci",
@@ -69,6 +77,7 @@
     "@types/chai": "^5.2.3",
     "@types/deep-eql": "^4.0.2",
     "@types/node": "^25.0.10",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.5.3",

@@ -16,6 +16,9 @@ export interface KeywordSearchResponse {
   metadata_filter?: Record<string, unknown>;
   result_count?: number;
   results?: Array<{
+    /** Canonical document identifier. */
+    document_id: string | null;
+    /** @deprecated Use `document_id`; removed in the next major release. */
     paper_number: string | null;
     title: string;
     author: string;

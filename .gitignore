@@ -8,6 +8,10 @@ dist/
 build/
 *.tsbuildinfo
 
+# data
+data/
+
+
 # Environment
 .env
 .env.local
