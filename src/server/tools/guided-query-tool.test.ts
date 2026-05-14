@@ -65,7 +65,7 @@ describe('guided_query tool handler', () => {
     expect(body.status).toBe('success');
     const trace = body.decision_trace as Record<string, unknown>;
     expect(trace.selected_namespace).toBe('papers');
-    expect(trace.selected_tool).toBe('query_detailed');
+    expect(trace.selected_tool).toBe('detailed');
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
         namespace: 'papers',

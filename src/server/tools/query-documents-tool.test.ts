@@ -22,7 +22,7 @@ describe('query_documents tool handler', () => {
     ok: true as const,
     flow: {
       updatedAt: Date.now(),
-      recommended_tool: 'query_detailed' as const,
+      recommended_tool: 'detailed' as const,
       suggested_fields: [],
       user_query: 'q',
     },

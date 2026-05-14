@@ -11,12 +11,12 @@ vi.mock('../client-context.js', () => ({
 
 const mockedGetClient = vi.mocked(getPineconeClient);
 
-describe('query / query_fast / query_detailed tool handlers', () => {
+describe('query tool handler (preset-driven)', () => {
   const flowOk = {
     ok: true as const,
     flow: {
       updatedAt: Date.now(),
-      recommended_tool: 'query_detailed' as const,
+      recommended_tool: 'detailed' as const,
       suggested_fields: ['chunk_text'],
       user_query: 'q',
     },
@@ -35,7 +35,7 @@ describe('query / query_fast / query_detailed tool handlers', () => {
     vi.restoreAllMocks();
   });
 
-  it('query: happy path calls client.query and returns formatted rows', async () => {
+  it('query (preset=full): happy path calls client.query and returns formatted rows', async () => {
     const server = createMockServer();
     registerQueryTool(server as never);
     const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
@@ -45,6 +45,7 @@ describe('query / query_fast / query_detailed tool handlers', () => {
         query_text: 'contracts',
         namespace: 'wg21',
         top_k: 5,
+        preset: 'full',
         use_reranking: true,
       })
     );
@@ -63,16 +64,17 @@ describe('query / query_fast / query_detailed tool handlers', () => {
     );
   });
 
-  it('query_fast: uses no reranking and default lightweight fields', async () => {
+  it('query (preset=fast): uses no reranking and default lightweight fields', async () => {
     const server = createMockServer();
     registerQueryTool(server as never);
     const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
 
     const body = parseToolJson(
-      await server.getHandler('query_fast')!({
+      await server.getHandler('query')!({
         query_text: 'list',
         namespace: 'wg21',
         top_k: 10,
+        preset: 'fast',
       })
     );
 
@@ -95,6 +97,7 @@ describe('query / query_fast / query_detailed tool handlers', () => {
       query_text: '   ',
       namespace: 'wg21',
       top_k: 10,
+      preset: 'full',
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
@@ -118,6 +121,7 @@ describe('query / query_fast / query_detailed tool handlers', () => {
       query_text: 'hello',
       namespace: 'wg21',
       top_k: 10,
+      preset: 'full',
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
@@ -129,10 +133,11 @@ describe('query / query_fast / query_detailed tool handlers', () => {
   });
 
   it('query: returns TTL expiry message when suggestion context expired', async () => {
+    const expiredMsg =
+      'Previous suggest_query_params context expired. Call suggest_query_params again before query/count tools.';
     vi.spyOn(suggestionFlow, 'requireSuggested').mockReturnValue({
       ok: false,
-      message:
-        'Previous suggest_query_params context expired (30 minutes). Call suggest_query_params again before query/count tools.',
+      message: expiredMsg,
     });
 
     const server = createMockServer();
@@ -143,13 +148,12 @@ describe('query / query_fast / query_detailed tool handlers', () => {
         query_text: 'hello',
         namespace: 'wg21',
         top_k: 10,
+        preset: 'full',
       })
     );
 
     expect(body.status).toBe('error');
-    expect(body.message).toBe(
-      'Previous suggest_query_params context expired (30 minutes). Call suggest_query_params again before query/count tools.'
-    );
+    expect(body.message).toBe(expiredMsg);
   });
 
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
@@ -168,6 +172,7 @@ describe('query / query_fast / query_detailed tool handlers', () => {
         query_text: 'hello',
         namespace: 'wg21',
         top_k: 3,
+        preset: 'full',
       })
     );
 
