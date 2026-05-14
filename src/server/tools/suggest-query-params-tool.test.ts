@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { markSuggested } from '../suggestion-flow.js';
 import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
-import { createMockServer, makeNamespaceCacheEntry, parseToolJson } from './test-helpers.js';
+import { createMockServer, makeNamespaceCacheEntry, parseToolJson, assertToolError } from './test-helpers.js';
 
 vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),
@@ -83,9 +83,10 @@ describe('suggest_query_params tool handler', () => {
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const body = parseToolJson(raw);
-    expect(body.status).toBe('error');
-    expect(body.message).toBe('user_query cannot be empty');
+    const err = assertToolError(raw);
+    expect(err.code).toBe('VALIDATION');
+    expect(err.field).toBe('user_query');
+    expect(err.message).toBe('user_query cannot be empty');
   });
 
   it('returns error when namespace cache fails', async () => {
@@ -99,8 +100,8 @@ describe('suggest_query_params tool handler', () => {
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const body = parseToolJson(raw);
-    expect(body.status).toBe('error');
-    expect(String(body.message)).toBe('Failed to suggest query params');
+    const err = assertToolError(raw);
+    expect(err.code).toBe('PINECONE_ERROR');
+    expect(err.message).toBe('Failed to suggest query params');
   });
 });

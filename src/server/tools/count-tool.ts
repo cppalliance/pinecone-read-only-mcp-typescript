@@ -1,21 +1,24 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getPineconeClient } from '../client-context.js';
-import { metadataFilterSchema, validateMetadataFilter } from '../metadata-filter.js';
+import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { requireSuggested } from '../suggestion-flow.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import {
+  classifyToolCatchError,
+  flowGateToolError,
+  logToolError,
+  validationToolError,
+} from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 const COUNT_RESPONSE_STATUS = 'success' as const;
-type CountResponse =
-  | {
-      status: 'success';
-      count: number;
-      truncated: boolean;
-      namespace: string;
-      metadata_filter?: Record<string, unknown>;
-    }
-  | { status: 'error'; message: string };
+type CountResponse = {
+  status: 'success';
+  count: number;
+  truncated: boolean;
+  namespace: string;
+  metadata_filter?: Record<string, unknown>;
+};
 
 /** Register the count tool on the MCP server. */
 export function registerCountTool(server: McpServer): void {
@@ -51,21 +54,19 @@ export function registerCountTool(server: McpServer): void {
       try {
         const { namespace, query_text, metadata_filter } = params;
         if (!query_text.trim()) {
-          const response: CountResponse = {
-            status: 'error',
-            message: 'query_text cannot be empty',
-          };
-          return jsonErrorResponse(response);
+          return jsonErrorResponse(
+            validationToolError('query_text cannot be empty', 'query_text')
+          );
         }
         if (metadata_filter) {
-          const err = validateMetadataFilter(metadata_filter);
+          const err = validateMetadataFilterDetailed(metadata_filter);
           if (err) {
-            return jsonErrorResponse({ status: 'error', message: err });
+            return jsonErrorResponse(validationToolError(err.message, err.field));
           }
         }
         const flowCheck = requireSuggested(namespace);
         if (!flowCheck.ok) {
-          return jsonErrorResponse({ status: 'error', message: flowCheck.message });
+          return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
         }
         const client = getPineconeClient();
         const { count, truncated } = await client.count({
@@ -83,11 +84,7 @@ export function registerCountTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('count', error);
-        const response: CountResponse = {
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to get count'),
-        };
-        return jsonErrorResponse(response);
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to get count'));
       }
     }
   );

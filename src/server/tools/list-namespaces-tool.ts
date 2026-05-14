@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import { classifyToolCatchError, logToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 /** Register the list_namespaces tool on the MCP server. */
@@ -37,11 +37,9 @@ export function registerListNamespacesTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('list_namespaces', error);
-        const response = {
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to list namespaces'),
-        };
-        return jsonErrorResponse(response);
+        return jsonErrorResponse(
+          classifyToolCatchError(error, 'Failed to list namespaces')
+        );
       }
     }
   );

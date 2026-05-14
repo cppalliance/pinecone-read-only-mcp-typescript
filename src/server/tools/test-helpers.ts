@@ -1,4 +1,6 @@
 import type { SearchResult } from '../../types.js';
+import type { ToolError } from '../tool-error.js';
+import { toolErrorSchema } from '../tool-error.js';
 
 /** Handler invoked by MCP tool registration (params shape varies by tool). */
 export type ToolHandler = (params: Record<string, unknown>) => Promise<unknown>;
@@ -36,6 +38,12 @@ export function parseToolJson(payload: unknown): Record<string, unknown> {
     throw new Error('Expected text content in tool response');
   }
   return JSON.parse(text) as Record<string, unknown>;
+}
+
+/** Parse MCP tool error JSON from a handler return value (expects `isError: true`). */
+export function assertToolError(payload: unknown): ToolError {
+  const raw = parseToolJson(payload);
+  return toolErrorSchema.parse(raw);
 }
 
 export function makeSearchResult(overrides?: Partial<SearchResult>): SearchResult {

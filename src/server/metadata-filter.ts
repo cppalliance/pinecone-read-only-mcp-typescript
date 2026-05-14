@@ -27,6 +27,12 @@ const ALLOWED_FILTER_OPERATORS = new Set([
   '$or',
 ]);
 
+export type MetadataFilterValidationError = {
+  message: string;
+  /** Dot-path to the failing segment (metadata key and/or operator chain). */
+  field: string;
+};
+
 /** True if value is a string, number, or boolean (allowed for $eq, $gt, etc.). */
 function isPrimitiveFilterValue(value: unknown): boolean {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
@@ -40,10 +46,17 @@ function isPrimitiveArray(value: unknown): boolean {
   );
 }
 
-/** Recursively validate a filter value; returns an error string or null if valid. */
-function validateMetadataFilterValue(value: unknown, path: string[]): string | null {
+function err(message: string, path: string[]): MetadataFilterValidationError {
+  return { message, field: path.join('.') };
+}
+
+/** Recursively validate a filter value; returns an error or null if valid. */
+function validateMetadataFilterValue(
+  value: unknown,
+  path: string[]
+): MetadataFilterValidationError | null {
   if (value === null || value === undefined) {
-    return `Invalid null/undefined at "${path.join('.')}".`;
+    return err(`Invalid null/undefined at "${path.join('.')}".`, path);
   }
 
   if (isPrimitiveFilterValue(value) || isPrimitiveArray(value)) {
@@ -54,27 +67,39 @@ function validateMetadataFilterValue(value: unknown, path: string[]): string | n
     for (let i = 0; i < value.length; i++) {
       const item = value[i];
       if (typeof item !== 'object' || item === null || Array.isArray(item)) {
-        return `Operator "${path[path.length - 1]}" at "${[...path, String(i)].join('.')}" must use an array of filter objects.`;
+        return err(
+          `Operator "${path[path.length - 1]}" at "${[...path, String(i)].join('.')}" must use an array of filter objects.`,
+          [...path, String(i)]
+        );
       }
-      const nestedError = validateMetadataFilter(item as Record<string, unknown>);
+      const nestedError = validateMetadataFilterRecord(item as Record<string, unknown>);
       if (nestedError) return nestedError;
     }
     return null;
   }
 
   if (typeof value !== 'object') {
-    return `Unsupported filter value at "${path.join('.')}".`;
+    return err(`Unsupported filter value at "${path.join('.')}".`, path);
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
     if (!key.startsWith('$')) {
-      return `Nested metadata filters must use operator keys starting with "$" at "${path.join('.')}"; got "${key}".`;
+      return err(
+        `Nested metadata filters must use operator keys starting with "$" at "${path.join('.')}"; got "${key}".`,
+        [...path, key]
+      );
     }
     if (!ALLOWED_FILTER_OPERATORS.has(key)) {
-      return `Unknown filter operator "${key}" at "${path.join('.')}". Allowed operators: ${[...ALLOWED_FILTER_OPERATORS].join(', ')}.`;
+      return err(
+        `Unknown filter operator "${key}" at "${path.join('.')}". Allowed operators: ${[...ALLOWED_FILTER_OPERATORS].join(', ')}.`,
+        [...path, key]
+      );
     }
     if ((key === '$in' || key === '$nin') && !isPrimitiveArray(nestedValue)) {
-      return `Operator "${key}" at "${path.join('.')}" must use an array of primitive values.`;
+      return err(
+        `Operator "${key}" at "${path.join('.')}" must use an array of primitive values.`,
+        [...path, key]
+      );
     }
     if (
       (key === '$eq' ||
@@ -85,10 +110,16 @@ function validateMetadataFilterValue(value: unknown, path: string[]): string | n
         key === '$lte') &&
       !isPrimitiveFilterValue(nestedValue)
     ) {
-      return `Operator "${key}" at "${path.join('.')}" must use a primitive value.`;
+      return err(`Operator "${key}" at "${path.join('.')}" must use a primitive value.`, [
+        ...path,
+        key,
+      ]);
     }
     if ((key === '$and' || key === '$or') && !Array.isArray(nestedValue)) {
-      return `Operator "${key}" at "${path.join('.')}" must use an array of filter objects.`;
+      return err(
+        `Operator "${key}" at "${path.join('.')}" must use an array of filter objects.`,
+        [...path, key]
+      );
     }
 
     const nestedError = validateMetadataFilterValue(nestedValue, [...path, key]);
@@ -100,11 +131,27 @@ function validateMetadataFilterValue(value: unknown, path: string[]): string | n
   return null;
 }
 
-/** Validate a Pinecone metadata filter object; returns an error message or null if valid. */
-export function validateMetadataFilter(filter: Record<string, unknown>): string | null {
+function validateMetadataFilterRecord(
+  filter: Record<string, unknown>
+): MetadataFilterValidationError | null {
   for (const [field, value] of Object.entries(filter)) {
     const error = validateMetadataFilterValue(value, [field]);
     if (error) return error;
   }
   return null;
+}
+
+/**
+ * Validate a Pinecone metadata filter object; returns structured error or null if valid.
+ */
+export function validateMetadataFilterDetailed(
+  filter: Record<string, unknown>
+): MetadataFilterValidationError | null {
+  return validateMetadataFilterRecord(filter);
+}
+
+/** Validate a Pinecone metadata filter object; returns an error message or null if valid. */
+export function validateMetadataFilter(filter: Record<string, unknown>): string | null {
+  const detailed = validateMetadataFilterDetailed(filter);
+  return detailed?.message ?? null;
 }

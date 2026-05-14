@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { generateUrlForNamespace } from '../url-generation.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import { classifyToolCatchError, logToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 /** Get metadata from a record (either record.metadata or the record itself). */
@@ -58,10 +58,9 @@ export function registerGenerateUrlsTool(server: McpServer): void {
         });
       } catch (error) {
         logToolError('generate_urls', error);
-        return jsonErrorResponse({
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to generate URLs'),
-        });
+        return jsonErrorResponse(
+          classifyToolCatchError(error, 'Failed to generate URLs')
+        );
       }
     }
   );

@@ -4,12 +4,17 @@ import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../constants.js';
 import type { QueryResponse } from '../../types.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
-import { metadataFilterSchema, validateMetadataFilter } from '../metadata-filter.js';
+import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { rankNamespacesByQuery } from '../namespace-router.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { suggestQueryParams } from '../query-suggestion.js';
 import { markSuggested } from '../suggestion-flow.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import {
+  classifyToolCatchError,
+  logToolError,
+  pineconeToolError,
+  validationToolError,
+} from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 type GuidedToolName = 'count' | 'fast' | 'detailed' | 'full';
@@ -78,13 +83,15 @@ export function registerGuidedQueryTool(server: McpServer): void {
         } = params;
 
         if (!user_query?.trim()) {
-          return jsonErrorResponse({ status: 'error', message: 'user_query cannot be empty' });
+          return jsonErrorResponse(
+            validationToolError('user_query cannot be empty', 'user_query')
+          );
         }
 
         if (metadata_filter) {
-          const err = validateMetadataFilter(metadata_filter);
+          const err = validateMetadataFilterDetailed(metadata_filter);
           if (err) {
-            return jsonErrorResponse({ status: 'error', message: err });
+            return jsonErrorResponse(validationToolError(err.message, err.field));
           }
         }
 
@@ -93,20 +100,30 @@ export function registerGuidedQueryTool(server: McpServer): void {
         const ranked = rankNamespacesByQuery(queryText, namespaces, 3);
 
         const namespace = inputNamespace ?? ranked[0]?.namespace;
+        /*
+         * ToolError mapping: empty index / no routable namespace is backend/data state
+         * (PINECONE_ERROR, recoverable). Explicit namespace missing from cache is user/input
+         * (VALIDATION, field namespace).
+         */
         if (!namespace) {
-          return jsonErrorResponse({
-            status: 'error',
-            message: 'No namespace available. Please run list_namespaces and verify index data.',
-          });
+          return jsonErrorResponse(
+            pineconeToolError('No namespace available. Please run list_namespaces and verify index data.', {
+              recoverable: true,
+              suggestion: 'Call list_namespaces to confirm the index has namespaces, then retry.',
+            })
+          );
         }
 
         const ns = namespaces.find((n) => n.namespace === namespace);
         const suggestion = suggestQueryParams(ns?.metadata ?? null, queryText);
         if (!suggestion.namespace_found) {
-          return jsonErrorResponse({
-            status: 'error',
-            message: `Namespace "${namespace}" not found in cached namespaces. Call list_namespaces and retry.`,
-          });
+          return jsonErrorResponse(
+            validationToolError(
+              `Namespace "${namespace}" not found in cached namespaces. Call list_namespaces and retry.`,
+              'namespace',
+              { suggestion: 'Use a namespace name returned by list_namespaces, then call list_namespaces again if the cache is stale.' }
+            )
+          );
         }
 
         const selectedTool: GuidedToolName = resolveGuidedToolName(preferred_tool, suggestion);
@@ -192,10 +209,9 @@ export function registerGuidedQueryTool(server: McpServer): void {
         });
       } catch (error) {
         logToolError('guided_query', error);
-        return jsonErrorResponse({
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to execute guided query'),
-        });
+        return jsonErrorResponse(
+          classifyToolCatchError(error, 'Failed to execute guided query')
+        );
       }
     }
   );
