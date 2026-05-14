@@ -112,11 +112,11 @@ function formatTable(rows: BenchmarkResult[]): string {
     out.push(
       line([
         r.name.slice(0, colWidths[0] ?? 28),
-        String(r.p50),
-        String(r.p95),
-        String(r.p99),
-        String(r.min),
-        String(r.max),
+        r.p50.toFixed(4),
+        r.p95.toFixed(4),
+        r.p99.toFixed(4),
+        r.min.toFixed(4),
+        r.max.toFixed(4),
       ])
     );
   }
