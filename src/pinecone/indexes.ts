@@ -193,4 +193,48 @@ export class PineconeIndexSession {
       return [];
     }
   }
+
+  /**
+   * Verify dense and sparse indexes are reachable (describeIndexStats).
+   * Used by `--check-indexes` / `PINECONE_CHECK_INDEXES` before the server starts.
+   */
+  async checkIndexes(): Promise<{ ok: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    const denseName = this.indexName;
+    const sparseName = this.getSparseIndexName();
+    try {
+      const { denseIndex, sparseIndex } = await this.ensureIndexes();
+
+      if (typeof denseIndex.describeIndexStats !== 'function') {
+        errors.push(
+          `Dense index "${denseName}": describeIndexStats is not available on this SDK surface`
+        );
+      } else {
+        try {
+          await denseIndex.describeIndexStats();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`Dense index "${denseName}": ${msg}`);
+        }
+      }
+
+      if (typeof sparseIndex.describeIndexStats !== 'function') {
+        errors.push(
+          `Sparse index "${sparseName}": describeIndexStats is not available on this SDK surface`
+        );
+      } else {
+        try {
+          await sparseIndex.describeIndexStats();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`Sparse index "${sparseName}": ${msg}`);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Failed to connect to Pinecone indexes: ${msg}`);
+    }
+
+    return { ok: errors.length === 0, errors };
+  }
 }

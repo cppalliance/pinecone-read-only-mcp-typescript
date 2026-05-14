@@ -88,6 +88,11 @@ export class PineconeClient {
     return this.indexSession.listNamespacesWithMetadata();
   }
 
+  /** Probe dense + sparse indexes (describeIndexStats) for startup checks. */
+  async checkIndexes(): Promise<{ ok: boolean; errors: string[] }> {
+    return this.indexSession.checkIndexes();
+  }
+
   private async searchIndex(
     index: SearchableIndex,
     query: string,
