@@ -28,8 +28,14 @@ export type UrlGenerationResult = {
  */
 export type UrlGenerator = (metadata: Record<string, unknown>) => UrlGenerationResult;
 
+/**
+ * Alias for {@link UrlGenerator} (issue / API naming: `UrlGeneratorFn`).
+ * Use either type when implementing custom URL synthesis.
+ */
+export type UrlGeneratorFn = UrlGenerator;
+
 /** Registry of namespace -> URL generator. Built-ins register via {@link registerBuiltinUrlGenerators}. */
-const urlGenerators = new Map<string, UrlGenerator>();
+const urlGenerators = new Map<string, UrlGeneratorFn>();
 
 /** Return a trimmed non-empty string or null for empty/missing values. */
 function asString(value: unknown): string | null {
@@ -94,12 +100,37 @@ function generatorSlackCpplang(metadata: Record<string, unknown>): UrlGeneration
 
 let builtinGeneratorsRegistered = false;
 
+/** Options for {@link registerBuiltinUrlGenerators}. */
+export type RegisterBuiltinUrlGeneratorsOptions = {
+  /**
+   * When `true`, re-applies the built-in `mailing` and `slack-Cpplang` generators
+   * even if they were already registered or were replaced by {@link registerUrlGenerator}.
+   * Use to restore defaults after an override (e.g. in tests).
+   */
+  reinstallBuiltins?: boolean;
+};
+
 /**
- * Register built-in generators (`mailing`, `slack-Cpplang`). Idempotent.
+ * Register built-in generators (`mailing`, `slack-Cpplang`).
+ *
+ * With no options (or `reinstallBuiltins` omitted / `false`), the call is idempotent:
+ * only the first invocation in the process installs the two built-ins.
+ *
+ * With `{ reinstallBuiltins: true }`, always resets `mailing` and `slack-Cpplang` to
+ * the library implementations (does not remove other custom namespaces).
+ *
  * Invoked from {@link setupServer} so embedders get the same defaults as the CLI;
  * pure library use without calling `setupServer` should register explicitly if needed.
  */
-export function registerBuiltinUrlGenerators(): void {
+export function registerBuiltinUrlGenerators(
+  options?: RegisterBuiltinUrlGeneratorsOptions
+): void {
+  if (options?.reinstallBuiltins) {
+    urlGenerators.set('mailing', generatorMailing);
+    urlGenerators.set('slack-Cpplang', generatorSlackCpplang);
+    builtinGeneratorsRegistered = true;
+    return;
+  }
   if (builtinGeneratorsRegistered) return;
   urlGenerators.set('mailing', generatorMailing);
   urlGenerators.set('slack-Cpplang', generatorSlackCpplang);
@@ -110,7 +141,7 @@ export function registerBuiltinUrlGenerators(): void {
  * Register a URL generator for a namespace, replacing any existing entry.
  *
  * @param namespace exact namespace name (matches the value returned by `list_namespaces`).
- * @param generator function that turns a record's metadata into a URL.
+ * @param generator function that turns a record's metadata into a URL ({@link UrlGeneratorFn}).
  *
  * @example
  * ```ts
@@ -124,7 +155,7 @@ export function registerBuiltinUrlGenerators(): void {
  * });
  * ```
  */
-export function registerUrlGenerator(namespace: string, generator: UrlGenerator): void {
+export function registerUrlGenerator(namespace: string, generator: UrlGeneratorFn): void {
   urlGenerators.set(namespace, generator);
 }
 

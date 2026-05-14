@@ -88,6 +88,34 @@ Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, 
 
 The server uses **process-global** memory for the suggest-flow gate (`suggest_query_params` context), namespaces cache, URL generator registry, and active configuration. **Stdio MCP (one client per Node process)** matches this model. If you embed `setupServer` behind a multi-tenant HTTP transport, isolate those structures per session yourself or treat the suggest-flow guard as best-effort only.
 
+### Custom URL generators
+
+Namespaces other than `mailing` and `slack-Cpplang` (or different URL rules for any namespace) can use programmatic registration — no fork required.
+
+Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult` from `@will-cppa/pinecone-read-only-mcp`. Register **additional** namespaces before tools that emit URLs run (typically right after `setupServer` resolves config). To **replace** the built-in `mailing` or `slack-Cpplang` generators, call `registerUrlGenerator` **after** `setupServer`, because `setupServer` installs the defaults first.
+
+```ts
+import {
+  registerUrlGenerator,
+  setupServer,
+  type UrlGenerationResult,
+  type UrlGeneratorFn,
+} from '@will-cppa/pinecone-read-only-mcp';
+
+const server = await setupServer(config);
+
+const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
+  const id = typeof metadata.doc_id === 'string' ? metadata.doc_id : null;
+  return id
+    ? { url: `https://docs.example.com/${id}`, method: 'generated.custom' }
+    : { url: null, method: 'unavailable', reason: 'doc_id missing' };
+};
+
+registerUrlGenerator('product-docs', myDocs);
+```
+
+A fuller embedding sample lives in [examples/custom-url-generator.ts](examples/custom-url-generator.ts).
+
 ### Claude Desktop Configuration
 
 Add to your `claude_desktop_config.json`:

@@ -9,7 +9,7 @@
  * - {@link PineconeClient} — hybrid search, count, namespace listing, etc.
  * - {@link resolveConfig} — merge CLI-style overrides with `process.env`.
  * - {@link setPineconeClient} — inject a client instance before `setupServer()`.
- * - {@link registerUrlGenerator} / {@link unregisterUrlGenerator} — extend URL synthesis.
+ * - {@link registerUrlGenerator} / {@link unregisterUrlGenerator} — extend URL synthesis (`UrlGeneratorFn`).
  * - Built-in `mailing` / `slack-Cpplang` URL generators are registered from {@link setupServer}
  *   via {@link registerBuiltinUrlGenerators}; call it yourself if you use the library without `setupServer`.
  *
@@ -46,7 +46,12 @@ export {
   hasUrlGenerator,
   registerBuiltinUrlGenerators,
 } from './server/url-generation.js';
-export type { UrlGenerationResult, UrlGenerator } from './server/url-generation.js';
+export type {
+  UrlGenerationResult,
+  UrlGenerator,
+  UrlGeneratorFn,
+  RegisterBuiltinUrlGeneratorsOptions,
+} from './server/url-generation.js';
 /** Build {@link ServerConfig} from CLI overrides + environment variables. */
 export { resolveConfig } from './config.js';
 export type { ServerConfig, LogLevel, LogFormat, ConfigOverrides } from './config.js';

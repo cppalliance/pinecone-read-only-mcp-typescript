@@ -1,5 +1,11 @@
-import { describe, expect, it, beforeAll } from 'vitest';
-import { generateUrlForNamespace, registerBuiltinUrlGenerators } from './url-generation.js';
+import { describe, expect, it, beforeAll, afterEach } from 'vitest';
+import type { UrlGeneratorFn } from './url-generation.js';
+import {
+  generateUrlForNamespace,
+  registerBuiltinUrlGenerators,
+  registerUrlGenerator,
+  unregisterUrlGenerator,
+} from './url-generation.js';
 
 beforeAll(() => {
   registerBuiltinUrlGenerators();
@@ -103,5 +109,37 @@ describe('generateUrlForNamespace', () => {
     });
     expect(r.url).toBeNull();
     expect(r.method).toBe('unavailable');
+  });
+});
+
+describe('registerUrlGenerator', () => {
+  const customNs = 'acme-docs';
+
+  afterEach(() => {
+    unregisterUrlGenerator(customNs);
+    registerBuiltinUrlGenerators({ reinstallBuiltins: true });
+  });
+
+  it('registers a custom generator for a new namespace', () => {
+    const fn: UrlGeneratorFn = () => ({
+      url: 'https://example.com/doc/1',
+      method: 'generated.custom',
+    });
+    registerUrlGenerator(customNs, fn);
+    const r = generateUrlForNamespace(customNs, {});
+    expect(r.url).toBe('https://example.com/doc/1');
+    expect(r.method).toBe('generated.custom');
+  });
+
+  it('allows a custom generator to override the mailing built-in', () => {
+    registerUrlGenerator('mailing', () => ({
+      url: 'https://override.example/mailing',
+      method: 'generated.custom',
+    }));
+    const r = generateUrlForNamespace('mailing', {
+      doc_id: 'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6',
+    });
+    expect(r.url).toBe('https://override.example/mailing');
+    expect(r.method).toBe('generated.custom');
   });
 });
