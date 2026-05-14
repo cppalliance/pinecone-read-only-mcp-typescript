@@ -128,13 +128,14 @@ export function registerQueryTool(server: McpServer): void {
           ),
       },
     },
-    async (params) =>
-      executeQuery({
+    async (params) => {
+      return executeQuery({
         ...params,
         top_k: params.top_k,
         use_reranking: params.use_reranking,
         mode: 'query',
-      })
+      });
+    }
   );
 
   server.registerTool(
@@ -147,14 +148,15 @@ export function registerQueryTool(server: McpServer): void {
         ...baseSchema,
       },
     },
-    async (params) =>
-      executeQuery({
+    async (params) => {
+      return executeQuery({
         ...params,
         top_k: params.top_k,
         use_reranking: false,
         fields: params.fields?.length ? params.fields : [...FAST_QUERY_FIELDS],
         mode: 'query_fast',
-      })
+      });
+    }
   );
 
   server.registerTool(
@@ -171,12 +173,13 @@ export function registerQueryTool(server: McpServer): void {
           .describe('Whether to use semantic reranking for better precision (default true).'),
       },
     },
-    async (params) =>
-      executeQuery({
+    async (params) => {
+      return executeQuery({
         ...params,
         top_k: params.top_k ?? 10,
         use_reranking: params.use_reranking ?? true,
         mode: 'query_detailed',
-      })
+      });
+    }
   );
 }
