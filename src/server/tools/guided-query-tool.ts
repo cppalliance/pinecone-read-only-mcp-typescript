@@ -25,14 +25,17 @@ function resolveGuidedToolName(
   return 'full';
 }
 
-/** Register the guided_query orchestrator tool on the MCP server. */
+/**
+ * Registers `guided_query` (routing + suggestion + execution in one call).
+ * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
+ */
 export function registerGuidedQueryTool(server: McpServer): void {
   server.registerTool(
     'guided_query',
     {
       description:
-        'Single orchestrator that runs routing + suggestion + execution in one call. ' +
-        'Flow: optional namespace_router logic -> suggest_query_params logic -> executes count or hybrid query (fast / detailed / full presets). ' +
+        'Combines namespace routing, suggestion, and query into a single call — no prerequisite tools needed. ' +
+        'Single orchestrator: optional namespace_router logic -> executes count or hybrid query (fast / detailed / full presets). ' +
         'Returns decision_trace so behavior stays transparent and debuggable.',
       inputSchema: {
         user_query: z.string().describe('User question or intent.'),

@@ -21,7 +21,10 @@ import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
  */
 const CHUNKS_PER_DOCUMENT = 50;
 
-/** Register the query_documents tool (reassemble chunks into full documents) on the MCP server. */
+/**
+ * Registers `query_documents` (reassemble chunks into full documents).
+ * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
+ */
 export function registerQueryDocumentsTool(server: McpServer): void {
   server.registerTool(
     'query_documents',
@@ -31,7 +34,7 @@ export function registerQueryDocumentsTool(server: McpServer): void {
         'Always uses semantic reranking for document-level relevance (higher latency/cost than chunk-only query). ' +
         'Use for content analysis, summarization, or when you need full-document context. ' +
         'Chunks are grouped by document_number/doc_id/url, ordered by chunk_index when present (e.g. from RecursiveCharacterTextSplitter), and merged into one content per document. ' +
-        'Mandatory flow: call suggest_query_params first. Use list_namespaces to discover namespaces.',
+        'Requires suggest_query_params to be called first for the target namespace. Use list_namespaces to discover namespaces.',
       inputSchema: {
         query_text: z.string().describe('Search query text. Be specific for better results.'),
         namespace: z

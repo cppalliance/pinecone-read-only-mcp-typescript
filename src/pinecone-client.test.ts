@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PineconeClient } from './pinecone-client.js';
 import type { SearchableIndex, PineconeHit } from './types.js';
+import * as rerankModule from './pinecone/rerank.js';
 
-/** Test double: client with stubbable ensureIndexes and searchIndex for hybrid tests */
-type PineconeClientTestDouble = PineconeClient & {
+/** Stubs for private methods (assigned at runtime; avoid intersecting private `PineconeClient` members). */
+type PineconeClientMethodStubs = {
   ensureIndexes: () => Promise<{ denseIndex: SearchableIndex; sparseIndex: SearchableIndex }>;
   searchIndex: (
     index: SearchableIndex,
@@ -15,6 +16,10 @@ type PineconeClientTestDouble = PineconeClient & {
   ) => Promise<PineconeHit[]>;
 };
 
+function stubPineconeClient(client: PineconeClient): PineconeClientMethodStubs {
+  return client as unknown as PineconeClientMethodStubs;
+}
+
 describe('PineconeClient', () => {
   let client: PineconeClient;
 
@@ -24,6 +29,12 @@ describe('PineconeClient', () => {
       indexName: 'test-index',
       rerankModel: 'test-model',
     });
+  });
+
+  afterEach(() => {
+    delete process.env['PINECONE_INDEX_NAME'];
+    delete process.env['PINECONE_RERANK_MODEL'];
+    delete process.env['PINECONE_TOP_K'];
   });
 
   describe('constructor', () => {
@@ -64,7 +75,7 @@ describe('PineconeClient', () => {
     });
 
     it('should continue hybrid search when one index fails', async () => {
-      const testClient = client as PineconeClientTestDouble;
+      const testClient = stubPineconeClient(client);
 
       testClient.ensureIndexes = async () => ({
         denseIndex: {} as SearchableIndex,
@@ -99,7 +110,7 @@ describe('PineconeClient', () => {
     });
 
     it('should throw when both dense and sparse searches fail', async () => {
-      const testClient = client as PineconeClientTestDouble;
+      const testClient = stubPineconeClient(client);
 
       testClient.ensureIndexes = async () => ({
         denseIndex: {} as SearchableIndex,
@@ -122,7 +133,7 @@ describe('PineconeClient', () => {
 
   describe('count', () => {
     it('should return unique document count using semantic search only with minimal fields', async () => {
-      const testClient = client as PineconeClientTestDouble;
+      const testClient = stubPineconeClient(client);
       testClient.ensureIndexes = async () => ({
         denseIndex: {} as SearchableIndex,
         sparseIndex: {} as SearchableIndex,
@@ -161,7 +172,7 @@ describe('PineconeClient', () => {
     });
 
     it('should set truncated when hit limit is reached', async () => {
-      const testClient = client as PineconeClientTestDouble;
+      const testClient = stubPineconeClient(client);
       testClient.ensureIndexes = async () => ({
         denseIndex: {} as SearchableIndex,
         sparseIndex: {} as SearchableIndex,
@@ -177,6 +188,167 @@ describe('PineconeClient', () => {
 
       expect(result.count).toBe(10000);
       expect(result.truncated).toBe(true);
+    });
+
+    it('falls back to chunk _id when no document identifier fields exist', async () => {
+      const testClient = stubPineconeClient(client);
+      testClient.ensureIndexes = async () => ({
+        denseIndex: {} as SearchableIndex,
+        sparseIndex: {} as SearchableIndex,
+      });
+      testClient.searchIndex = async () => [
+        { _id: 'chunk-only', _score: 1, fields: { chunk_text: 'x' } },
+      ];
+
+      const result = await client.count({ query: 'paper', namespace: 'ns' });
+
+      expect(result.count).toBe(1);
+      expect(result.truncated).toBe(false);
+    });
+  });
+
+  describe('getSparseIndexName', () => {
+    it('returns {indexName}-sparse derived from config indexName', () => {
+      const c = new PineconeClient({ apiKey: 'k', indexName: 'my' });
+      expect(c.getSparseIndexName()).toBe('my-sparse');
+    });
+  });
+
+  describe('query (rerank and fields)', () => {
+    it('rejects non-finite topK', async () => {
+      await expect(client.query({ query: 'q', namespace: 'n', topK: Number.NaN })).rejects.toThrow(
+        'topK must be a finite number'
+      );
+    });
+
+    it('adds chunk_text to requested fields when reranking', async () => {
+      const testClient = stubPineconeClient(client);
+      const denseRef = {} as SearchableIndex;
+      const sparseRef = {} as SearchableIndex;
+      testClient.ensureIndexes = async () => ({
+        denseIndex: denseRef,
+        sparseIndex: sparseRef,
+      });
+      let fieldsPassed: string[] | undefined;
+      testClient.searchIndex = async (_index, _q, _tk, _ns, _f, opts) => {
+        fieldsPassed = opts?.fields;
+        return [];
+      };
+
+      await client.query({
+        query: 'q',
+        namespace: 'n',
+        topK: 5,
+        useReranking: true,
+        fields: ['title', 'url'],
+      });
+
+      expect(fieldsPassed).toBeDefined();
+      expect(fieldsPassed).toContain('chunk_text');
+      expect(fieldsPassed).toContain('title');
+    });
+
+    it('uses rerankResults from pinecone/rerank when useReranking is true', async () => {
+      const spy = vi.spyOn(rerankModule, 'rerankResults').mockResolvedValue([
+        {
+          id: 'd1',
+          content: 'from dense',
+          score: 0.9,
+          metadata: {},
+          reranked: true,
+        },
+      ]);
+      try {
+        const testClient = stubPineconeClient(client);
+        const denseRef = {} as SearchableIndex;
+        const sparseRef = {} as SearchableIndex;
+        testClient.ensureIndexes = async () => ({
+          denseIndex: denseRef,
+          sparseIndex: sparseRef,
+        });
+        testClient.searchIndex = async (index) => {
+          if (index === denseRef) {
+            return [{ _id: 'd1', _score: 0.9, fields: { chunk_text: 'from dense' } }];
+          }
+          return [];
+        };
+
+        const results = await client.query({
+          query: 'q',
+          namespace: 'n',
+          topK: 5,
+          useReranking: true,
+        });
+
+        expect(results).toHaveLength(1);
+        expect(results[0].reranked).toBe(true);
+        expect(results[0].content).toBe('from dense');
+        expect(spy).toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('dedupes hits with blank _id via synthetic keys', async () => {
+      const testClient = stubPineconeClient(client);
+      const denseRef = {} as SearchableIndex;
+      const sparseRef = {} as SearchableIndex;
+      testClient.ensureIndexes = async () => ({
+        denseIndex: denseRef,
+        sparseIndex: sparseRef,
+      });
+      testClient.searchIndex = async (index) => {
+        if (index === denseRef) {
+          return [
+            { _id: '   ', _score: 1, fields: { chunk_text: 'a' } },
+            { _id: '', _score: 0.5, fields: { chunk_text: 'b' } },
+          ];
+        }
+        return [];
+      };
+
+      const results = await client.query({
+        query: 'q',
+        namespace: 'n',
+        topK: 10,
+        useReranking: false,
+      });
+
+      expect(results.length).toBe(2);
+    });
+  });
+
+  describe('keywordSearch', () => {
+    it('throws for empty query', async () => {
+      await expect(client.keywordSearch({ query: '   ', namespace: 'n' })).rejects.toThrow(
+        'Query cannot be empty'
+      );
+    });
+
+    it('searches sparse index only and maps hits', async () => {
+      const testClient = stubPineconeClient(client);
+      const denseRef = {} as SearchableIndex;
+      const sparseRef = {} as SearchableIndex;
+      testClient.ensureIndexes = async () => ({
+        denseIndex: denseRef,
+        sparseIndex: sparseRef,
+      });
+      testClient.searchIndex = async (index) => {
+        if (index === sparseRef) {
+          return [{ _id: 'k1', _score: 0.7, fields: { chunk_text: 'lexical', tag: 'x' } }];
+        }
+        return [];
+      };
+
+      const results = await client.keywordSearch({
+        query: 'find me',
+        namespace: 'ns',
+        topK: 3,
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0].content).toBe('lexical');
+      expect(results[0].metadata['tag']).toBe('x');
     });
   });
 });

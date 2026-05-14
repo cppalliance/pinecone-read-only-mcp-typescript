@@ -108,15 +108,15 @@ const baseSchema = {
 };
 
 /**
- * Single hybrid `query` tool (replaces separate `query_fast` / `query_detailed` MCP tools).
- * Presets mirror the old defaults.
+ * Registers semantic chunk query via one preset-driven `query` tool.
+ * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
 export function registerQueryTool(server: McpServer): void {
   server.registerTool(
     'query',
     {
       description:
-        'Hybrid semantic search (dense + sparse) with optional reranking. Mandatory flow: call suggest_query_params first. ' +
+        'Hybrid semantic search (dense + sparse) with optional reranking. Requires suggest_query_params to be called first for the target namespace. ' +
         'Use preset=`fast` for low-latency retrieval without reranking and lightweight fields; `detailed` for reranked, content-oriented retrieval; `full` to set use_reranking and fields explicitly.',
       inputSchema: {
         ...baseSchema,
