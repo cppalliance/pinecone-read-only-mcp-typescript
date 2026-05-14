@@ -116,10 +116,10 @@ function validateMetadataFilterValue(
       ]);
     }
     if ((key === '$and' || key === '$or') && !Array.isArray(nestedValue)) {
-      return err(
-        `Operator "${key}" at "${path.join('.')}" must use an array of filter objects.`,
-        [...path, key]
-      );
+      return err(`Operator "${key}" at "${path.join('.')}" must use an array of filter objects.`, [
+        ...path,
+        key,
+      ]);
     }
 
     const nestedError = validateMetadataFilterValue(nestedValue, [...path, key]);

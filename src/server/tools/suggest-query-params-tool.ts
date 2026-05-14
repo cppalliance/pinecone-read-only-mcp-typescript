@@ -33,9 +33,7 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
       try {
         const { namespace, user_query } = params;
         if (!user_query?.trim()) {
-          return jsonErrorResponse(
-            validationToolError('user_query cannot be empty', 'user_query')
-          );
+          return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
         const { data: namespacesInfo, cache_hit } = await getNamespacesWithCache();
         const ns = namespacesInfo.find((n) => n.namespace === namespace);
@@ -56,9 +54,7 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('suggest_query_params', error);
-        return jsonErrorResponse(
-          classifyToolCatchError(error, 'Failed to suggest query params')
-        );
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to suggest query params'));
       }
     }
   );

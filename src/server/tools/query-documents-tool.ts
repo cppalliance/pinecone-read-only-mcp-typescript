@@ -78,9 +78,7 @@ export function registerQueryDocumentsTool(server: McpServer): void {
         } = params;
 
         if (!query_text?.trim()) {
-          return jsonErrorResponse(
-            validationToolError('query_text cannot be empty', 'query_text')
-          );
+          return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
         }
 
         if (metadata_filter) {

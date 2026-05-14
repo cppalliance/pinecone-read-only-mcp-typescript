@@ -31,9 +31,7 @@ async function executeQuery(params: QueryExecParams) {
   const { query_text, namespace, top_k, use_reranking, metadata_filter, fields, mode } = params;
   try {
     if (!query_text.trim()) {
-      return jsonErrorResponse(
-        validationToolError('Query text cannot be empty', 'query_text')
-      );
+      return jsonErrorResponse(validationToolError('Query text cannot be empty', 'query_text'));
     }
 
     if (metadata_filter) {

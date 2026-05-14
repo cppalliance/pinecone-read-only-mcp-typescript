@@ -54,9 +54,7 @@ export function registerCountTool(server: McpServer): void {
       try {
         const { namespace, query_text, metadata_filter } = params;
         if (!query_text.trim()) {
-          return jsonErrorResponse(
-            validationToolError('query_text cannot be empty', 'query_text')
-          );
+          return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
         }
         if (metadata_filter) {
           const err = validateMetadataFilterDetailed(metadata_filter);

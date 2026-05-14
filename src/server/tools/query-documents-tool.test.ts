@@ -4,7 +4,12 @@ import { getPineconeClient } from '../client-context.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryDocumentsTool } from './query-documents-tool.js';
-import { createMockServer, makeSearchResult, parseToolJson, assertToolError } from './test-helpers.js';
+import {
+  createMockServer,
+  makeSearchResult,
+  parseToolJson,
+  assertToolError,
+} from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),

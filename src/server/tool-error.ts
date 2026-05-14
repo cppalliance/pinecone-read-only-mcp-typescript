@@ -17,12 +17,7 @@ export function logToolError(toolName: string, error: unknown): void {
   logError(`Error in ${toolName} tool`, error);
 }
 
-export const toolErrorCodeSchema = z.enum([
-  'FLOW_GATE',
-  'VALIDATION',
-  'PINECONE_ERROR',
-  'TIMEOUT',
-]);
+export const toolErrorCodeSchema = z.enum(['FLOW_GATE', 'VALIDATION', 'PINECONE_ERROR', 'TIMEOUT']);
 export type ToolErrorCode = z.infer<typeof toolErrorCodeSchema>;
 
 const flowGateToolErrorSchema = z.object({
@@ -103,10 +98,7 @@ export function pineconeToolError(
   };
 }
 
-export function timeoutToolError(
-  message: string,
-  options?: { suggestion?: string }
-): ToolError {
+export function timeoutToolError(message: string, options?: { suggestion?: string }): ToolError {
   return {
     code: 'TIMEOUT',
     message,

@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { markSuggested } from '../suggestion-flow.js';
 import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
-import { createMockServer, makeNamespaceCacheEntry, parseToolJson, assertToolError } from './test-helpers.js';
+import {
+  createMockServer,
+  makeNamespaceCacheEntry,
+  parseToolJson,
+  assertToolError,
+} from './test-helpers.js';
 
 vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),

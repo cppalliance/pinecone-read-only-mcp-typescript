@@ -58,9 +58,7 @@ export function registerGenerateUrlsTool(server: McpServer): void {
         });
       } catch (error) {
         logToolError('generate_urls', error);
-        return jsonErrorResponse(
-          classifyToolCatchError(error, 'Failed to generate URLs')
-        );
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to generate URLs'));
       }
     }
   );

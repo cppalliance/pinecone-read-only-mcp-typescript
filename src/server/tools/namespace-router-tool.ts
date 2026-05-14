@@ -30,9 +30,7 @@ export function registerNamespaceRouterTool(server: McpServer): void {
       try {
         const { user_query, top_n } = params;
         if (!user_query?.trim()) {
-          return jsonErrorResponse(
-            validationToolError('user_query cannot be empty', 'user_query')
-          );
+          return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
         const { data, cache_hit } = await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(user_query.trim(), data, top_n);
@@ -47,9 +45,7 @@ export function registerNamespaceRouterTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('namespace_router', error);
-        return jsonErrorResponse(
-          classifyToolCatchError(error, 'Failed to route namespace')
-        );
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to route namespace'));
       }
     }
   );

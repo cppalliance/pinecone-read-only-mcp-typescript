@@ -3,7 +3,12 @@ import { FAST_QUERY_FIELDS } from '../../constants.js';
 import { getPineconeClient } from '../client-context.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryTool } from './query-tool.js';
-import { createMockServer, makeSearchResult, parseToolJson, assertToolError } from './test-helpers.js';
+import {
+  createMockServer,
+  makeSearchResult,
+  parseToolJson,
+  assertToolError,
+} from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),

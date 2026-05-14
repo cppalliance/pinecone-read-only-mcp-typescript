@@ -83,9 +83,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
         } = params;
 
         if (!user_query?.trim()) {
-          return jsonErrorResponse(
-            validationToolError('user_query cannot be empty', 'user_query')
-          );
+          return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
 
         if (metadata_filter) {
@@ -107,10 +105,13 @@ export function registerGuidedQueryTool(server: McpServer): void {
          */
         if (!namespace) {
           return jsonErrorResponse(
-            pineconeToolError('No namespace available. Please run list_namespaces and verify index data.', {
-              recoverable: true,
-              suggestion: 'Call list_namespaces to confirm the index has namespaces, then retry.',
-            })
+            pineconeToolError(
+              'No namespace available. Please run list_namespaces and verify index data.',
+              {
+                recoverable: true,
+                suggestion: 'Call list_namespaces to confirm the index has namespaces, then retry.',
+              }
+            )
           );
         }
 
@@ -121,7 +122,10 @@ export function registerGuidedQueryTool(server: McpServer): void {
             validationToolError(
               `Namespace "${namespace}" not found in cached namespaces. Call list_namespaces and retry.`,
               'namespace',
-              { suggestion: 'Use a namespace name returned by list_namespaces, then call list_namespaces again if the cache is stale.' }
+              {
+                suggestion:
+                  'Use a namespace name returned by list_namespaces, then call list_namespaces again if the cache is stale.',
+              }
             )
           );
         }
@@ -209,9 +213,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
         });
       } catch (error) {
         logToolError('guided_query', error);
-        return jsonErrorResponse(
-          classifyToolCatchError(error, 'Failed to execute guided query')
-        );
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to execute guided query'));
       }
     }
   );

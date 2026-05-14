@@ -37,9 +37,7 @@ export function registerListNamespacesTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('list_namespaces', error);
-        return jsonErrorResponse(
-          classifyToolCatchError(error, 'Failed to list namespaces')
-        );
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to list namespaces'));
       }
     }
   );
