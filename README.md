@@ -258,6 +258,16 @@ Discovers and lists all available namespaces in the configured Pinecone index, i
 }
 ```
 
+### Retrieval tool decision matrix
+
+Use this when choosing among overlapping retrieval tools. **Semantic vs lexical:** use `query` / `query_fast` / `query_detailed` or `query_documents` for meaning-based search; use `keyword_search` for exact or keyword-style matches on the sparse index. **Chunks vs whole documents:** use `query` / `query_fast` / `query_detailed` for ranked chunks; use `query_documents` when you need merged full-document text. **One-shot vs manual flow:** use `guided_query` to run routing, suggestion, and execution in a single call; otherwise call `suggest_query_params` before gated tools.
+
+- **`query` / `query_fast` / `query_detailed`** — Semantic chunk retrieval. Requires `suggest_query_params` to be called first for the target namespace.
+- **`query_documents`** — Semantic search with chunks reassembled into whole documents. Requires `suggest_query_params` to be called first for the target namespace.
+- **`keyword_search`** — Lexical (sparse-only) search. Does not require `suggest_query_params`.
+- **`guided_query`** — Combines namespace routing, suggestion, and query into a single call; no prerequisite tools needed.
+- **`count`** — “How many …?” style counts via semantic search. Requires `suggest_query_params` before use (same gate as `query` / `query_documents`).
+
 ### `suggest_query_params`
 
 Suggests which **fields** to request and which path to use (`count`, or hybrid query presets **fast** / **detailed** / **full** — same vocabulary as the `query` tool `preset` argument), based on the namespace’s schema (from `list_namespaces`) and the user’s natural language query. This is a mandatory flow step before `count` / `query` tools.
