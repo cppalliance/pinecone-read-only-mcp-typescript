@@ -7,14 +7,19 @@ export type ToolHandler = (params: Record<string, unknown>) => Promise<unknown>;
  * Minimal stand-in for {@link McpServer} that records `registerTool` handlers by name.
  */
 export function createMockServer(): {
-  registerTool: (name: string, _schema: unknown, handler: ToolHandler) => void;
+  /** Matches {@link McpServer.registerTool}: `(name, config, callback)`; callback is always the last argument. */
+  registerTool: (...args: unknown[]) => void;
   getHandler: (name: string) => ToolHandler | undefined;
   handlers: Map<string, ToolHandler>;
 } {
   const handlers = new Map<string, ToolHandler>();
   return {
-    registerTool(name, _schema, handler) {
-      handlers.set(name, handler);
+    registerTool(...args: unknown[]) {
+      if (args.length < 2) return;
+      const name = args[0];
+      const handler = args[args.length - 1];
+      if (typeof name !== 'string' || typeof handler !== 'function') return;
+      handlers.set(name, handler as ToolHandler);
     },
     getHandler(name) {
       return handlers.get(name);

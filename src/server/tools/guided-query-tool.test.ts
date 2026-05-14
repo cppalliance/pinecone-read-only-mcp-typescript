@@ -17,6 +17,11 @@ vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),
 }));
 
+/** Real `markSuggested` may call `getServerConfig()` during sweep (CI has no API key); isolate the handler. */
+vi.mock('../suggestion-flow.js', () => ({
+  markSuggested: vi.fn(),
+}));
+
 const mockedGetNamespaces = vi.mocked(getNamespacesWithCache);
 const mockedGetClient = vi.mocked(getPineconeClient);
 
