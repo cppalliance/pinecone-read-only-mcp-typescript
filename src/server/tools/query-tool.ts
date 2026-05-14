@@ -108,7 +108,7 @@ const baseSchema = {
 };
 
 /**
- * Registers semantic chunk query tools (`query`, `query_fast`, `query_detailed`).
+ * Registers semantic chunk query via one preset-driven `query` tool.
  * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
 export function registerQueryTool(server: McpServer): void {
@@ -116,69 +116,52 @@ export function registerQueryTool(server: McpServer): void {
     'query',
     {
       description:
-        'Full query tool with optional reranking. Requires suggest_query_params to be called first for the target namespace. ' +
-        'For lighter retrieval use query_fast; for content-heavy retrieval use query_detailed.',
+        'Hybrid semantic search (dense + sparse) with optional reranking. Requires suggest_query_params to be called first for the target namespace. ' +
+        'Use preset=`fast` for low-latency retrieval without reranking and lightweight fields; `detailed` for reranked, content-oriented retrieval; `full` to set use_reranking and fields explicitly.',
       inputSchema: {
         ...baseSchema,
+        preset: z
+          .enum(['fast', 'detailed', 'full'])
+          .default('full')
+          .describe(
+            'fast: no reranking + lightweight fields (former query_fast). detailed: reranking on (former query_detailed). full: use use_reranking and fields below.'
+          ),
         use_reranking: z
           .boolean()
-          .default(true)
+          .optional()
           .describe(
-            'Whether to use semantic reranking for better relevance. Slower but more accurate.'
+            'Used when preset is detailed or full (default true). Ignored when preset is fast.'
           ),
       },
     },
     async (params) => {
-      return executeQuery({
-        ...params,
-        top_k: params.top_k,
-        use_reranking: params.use_reranking,
-        mode: 'query',
-      });
-    }
-  );
+      const preset = params.preset;
+      let use_reranking: boolean;
+      let fields: string[] | undefined;
+      let mode: QueryMode;
 
-  server.registerTool(
-    'query_fast',
-    {
-      description:
-        'Fast query preset. Requires suggest_query_params to be called first for the target namespace. ' +
-        'Defaults to no reranking and lightweight fields for lower latency/cost.',
-      inputSchema: {
-        ...baseSchema,
-      },
-    },
-    async (params) => {
-      return executeQuery({
-        ...params,
-        top_k: params.top_k,
-        use_reranking: false,
-        fields: params.fields?.length ? params.fields : [...FAST_QUERY_FIELDS],
-        mode: 'query_fast',
-      });
-    }
-  );
+      if (preset === 'fast') {
+        use_reranking = false;
+        fields = params.fields?.length ? params.fields : [...FAST_QUERY_FIELDS];
+        mode = 'query_fast';
+      } else if (preset === 'detailed') {
+        use_reranking = params.use_reranking ?? true;
+        fields = params.fields?.length ? params.fields : undefined;
+        mode = 'query_detailed';
+      } else {
+        use_reranking = params.use_reranking ?? true;
+        fields = params.fields?.length ? params.fields : undefined;
+        mode = 'query';
+      }
 
-  server.registerTool(
-    'query_detailed',
-    {
-      description:
-        'Detailed query preset. Requires suggest_query_params to be called first for the target namespace. ' +
-        'Designed for reading/summarization workflows with content snippets.',
-      inputSchema: {
-        ...baseSchema,
-        use_reranking: z
-          .boolean()
-          .default(true)
-          .describe('Whether to use semantic reranking for better precision (default true).'),
-      },
-    },
-    async (params) => {
       return executeQuery({
-        ...params,
-        top_k: params.top_k ?? 10,
-        use_reranking: params.use_reranking ?? true,
-        mode: 'query_detailed',
+        query_text: params.query_text,
+        namespace: params.namespace,
+        top_k: params.top_k,
+        use_reranking,
+        metadata_filter: params.metadata_filter,
+        fields,
+        mode,
       });
     }
   );
