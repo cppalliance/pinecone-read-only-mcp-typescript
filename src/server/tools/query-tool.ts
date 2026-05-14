@@ -120,22 +120,25 @@ export function registerQueryTool(server: McpServer): void {
         'For lighter retrieval use query_fast; for content-heavy retrieval use query_detailed.',
       inputSchema: {
         ...baseSchema,
+        preset: z
+          .enum(['fast', 'detailed', 'full'])
+          .default('full')
+          .describe(
+            'fast: no reranking + lightweight fields (former query_fast). detailed: reranking on (former query_detailed). full: use use_reranking and fields below.'
+          ),
         use_reranking: z
           .boolean()
-          .default(true)
+          .optional()
           .describe(
-            'Whether to use semantic reranking for better relevance. Slower but more accurate.'
+            'Used when preset is detailed or full (default true). Ignored when preset is fast.'
           ),
       },
     },
-    async (params) =>
-      executeQuery({
-        ...params,
-        top_k: params.top_k,
-        use_reranking: params.use_reranking,
-        mode: 'query',
-      })
-  );
+    async (params) => {
+      const preset = params.preset;
+      let use_reranking: boolean;
+      let fields: string[] | undefined;
+      let mode: QueryMode;
 
   server.registerTool(
     'query_fast',
