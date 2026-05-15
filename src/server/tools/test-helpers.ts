@@ -32,6 +32,10 @@ export function createMockServer(): {
 
 /** Parse JSON body from {@link jsonResponse} / {@link jsonErrorResponse} payload. */
 export function parseToolJson(payload: unknown): Record<string, unknown> {
+  const envelope = payload as { isError?: unknown };
+  if (envelope?.isError !== true) {
+    throw new Error('Expected MCP tool response with isError: true');
+  }
   const p = payload as { content: Array<{ type: string; text: string }> };
   const text = p.content[0]?.text;
   if (typeof text !== 'string') {

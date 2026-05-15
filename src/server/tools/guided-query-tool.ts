@@ -97,7 +97,11 @@ export function registerGuidedQueryTool(server: McpServer): void {
         const { data: namespaces, cache_hit } = await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(queryText, namespaces, 3);
 
-        const namespace = inputNamespace ?? ranked[0]?.namespace;
+        const explicitNamespace = inputNamespace?.trim();
+        if (inputNamespace !== undefined && !explicitNamespace) {
+          return jsonErrorResponse(validationToolError('namespace cannot be empty', 'namespace'));
+        }
+        const namespace = explicitNamespace ?? ranked[0]?.namespace;
         /*
          * ToolError mapping: empty index / no routable namespace is backend/data state
          * (PINECONE_ERROR, recoverable). Explicit namespace missing from cache is user/input
