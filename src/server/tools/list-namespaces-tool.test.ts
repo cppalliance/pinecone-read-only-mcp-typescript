@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerListNamespacesTool } from './list-namespaces-tool.js';
-import { createMockServer, parseToolJson } from './test-helpers.js';
+import { createMockServer, parseToolJson, assertToolErrorCode } from './test-helpers.js';
 
 vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),
@@ -65,8 +65,7 @@ describe('list_namespaces tool handler', () => {
     const payload = raw as { isError?: boolean };
 
     expect(payload.isError).toBe(true);
-    const body = parseToolJson(raw);
-    expect(body.status).toBe('error');
-    expect(String(body.message)).toBe('Failed to list namespaces');
+    const err = assertToolErrorCode(raw, 'PINECONE_ERROR');
+    expect(err.message).toBe('Failed to list namespaces');
   });
 });

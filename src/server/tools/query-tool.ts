@@ -4,9 +4,14 @@ import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../constants.js';
 import type { QueryResponse } from '../../types.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
-import { metadataFilterSchema, validateMetadataFilter } from '../metadata-filter.js';
+import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { requireSuggested } from '../suggestion-flow.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import {
+  classifyToolCatchError,
+  flowGateToolError,
+  logToolError,
+  validationToolError,
+} from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 type QueryMode = 'query' | 'query_fast' | 'query_detailed';
@@ -26,27 +31,21 @@ async function executeQuery(params: QueryExecParams) {
   const { query_text, namespace, top_k, use_reranking, metadata_filter, fields, mode } = params;
   try {
     if (!query_text.trim()) {
-      const response: QueryResponse = {
-        status: 'error',
-        message: 'Query text cannot be empty',
-      };
-      return jsonErrorResponse(response);
+      return jsonErrorResponse(validationToolError('Query text cannot be empty', 'query_text'));
     }
 
     if (metadata_filter) {
-      const filterValidationError = validateMetadataFilter(metadata_filter);
+      const filterValidationError = validateMetadataFilterDetailed(metadata_filter);
       if (filterValidationError) {
-        const response: QueryResponse = {
-          status: 'error',
-          message: filterValidationError,
-        };
-        return jsonErrorResponse(response);
+        return jsonErrorResponse(
+          validationToolError(filterValidationError.message, filterValidationError.field)
+        );
       }
     }
 
     const flowCheck = requireSuggested(namespace);
     if (!flowCheck.ok) {
-      return jsonErrorResponse({ status: 'error', message: flowCheck.message });
+      return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
     }
 
     const client = getPineconeClient();
@@ -74,11 +73,9 @@ async function executeQuery(params: QueryExecParams) {
     return jsonResponse(response);
   } catch (error) {
     logToolError(mode, error);
-    const response: QueryResponse = {
-      status: 'error',
-      message: getToolErrorMessage(error, 'An error occurred while processing your query'),
-    };
-    return jsonErrorResponse(response);
+    return jsonErrorResponse(
+      classifyToolCatchError(error, 'An error occurred while processing your query')
+    );
   }
 }
 

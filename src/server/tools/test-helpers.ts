@@ -1,4 +1,6 @@
 import type { SearchResult } from '../../types.js';
+import type { ToolError, ToolErrorCode } from '../tool-error.js';
+import { toolErrorSchema } from '../tool-error.js';
 
 /** Handler invoked by MCP tool registration (params shape varies by tool). */
 export type ToolHandler = (params: Record<string, unknown>) => Promise<unknown>;
@@ -36,6 +38,31 @@ export function parseToolJson(payload: unknown): Record<string, unknown> {
     throw new Error('Expected text content in tool response');
   }
   return JSON.parse(text) as Record<string, unknown>;
+}
+
+/** Parse MCP tool error JSON from a handler return value (expects `isError: true` on the envelope). */
+export function assertToolError(payload: unknown): ToolError {
+  const envelope = payload as { isError?: unknown };
+  if (envelope?.isError !== true) {
+    throw new Error('Expected MCP tool response with isError: true');
+  }
+  const raw = parseToolJson(payload);
+  return toolErrorSchema.parse(raw);
+}
+
+/**
+ * Like {@link assertToolError}, but asserts `code` and narrows the union so
+ * `field` / `suggestion` are type-safe per variant.
+ */
+export function assertToolErrorCode<const C extends ToolErrorCode>(
+  payload: unknown,
+  code: C
+): Extract<ToolError, { code: C }> {
+  const err = assertToolError(payload);
+  if (err.code !== code) {
+    throw new Error(`Expected tool error code ${code}, got ${err.code}`);
+  }
+  return err as Extract<ToolError, { code: C }>;
 }
 
 export function makeSearchResult(overrides?: Partial<SearchResult>): SearchResult {

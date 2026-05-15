@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { suggestQueryParams } from '../query-suggestion.js';
 import { markSuggested } from '../suggestion-flow.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import { classifyToolCatchError, logToolError, validationToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 /** Register the suggest_query_params tool on the MCP server. */
@@ -33,7 +33,7 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
       try {
         const { namespace, user_query } = params;
         if (!user_query?.trim()) {
-          return jsonErrorResponse({ status: 'error', message: 'user_query cannot be empty' });
+          return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
         const { data: namespacesInfo, cache_hit } = await getNamespacesWithCache();
         const ns = namespacesInfo.find((n) => n.namespace === namespace);
@@ -54,10 +54,7 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
         return jsonResponse(response);
       } catch (error) {
         logToolError('suggest_query_params', error);
-        return jsonErrorResponse({
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to suggest query params'),
-        });
+        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to suggest query params'));
       }
     }
   );

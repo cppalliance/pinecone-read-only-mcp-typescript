@@ -3,7 +3,12 @@ import { FAST_QUERY_FIELDS } from '../../constants.js';
 import { getPineconeClient } from '../client-context.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryTool } from './query-tool.js';
-import { createMockServer, makeSearchResult, parseToolJson } from './test-helpers.js';
+import {
+  assertToolErrorCode,
+  createMockServer,
+  makeSearchResult,
+  parseToolJson,
+} from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
@@ -102,8 +107,9 @@ describe('query tool handler (preset-driven)', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    const body = parseToolJson(raw);
-    expect(body.message).toBe('Query text cannot be empty');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('query_text');
+    expect(err.message).toBe('Query text cannot be empty');
   });
 
   it('query: returns flow error when suggest_query_params was not called first', async () => {
@@ -126,8 +132,9 @@ describe('query tool handler (preset-driven)', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    const body = parseToolJson(raw);
-    expect(body.message).toBe(
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
+    expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
+    expect(err.message).toBe(
       'Flow requires suggest_query_params first. Call suggest_query_params with namespace and user_query before query/count tools.'
     );
   });
@@ -143,17 +150,33 @@ describe('query tool handler (preset-driven)', () => {
     const server = createMockServer();
     registerQueryTool(server as never);
 
-    const body = parseToolJson(
-      await server.getHandler('query')!({
-        query_text: 'hello',
-        namespace: 'wg21',
-        top_k: 10,
-        preset: 'full',
-      })
-    );
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: 'wg21',
+      top_k: 10,
+      preset: 'full',
+    });
 
-    expect(body.status).toBe('error');
-    expect(body.message).toBe(expiredMsg);
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
+    expect(err.message).toBe(expiredMsg);
+    expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
+  });
+
+  it('query: returns VALIDATION for invalid metadata_filter', async () => {
+    const server = createMockServer();
+    registerQueryTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: 'wg21',
+      top_k: 5,
+      preset: 'full',
+      metadata_filter: { year: { $badop: 1 } },
+    });
+    expect((raw as { isError?: boolean }).isError).toBe(true);
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('year.$badop');
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {

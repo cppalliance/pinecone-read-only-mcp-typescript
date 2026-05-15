@@ -4,7 +4,12 @@ import { getPineconeClient } from '../client-context.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryDocumentsTool } from './query-documents-tool.js';
-import { createMockServer, makeSearchResult, parseToolJson } from './test-helpers.js';
+import {
+  assertToolErrorCode,
+  createMockServer,
+  makeSearchResult,
+  parseToolJson,
+} from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
@@ -90,7 +95,9 @@ describe('query_documents tool handler', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    expect(parseToolJson(raw).message).toBe('query_text cannot be empty');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('query_text');
+    expect(err.message).toBe('query_text cannot be empty');
   });
 
   it('returns flow error when suggest_query_params gate fails', async () => {
@@ -104,14 +111,27 @@ describe('query_documents tool handler', () => {
     registerQueryDocumentsTool(server as never);
     const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
 
-    const body = parseToolJson(
-      await server.getHandler('query_documents')!({
-        query_text: 'ok',
-        namespace: 'wg21',
-      })
-    );
+    const raw = await server.getHandler('query_documents')!({
+      query_text: 'ok',
+      namespace: 'wg21',
+    });
 
-    expect(body.status).toBe('error');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
+    expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('returns VALIDATION for invalid metadata_filter', async () => {
+    const server = createMockServer();
+    registerQueryDocumentsTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+    const raw = await server.getHandler('query_documents')!({
+      query_text: 'ok',
+      namespace: 'wg21',
+      metadata_filter: { x: { $in: {} } },
+    });
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('x.$in');
     expect(query).not.toHaveBeenCalled();
   });
 
@@ -125,13 +145,13 @@ describe('query_documents tool handler', () => {
     const server = createMockServer();
     registerQueryDocumentsTool(server as never);
 
-    const body = parseToolJson(
-      await server.getHandler('query_documents')!({
-        query_text: 'ok',
-        namespace: 'wg21',
-      })
-    );
+    const raw = await server.getHandler('query_documents')!({
+      query_text: 'ok',
+      namespace: 'wg21',
+    });
 
-    expect(body.message).toContain('expired');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
+    expect(err.message).toContain('expired');
+    expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
   });
 });
