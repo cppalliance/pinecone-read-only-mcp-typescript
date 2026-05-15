@@ -6,7 +6,7 @@ import {
   createMockServer,
   makeNamespaceCacheEntry,
   parseToolJson,
-  assertToolError,
+  assertToolErrorCode,
 } from './test-helpers.js';
 
 vi.mock('../namespaces-cache.js', () => ({
@@ -88,8 +88,7 @@ describe('suggest_query_params tool handler', () => {
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('user_query');
     expect(err.message).toBe('user_query cannot be empty');
   });
@@ -105,8 +104,7 @@ describe('suggest_query_params tool handler', () => {
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const err = assertToolError(raw);
-    expect(err.code).toBe('PINECONE_ERROR');
+    const err = assertToolErrorCode(raw, 'PINECONE_ERROR');
     expect(err.message).toBe('Failed to suggest query params');
   });
 });

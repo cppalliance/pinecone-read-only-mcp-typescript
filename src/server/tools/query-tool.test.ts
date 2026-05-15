@@ -4,10 +4,10 @@ import { getPineconeClient } from '../client-context.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryTool } from './query-tool.js';
 import {
+  assertToolErrorCode,
   createMockServer,
   makeSearchResult,
   parseToolJson,
-  assertToolError,
 } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
@@ -107,8 +107,7 @@ describe('query tool handler (preset-driven)', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('query_text');
     expect(err.message).toBe('Query text cannot be empty');
   });
@@ -133,8 +132,7 @@ describe('query tool handler (preset-driven)', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    const err = assertToolError(raw);
-    expect(err.code).toBe('FLOW_GATE');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
     expect(err.message).toBe(
       'Flow requires suggest_query_params first. Call suggest_query_params with namespace and user_query before query/count tools.'
@@ -159,8 +157,7 @@ describe('query tool handler (preset-driven)', () => {
       preset: 'full',
     });
 
-    const err = assertToolError(raw);
-    expect(err.code).toBe('FLOW_GATE');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.message).toBe(expiredMsg);
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
   });
@@ -177,8 +174,7 @@ describe('query tool handler (preset-driven)', () => {
       metadata_filter: { year: { $badop: 1 } },
     });
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('year.$badop');
     expect(query).not.toHaveBeenCalled();
   });

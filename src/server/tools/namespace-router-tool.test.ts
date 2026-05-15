@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerNamespaceRouterTool } from './namespace-router-tool.js';
-import { assertToolError, createMockServer, makeNamespaceCacheEntry } from './test-helpers.js';
+import { assertToolErrorCode, createMockServer, makeNamespaceCacheEntry } from './test-helpers.js';
 
 vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),
@@ -26,8 +26,7 @@ describe('namespace_router tool handler', () => {
       user_query: '  ',
       top_n: 3,
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('user_query');
   });
 
@@ -39,6 +38,6 @@ describe('namespace_router tool handler', () => {
       user_query: 'find cpp papers',
       top_n: 2,
     });
-    expect(assertToolError(raw).code).toBe('PINECONE_ERROR');
+    expect(assertToolErrorCode(raw, 'PINECONE_ERROR').code).toBe('PINECONE_ERROR');
   });
 });

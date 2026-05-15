@@ -3,7 +3,7 @@ import { getPineconeClient } from '../client-context.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
 import {
-  assertToolError,
+  assertToolErrorCode,
   createMockServer,
   makeNamespaceCacheEntry,
   makeSearchResult,
@@ -112,8 +112,7 @@ describe('guided_query tool handler', () => {
     });
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('user_query');
     expect(err.message).toBe('user_query cannot be empty');
   });
@@ -132,8 +131,7 @@ describe('guided_query tool handler', () => {
       user_query: 'hello world',
     });
 
-    const err = assertToolError(raw);
-    expect(err.code).toBe('PINECONE_ERROR');
+    const err = assertToolErrorCode(raw, 'PINECONE_ERROR');
     expect(err.recoverable).toBe(true);
     expect(err.message).toContain('No namespace available');
   });
@@ -145,8 +143,7 @@ describe('guided_query tool handler', () => {
       user_query: 'hello',
       namespace: 'not-in-cache',
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('namespace');
     expect(err.message).toContain('not-in-cache');
   });

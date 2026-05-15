@@ -5,10 +5,10 @@ import { reassembleByDocument } from '../reassemble-documents.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerQueryDocumentsTool } from './query-documents-tool.js';
 import {
+  assertToolErrorCode,
   createMockServer,
   makeSearchResult,
   parseToolJson,
-  assertToolError,
 } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
@@ -95,8 +95,7 @@ describe('query_documents tool handler', () => {
 
     expect((raw as { isError?: boolean }).isError).toBe(true);
     expect(query).not.toHaveBeenCalled();
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('query_text');
     expect(err.message).toBe('query_text cannot be empty');
   });
@@ -117,8 +116,7 @@ describe('query_documents tool handler', () => {
       namespace: 'wg21',
     });
 
-    const err = assertToolError(raw);
-    expect(err.code).toBe('FLOW_GATE');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
     expect(query).not.toHaveBeenCalled();
   });
@@ -132,8 +130,7 @@ describe('query_documents tool handler', () => {
       namespace: 'wg21',
       metadata_filter: { x: { $in: {} } },
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('x.$in');
     expect(query).not.toHaveBeenCalled();
   });
@@ -153,8 +150,7 @@ describe('query_documents tool handler', () => {
       namespace: 'wg21',
     });
 
-    const err = assertToolError(raw);
-    expect(err.code).toBe('FLOW_GATE');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.message).toContain('expired');
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
   });

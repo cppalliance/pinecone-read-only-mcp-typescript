@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPineconeClient } from '../client-context.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerCountTool } from './count-tool.js';
-import { assertToolError, createMockServer } from './test-helpers.js';
+import { assertToolErrorCode, createMockServer } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
@@ -40,8 +40,7 @@ describe('count tool handler', () => {
       namespace: 'wg21',
       query_text: '   ',
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('query_text');
     expect(mockedGetClient().count).not.toHaveBeenCalled();
   });
@@ -54,8 +53,7 @@ describe('count tool handler', () => {
       query_text: 'doc',
       metadata_filter: { year: { $unknown: 1 } },
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('year.$unknown');
   });
 
@@ -70,8 +68,7 @@ describe('count tool handler', () => {
       namespace: 'wg21',
       query_text: 'x',
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('FLOW_GATE');
+    const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
   });
 
@@ -85,7 +82,6 @@ describe('count tool handler', () => {
       namespace: 'wg21',
       query_text: 'x',
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('PINECONE_ERROR');
+    expect(assertToolErrorCode(raw, 'PINECONE_ERROR').code).toBe('PINECONE_ERROR');
   });
 });

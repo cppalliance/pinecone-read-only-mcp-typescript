@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPineconeClient } from '../client-context.js';
 import { registerKeywordSearchTool } from './keyword-search-tool.js';
-import { assertToolError, createMockServer, makeSearchResult } from './test-helpers.js';
+import { assertToolErrorCode, createMockServer, makeSearchResult } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
@@ -30,8 +30,7 @@ describe('keyword_search tool handler', () => {
       namespace: 'ns',
       top_k: 5,
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('query_text');
   });
 
@@ -43,8 +42,7 @@ describe('keyword_search tool handler', () => {
       namespace: '   ',
       top_k: 5,
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('namespace');
   });
 
@@ -57,8 +55,7 @@ describe('keyword_search tool handler', () => {
       top_k: 5,
       metadata_filter: { bad: { $nope: true } },
     });
-    const err = assertToolError(raw);
-    expect(err.code).toBe('VALIDATION');
+    const err = assertToolErrorCode(raw, 'VALIDATION');
     expect(err.field).toBe('bad.$nope');
   });
 
@@ -89,6 +86,6 @@ describe('keyword_search tool handler', () => {
       namespace: 'ns',
       top_k: 5,
     });
-    expect(assertToolError(raw).code).toBe('PINECONE_ERROR');
+    expect(assertToolErrorCode(raw, 'PINECONE_ERROR').code).toBe('PINECONE_ERROR');
   });
 });

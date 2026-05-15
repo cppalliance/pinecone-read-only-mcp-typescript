@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as urlGeneration from '../url-generation.js';
 import { registerGenerateUrlsTool } from './generate-urls-tool.js';
-import { assertToolError, createMockServer } from './test-helpers.js';
+import { assertToolErrorCode, createMockServer } from './test-helpers.js';
 
 describe('generate_urls tool handler', () => {
   beforeEach(() => {
@@ -18,6 +18,6 @@ describe('generate_urls tool handler', () => {
       namespace: 'mailing',
       records: [{ document_number: 'P1234' }],
     });
-    expect(assertToolError(raw).code).toBe('PINECONE_ERROR');
+    expect(assertToolErrorCode(raw, 'PINECONE_ERROR').code).toBe('PINECONE_ERROR');
   });
 });
