@@ -6,10 +6,15 @@ import {
   QUERY_DOCUMENTS_MAX_CHUNKS,
 } from '../../constants.js';
 import { getPineconeClient } from '../client-context.js';
-import { metadataFilterSchema, validateMetadataFilter } from '../metadata-filter.js';
+import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
 import { requireSuggested } from '../suggestion-flow.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import {
+  classifyToolCatchError,
+  flowGateToolError,
+  logToolError,
+  validationToolError,
+} from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 /**
@@ -76,20 +81,19 @@ export function registerQueryDocumentsTool(server: McpServer): void {
         } = params;
 
         if (!query_text?.trim()) {
-          return jsonErrorResponse({
-            status: 'error',
-            message: 'query_text cannot be empty',
-          });
+          return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
         }
 
         if (metadata_filter) {
-          const err = validateMetadataFilter(metadata_filter);
-          if (err) return jsonErrorResponse({ status: 'error', message: err });
+          const err = validateMetadataFilterDetailed(metadata_filter);
+          if (err) {
+            return jsonErrorResponse(validationToolError(err.message, err.field));
+          }
         }
 
         const flowCheck = requireSuggested(namespace);
         if (!flowCheck.ok) {
-          return jsonErrorResponse({ status: 'error', message: flowCheck.message });
+          return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
         }
 
         const chunkLimit = Math.min(QUERY_DOCUMENTS_MAX_CHUNKS, top_k * CHUNKS_PER_DOCUMENT);
@@ -127,10 +131,9 @@ export function registerQueryDocumentsTool(server: McpServer): void {
         });
       } catch (error) {
         logToolError('query_documents', error);
-        return jsonErrorResponse({
-          status: 'error',
-          message: getToolErrorMessage(error, 'Failed to query and reassemble documents'),
-        });
+        return jsonErrorResponse(
+          classifyToolCatchError(error, 'Failed to query and reassemble documents')
+        );
       }
     }
   );

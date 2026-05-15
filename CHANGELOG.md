@@ -11,6 +11,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 ### Added
 
 - `UrlGeneratorFn` type alias (same as `UrlGenerator`) and `RegisterBuiltinUrlGeneratorsOptions` with `reinstallBuiltins` on `registerBuiltinUrlGenerators()` to restore default `mailing` / `slack-Cpplang` generators after overrides; README “Custom URL generators” section and tests for custom registration and built-in override.
+- Zod `toolErrorSchema` and exported types `ToolError` / `ToolErrorCode` for parsing MCP tool failures; all tools now return this JSON shape in the text content when `isError` is true.
+- `validateMetadataFilterDetailed()` returns `{ message, field }` for invalid filters; `validateMetadataFilter()` remains a string-only wrapper for backward compatibility.
 - `.coderabbit.yaml` sets the pre-merge **docstring coverage** threshold to **79%** (default **80%**) so marginal documentation-only gaps do not block merges; adjust upward as coverage improves.
 - `registerBuiltinUrlGenerators()` for built-in URL generators; `setupServer()` invokes it so CLI/library parity stays default.
 - Discriminated result type for `listNamespacesFromKeywordIndex()` (`KeywordIndexNamespacesResult`).
@@ -25,6 +27,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Changed
 
+- **Breaking (MCP):** Tool error bodies no longer use `{ status: 'error', message }`. Failures are typed `ToolError` objects: `code` (`FLOW_GATE` | `VALIDATION` | `PINECONE_ERROR` | `TIMEOUT`), `message`, `recoverable`, optional `suggestion`, and optional `field` (required for `VALIDATION`). The outer MCP result still sets `isError: true`.
+- **Breaking (types):** `QueryResponse` and exported `KeywordSearchResponse` no longer include `status: 'error'` / error-only fields; errors use `ToolError` only.
 - **Breaking (MCP):** `suggest_query_params` and in-process suggestion flow now emit `recommended_tool` as `count` | `fast` | `detailed` | `full` (aligned with the unified `query` tool `preset`), not legacy `query_fast` / `query_detailed` strings.
 - **Breaking (MCP):** Single hybrid `query` tool with `preset` (`fast` | `detailed` | `full`); removed separate `query_fast` / `query_detailed` tool registrations.
 - `resolveConfig()` throws if the Pinecone API key is missing (after trim); library callers must supply `apiKey` via overrides or set `PINECONE_API_KEY`.

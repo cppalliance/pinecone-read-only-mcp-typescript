@@ -54,6 +54,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "benchmark": "tsx benchmarks/latency.ts",
     "test:search": "tsx scripts/test-search.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { MAX_TOP_K, MIN_TOP_K } from '../../constants.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
-import { metadataFilterSchema, validateMetadataFilter } from '../metadata-filter.js';
-import { getToolErrorMessage, logToolError } from '../tool-error.js';
+import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
+import type { ToolError } from '../tool-error.js';
+import { classifyToolCatchError, logToolError, validationToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
-/** Response shape for keyword_search: same as query tool for consistency. */
+/** Success response shape for keyword_search (aligned with query tool fields). */
 export interface KeywordSearchResponse {
-  status: 'success' | 'error';
+  status: 'success';
   query?: string;
   namespace?: string;
   index?: string;
@@ -29,8 +30,11 @@ export interface KeywordSearchResponse {
     metadata?: Record<string, unknown>;
   }>;
   fields?: string[];
-  message?: string;
 }
+
+type KeywordSearchExecResult =
+  | { ok: true; body: KeywordSearchResponse }
+  | { ok: false; error: ToolError };
 
 async function executeKeywordSearch(params: {
   query_text: string;
@@ -38,7 +42,7 @@ async function executeKeywordSearch(params: {
   top_k: number;
   metadata_filter?: Record<string, unknown>;
   fields?: string[];
-}): Promise<KeywordSearchResponse> {
+}): Promise<KeywordSearchExecResult> {
   const { query_text, namespace, top_k, metadata_filter, fields } = params;
 
   const normalizedQuery = query_text.trim();
@@ -46,22 +50,25 @@ async function executeKeywordSearch(params: {
 
   if (!normalizedQuery) {
     return {
-      status: 'error',
-      message: 'Query text cannot be empty',
+      ok: false,
+      error: validationToolError('Query text cannot be empty', 'query_text'),
     };
   }
 
   if (!normalizedNamespace) {
     return {
-      status: 'error',
-      message: 'Namespace cannot be empty',
+      ok: false,
+      error: validationToolError('Namespace cannot be empty', 'namespace'),
     };
   }
 
   if (metadata_filter) {
-    const filterError = validateMetadataFilter(metadata_filter);
+    const filterError = validateMetadataFilterDetailed(metadata_filter);
     if (filterError) {
-      return { status: 'error', message: filterError };
+      return {
+        ok: false,
+        error: validationToolError(filterError.message, filterError.field),
+      };
     }
   }
 
@@ -90,7 +97,7 @@ async function executeKeywordSearch(params: {
   if (fields?.length) {
     response.fields = fields;
   }
-  return response;
+  return { ok: true, body: response };
 }
 
 /**
@@ -130,24 +137,20 @@ export function registerKeywordSearchTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const response = await executeKeywordSearch({
+        const result = await executeKeywordSearch({
           query_text: params.query_text,
           namespace: params.namespace,
           top_k: params.top_k,
           metadata_filter: params.metadata_filter,
           fields: params.fields,
         });
-        if (response.status === 'error') {
-          return jsonErrorResponse(response);
+        if (!result.ok) {
+          return jsonErrorResponse(result.error);
         }
-        return jsonResponse(response);
+        return jsonResponse(result.body);
       } catch (error) {
         logToolError('keyword_search', error);
-        const response: KeywordSearchResponse = {
-          status: 'error',
-          message: getToolErrorMessage(error, 'Keyword search failed'),
-        };
-        return jsonErrorResponse(response);
+        return jsonErrorResponse(classifyToolCatchError(error, 'Keyword search failed'));
       }
     }
   );
