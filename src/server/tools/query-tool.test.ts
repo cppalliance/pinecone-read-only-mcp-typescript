@@ -165,6 +165,24 @@ describe('query tool handler (preset-driven)', () => {
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
   });
 
+  it('query: returns VALIDATION for invalid metadata_filter', async () => {
+    const server = createMockServer();
+    registerQueryTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: 'wg21',
+      top_k: 5,
+      preset: 'full',
+      metadata_filter: { year: { $badop: 1 } },
+    });
+    expect((raw as { isError?: boolean }).isError).toBe(true);
+    const err = assertToolError(raw);
+    expect(err.code).toBe('VALIDATION');
+    expect(err.field).toBe('year.$badop');
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
     mockedGetClient.mockReturnValue({
       query: vi

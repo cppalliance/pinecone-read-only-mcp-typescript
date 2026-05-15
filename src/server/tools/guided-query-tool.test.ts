@@ -3,11 +3,11 @@ import { getPineconeClient } from '../client-context.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
 import {
+  assertToolError,
   createMockServer,
   makeNamespaceCacheEntry,
   makeSearchResult,
   parseToolJson,
-  assertToolError,
 } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
@@ -136,5 +136,18 @@ describe('guided_query tool handler', () => {
     expect(err.code).toBe('PINECONE_ERROR');
     expect(err.recoverable).toBe(true);
     expect(err.message).toContain('No namespace available');
+  });
+
+  it('returns VALIDATION when explicit namespace is not in cached namespaces', async () => {
+    const server = createMockServer();
+    registerGuidedQueryTool(server as never);
+    const raw = await server.getHandler('guided_query')!({
+      user_query: 'hello',
+      namespace: 'not-in-cache',
+    });
+    const err = assertToolError(raw);
+    expect(err.code).toBe('VALIDATION');
+    expect(err.field).toBe('namespace');
+    expect(err.message).toContain('not-in-cache');
   });
 });

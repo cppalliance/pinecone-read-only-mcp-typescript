@@ -123,6 +123,21 @@ describe('query_documents tool handler', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it('returns VALIDATION for invalid metadata_filter', async () => {
+    const server = createMockServer();
+    registerQueryDocumentsTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+    const raw = await server.getHandler('query_documents')!({
+      query_text: 'ok',
+      namespace: 'wg21',
+      metadata_filter: { x: { $in: {} } },
+    });
+    const err = assertToolError(raw);
+    expect(err.code).toBe('VALIDATION');
+    expect(err.field).toBe('x.$in');
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('returns TTL expiry error from requireSuggested', async () => {
     vi.spyOn(suggestionFlow, 'requireSuggested').mockReturnValue({
       ok: false,
