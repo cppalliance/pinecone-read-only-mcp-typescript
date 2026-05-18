@@ -5,6 +5,7 @@ import { registerGuidedQueryTool } from './guided-query-tool.js';
 import {
   assertToolErrorCode,
   createMockServer,
+  makeHybridQueryResult,
   makeNamespaceCacheEntry,
   makeSearchResult,
   parseToolJson,
@@ -43,9 +44,41 @@ describe('guided_query tool handler', () => {
       expires_at: Date.now() + 1_800_000,
     });
     mockedGetClient.mockReturnValue({
-      query: vi.fn().mockResolvedValue([makeSearchResult()]),
+      query: vi.fn().mockResolvedValue(makeHybridQueryResult()),
       count: vi.fn().mockResolvedValue({ count: 7, truncated: false }),
     } as never);
+  });
+
+  it('guided_query: surfaces rerank failure in decision_trace', async () => {
+    mockedGetClient.mockReturnValue({
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          degraded: true,
+          degradation_reason: 'rerank_failed: timeout',
+          results: [makeSearchResult({ reranked: false })],
+        })
+      ),
+      count: vi.fn().mockResolvedValue({ count: 7, truncated: false }),
+    } as never);
+
+    const server = createMockServer();
+    registerGuidedQueryTool(server as never);
+
+    const body = parseToolJson(
+      await server.getHandler('guided_query')!({
+        user_query: 'What does the paper say about contracts?',
+        namespace: 'papers',
+        top_k: 8,
+        preferred_tool: 'auto',
+        enrich_urls: false,
+      })
+    );
+
+    const trace = body.decision_trace as Record<string, unknown>;
+    expect(trace.rerank_status).toBe('failed');
+    const result = body.result as Record<string, unknown>;
+    expect(result.degraded).toBe(true);
+    expect(result.degradation_reason).toBe('rerank_failed: timeout');
   });
 
   it('runs query_detailed path on auto when user asks for content', async () => {
@@ -67,6 +100,7 @@ describe('guided_query tool handler', () => {
     const trace = body.decision_trace as Record<string, unknown>;
     expect(trace.selected_namespace).toBe('papers');
     expect(trace.selected_tool).toBe('detailed');
+    expect(trace.rerank_status).toBe('success');
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
         namespace: 'papers',
@@ -100,6 +134,8 @@ describe('guided_query tool handler', () => {
     const result = body.result as Record<string, unknown>;
     expect(result.tool).toBe('count');
     expect(result.count).toBe(7);
+    const trace = body.decision_trace as Record<string, unknown>;
+    expect(trace.rerank_status).toBe('skipped');
   });
 
   it('returns error when user_query is empty', async () => {

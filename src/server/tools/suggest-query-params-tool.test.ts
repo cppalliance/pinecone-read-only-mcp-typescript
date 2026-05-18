@@ -25,6 +25,50 @@ describe('suggest_query_params tool handler', () => {
     vi.clearAllMocks();
   });
 
+  it('marks suggestion flow with trimmed namespace when cache key has no padding', async () => {
+    mockedGetNamespaces.mockResolvedValue({
+      data: [makeNamespaceCacheEntry('wg21')],
+      cache_hit: false,
+      expires_at: Date.now() + 1_800_000,
+    });
+
+    const server = createMockServer();
+    registerSuggestQueryParamsTool(server as never);
+    const body = parseToolJson(
+      await server.getHandler('suggest_query_params')!({
+        namespace: 'wg21 ',
+        user_query: 'List papers with titles',
+      })
+    );
+
+    expect(body.status).toBe('success');
+    expect(body.namespace_found).toBe(true);
+    expect(mockedMarkSuggested).toHaveBeenCalledWith(
+      'wg21',
+      expect.objectContaining({
+        user_query: 'List papers with titles',
+      })
+    );
+  });
+
+  it('returns VALIDATION when namespace is whitespace-only', async () => {
+    mockedGetNamespaces.mockResolvedValue({
+      data: [makeNamespaceCacheEntry('wg21')],
+      cache_hit: false,
+      expires_at: Date.now() + 1_800_000,
+    });
+
+    const server = createMockServer();
+    registerSuggestQueryParamsTool(server as never);
+    const raw = await server.getHandler('suggest_query_params')!({
+      namespace: '   ',
+      user_query: 'hello',
+    });
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('namespace');
+    expect(mockedMarkSuggested).not.toHaveBeenCalled();
+  });
+
   it('marks suggestion flow and returns success when namespace exists in cache', async () => {
     mockedGetNamespaces.mockResolvedValue({
       data: [makeNamespaceCacheEntry('wg21')],

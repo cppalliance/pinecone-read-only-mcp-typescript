@@ -8,6 +8,17 @@ describe('generate_urls tool handler', () => {
     vi.restoreAllMocks();
   });
 
+  it('returns VALIDATION when namespace is whitespace-only', async () => {
+    const server = createMockServer();
+    registerGenerateUrlsTool(server as never);
+    const raw = await server.getHandler('generate_urls')!({
+      namespace: '  ',
+      records: [{ document_number: 'P1234' }],
+    });
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('namespace');
+  });
+
   it('returns PINECONE_ERROR when generateUrlForNamespace throws', async () => {
     vi.spyOn(urlGeneration, 'generateUrlForNamespace').mockImplementation(() => {
       throw new Error('generator boom');

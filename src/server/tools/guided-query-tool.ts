@@ -7,6 +7,7 @@ import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { rankNamespacesByQuery } from '../namespace-router.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
+import { normalizeNamespace } from '../namespace-utils.js';
 import { suggestQueryParams } from '../query-suggestion.js';
 import { markSuggested } from '../suggestion-flow.js';
 import {
@@ -100,11 +101,16 @@ export function registerGuidedQueryTool(server: McpServer): void {
         const { data: namespaces, cache_hit } = await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(queryText, namespaces, 3);
 
-        const explicitNamespace = inputNamespace?.trim();
-        if (inputNamespace !== undefined && !explicitNamespace) {
-          return jsonErrorResponse(validationToolError('namespace cannot be empty', 'namespace'));
+        let namespace: string | null = null;
+        if (inputNamespace !== undefined) {
+          namespace = normalizeNamespace(inputNamespace);
+          if (!namespace) {
+            return jsonErrorResponse(validationToolError('namespace cannot be empty', 'namespace'));
+          }
+        } else {
+          const top = ranked[0]?.namespace;
+          namespace = top ? normalizeNamespace(top) : null;
         }
-        const namespace = explicitNamespace ?? ranked[0]?.namespace;
         /*
          * ToolError mapping: empty index / no routable namespace is backend/data state
          * (PINECONE_ERROR, recoverable). Explicit namespace missing from cache is user/input
@@ -122,7 +128,9 @@ export function registerGuidedQueryTool(server: McpServer): void {
           );
         }
 
-        const ns = namespaces.find((n) => n.namespace === namespace);
+        const ns = namespaces.find(
+          (n) => n.namespace === namespace || normalizeNamespace(n.namespace) === namespace
+        );
         const suggestion = suggestQueryParams(ns?.metadata ?? null, queryText);
         if (!suggestion.namespace_found) {
           return jsonErrorResponse(
@@ -145,7 +153,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
         });
 
         const client = getPineconeClient();
-        const decision_trace = {
+        const baseTrace = {
           cache_hit,
           input_namespace: inputNamespace ?? null,
           routed_namespace: ranked[0]?.namespace ?? null,
@@ -166,7 +174,10 @@ export function registerGuidedQueryTool(server: McpServer): void {
           });
           return jsonResponse({
             status: 'success',
-            decision_trace,
+            decision_trace: {
+              ...baseTrace,
+              rerank_status: 'skipped' as const,
+            },
             result: {
               tool: 'count',
               namespace,
@@ -191,7 +202,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
             : isFast
               ? [...FAST_QUERY_FIELDS]
               : undefined;
-        const queryResults = await client.query({
+        const queryOutcome = await client.query({
           query: queryText,
           namespace,
           topK: top_k,
@@ -199,7 +210,12 @@ export function registerGuidedQueryTool(server: McpServer): void {
           useReranking: !isFast,
           fields: fields?.length ? fields : undefined,
         });
-        const formattedResults = formatQueryResultRows(queryResults, {
+        const rerank_status: 'success' | 'skipped' | 'failed' = isFast
+          ? 'skipped'
+          : queryOutcome.degraded
+            ? 'failed'
+            : 'success';
+        const formattedResults = formatQueryResultRows(queryOutcome.results, {
           namespace,
           enrichUrls: enrich_urls,
         });
@@ -212,10 +228,18 @@ export function registerGuidedQueryTool(server: McpServer): void {
           result_count: formattedResults.length,
           ...(fields?.length ? { fields } : {}),
           results: formattedResults,
+          degraded: queryOutcome.degraded,
+          ...(queryOutcome.degradation_reason !== undefined
+            ? { degradation_reason: queryOutcome.degradation_reason }
+            : {}),
+          hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
         };
         return jsonResponse({
           status: 'success',
-          decision_trace,
+          decision_trace: {
+            ...baseTrace,
+            rerank_status,
+          },
           result,
         });
       } catch (error) {

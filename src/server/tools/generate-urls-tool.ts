@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { generateUrlForNamespace } from '../url-generation.js';
-import { classifyToolCatchError, logToolError } from '../tool-error.js';
+import { normalizeNamespace } from '../namespace-utils.js';
+import { classifyToolCatchError, logToolError, validationToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
 /** Get metadata from a record (either record.metadata or the record itself). */
@@ -38,9 +39,17 @@ export function registerGenerateUrlsTool(server: McpServer): void {
     async (params) => {
       try {
         const { namespace, records } = params;
+        const nsNorm = normalizeNamespace(namespace);
+        if (!nsNorm) {
+          return jsonErrorResponse(
+            validationToolError('namespace cannot be empty', 'namespace', {
+              suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+            })
+          );
+        }
         const results = records.map((record, index) => {
           const metadata = extractMetadata(record);
-          const generated = generateUrlForNamespace(namespace, metadata);
+          const generated = generateUrlForNamespace(nsNorm, metadata);
           return {
             index,
             url: generated.url,
@@ -52,7 +61,7 @@ export function registerGenerateUrlsTool(server: McpServer): void {
 
         return jsonResponse({
           status: 'success',
-          namespace,
+          namespace: nsNorm,
           count: results.length,
           results,
         });

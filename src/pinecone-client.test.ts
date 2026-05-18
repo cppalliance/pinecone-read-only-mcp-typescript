@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PineconeClient } from './pinecone-client.js';
+import { resolveConfig } from './config.js';
 import type { SearchableIndex, PineconeHit } from './types.js';
 import * as rerankModule from './pinecone/rerank.js';
 
@@ -31,26 +32,40 @@ describe('PineconeClient', () => {
     });
   });
 
-  afterEach(() => {
-    delete process.env['PINECONE_INDEX_NAME'];
-    delete process.env['PINECONE_RERANK_MODEL'];
-    delete process.env['PINECONE_TOP_K'];
-  });
-
   describe('constructor', () => {
     it('should initialize with provided config', () => {
       expect(client).toBeDefined();
     });
 
-    it('should use environment variables as fallbacks', () => {
-      process.env['PINECONE_INDEX_NAME'] = 'env-index';
-      process.env['PINECONE_RERANK_MODEL'] = 'env-model';
-
-      const envClient = new PineconeClient({
-        apiKey: 'test-api-key',
-      });
-
-      expect(envClient).toBeDefined();
+    it('honors resolveConfig overrides without PINECONE_* env on the client path', () => {
+      const prevIndex = process.env['PINECONE_INDEX_NAME'];
+      const prevModel = process.env['PINECONE_RERANK_MODEL'];
+      const prevTopK = process.env['PINECONE_TOP_K'];
+      delete process.env['PINECONE_INDEX_NAME'];
+      delete process.env['PINECONE_RERANK_MODEL'];
+      delete process.env['PINECONE_TOP_K'];
+      try {
+        const resolved = resolveConfig({
+          apiKey: 'test-api-key',
+          indexName: 'resolved-index',
+          rerankModel: 'resolved-model',
+          defaultTopK: 42,
+        });
+        const c = new PineconeClient({
+          apiKey: resolved.apiKey,
+          indexName: resolved.indexName,
+          rerankModel: resolved.rerankModel,
+          defaultTopK: resolved.defaultTopK,
+        });
+        expect(c.getSparseIndexName()).toBe('resolved-index-sparse');
+      } finally {
+        if (prevIndex !== undefined) process.env['PINECONE_INDEX_NAME'] = prevIndex;
+        else delete process.env['PINECONE_INDEX_NAME'];
+        if (prevModel !== undefined) process.env['PINECONE_RERANK_MODEL'] = prevModel;
+        else delete process.env['PINECONE_RERANK_MODEL'];
+        if (prevTopK !== undefined) process.env['PINECONE_TOP_K'] = prevTopK;
+        else delete process.env['PINECONE_TOP_K'];
+      }
     });
   });
 
@@ -76,16 +91,16 @@ describe('PineconeClient', () => {
 
     it('should continue hybrid search when one index fails', async () => {
       const testClient = stubPineconeClient(client);
+      const denseRef = {} as SearchableIndex;
+      const sparseRef = {} as SearchableIndex;
 
       testClient.ensureIndexes = async () => ({
-        denseIndex: {} as SearchableIndex,
-        sparseIndex: {} as SearchableIndex,
+        denseIndex: denseRef,
+        sparseIndex: sparseRef,
       });
 
-      let searchCall = 0;
-      testClient.searchIndex = async () => {
-        searchCall += 1;
-        if (searchCall === 1) {
+      testClient.searchIndex = async (index) => {
+        if (index === denseRef) {
           throw new Error('dense failure');
         }
         return [
@@ -97,16 +112,18 @@ describe('PineconeClient', () => {
         ];
       };
 
-      const results = await client.query({
+      const out = await client.query({
         query: 'hybrid search',
         namespace: 'test',
         topK: 5,
         useReranking: false,
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].content).toBe('hybrid content');
-      expect(results[0].metadata.author).toBe('tester');
+      expect(out.results).toHaveLength(1);
+      expect(out.results[0]?.content).toBe('hybrid content');
+      expect(out.results[0]?.metadata.author).toBe('tester');
+      expect(out.hybrid_leg_failed).toBe('dense');
+      expect(out.degraded).toBe(false);
     });
 
     it('should throw when both dense and sparse searches fail', async () => {
@@ -249,15 +266,18 @@ describe('PineconeClient', () => {
     });
 
     it('uses rerankResults from pinecone/rerank when useReranking is true', async () => {
-      const spy = vi.spyOn(rerankModule, 'rerankResults').mockResolvedValue([
-        {
-          id: 'd1',
-          content: 'from dense',
-          score: 0.9,
-          metadata: {},
-          reranked: true,
-        },
-      ]);
+      const spy = vi.spyOn(rerankModule, 'rerankResults').mockResolvedValue({
+        results: [
+          {
+            id: 'd1',
+            content: 'from dense',
+            score: 0.9,
+            metadata: {},
+            reranked: true,
+          },
+        ],
+        degraded: false,
+      });
       try {
         const testClient = stubPineconeClient(client);
         const denseRef = {} as SearchableIndex;
@@ -280,9 +300,54 @@ describe('PineconeClient', () => {
           useReranking: true,
         });
 
-        expect(results).toHaveLength(1);
-        expect(results[0].reranked).toBe(true);
-        expect(results[0].content).toBe('from dense');
+        expect(results.results).toHaveLength(1);
+        expect(results.results[0]?.reranked).toBe(true);
+        expect(results.results[0]?.content).toBe('from dense');
+        expect(spy).toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('propagates rerank degradation to hybrid query outcome', async () => {
+      const spy = vi.spyOn(rerankModule, 'rerankResults').mockResolvedValue({
+        results: [
+          {
+            id: 'd1',
+            content: 'from dense',
+            score: 0.9,
+            metadata: {},
+            reranked: false,
+          },
+        ],
+        degraded: true,
+        degradation_reason: 'rerank_failed: timeout',
+      });
+      try {
+        const testClient = stubPineconeClient(client);
+        const denseRef = {} as SearchableIndex;
+        const sparseRef = {} as SearchableIndex;
+        testClient.ensureIndexes = async () => ({
+          denseIndex: denseRef,
+          sparseIndex: sparseRef,
+        });
+        testClient.searchIndex = async (index) => {
+          if (index === denseRef) {
+            return [{ _id: 'd1', _score: 0.9, fields: { chunk_text: 'from dense' } }];
+          }
+          return [];
+        };
+
+        const out = await client.query({
+          query: 'q',
+          namespace: 'n',
+          topK: 5,
+          useReranking: true,
+        });
+
+        expect(out.degraded).toBe(true);
+        expect(out.degradation_reason).toBe('rerank_failed: timeout');
+        expect(out.results[0]?.reranked).toBe(false);
         expect(spy).toHaveBeenCalled();
       } finally {
         spy.mockRestore();
@@ -314,7 +379,7 @@ describe('PineconeClient', () => {
         useReranking: false,
       });
 
-      expect(results.length).toBe(2);
+      expect(results.results.length).toBe(2);
     });
   });
 

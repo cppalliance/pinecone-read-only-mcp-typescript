@@ -33,6 +33,17 @@ describe('count tool handler', () => {
     vi.restoreAllMocks();
   });
 
+  it('returns VALIDATION when namespace is whitespace-only', async () => {
+    const server = createMockServer();
+    registerCountTool(server as never);
+    const raw = await server.getHandler('count')!({
+      namespace: '  ',
+      query_text: 'doc',
+    });
+    const err = assertToolErrorCode(raw, 'VALIDATION');
+    expect(err.field).toBe('namespace');
+  });
+
   it('returns VALIDATION when query_text is empty', async () => {
     const server = createMockServer();
     registerCountTool(server as never);

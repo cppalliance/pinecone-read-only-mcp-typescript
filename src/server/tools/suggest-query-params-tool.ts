@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { normalizeNamespace } from '../namespace-utils.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { suggestQueryParams } from '../query-suggestion.js';
 import { markSuggested } from '../suggestion-flow.js';
@@ -35,12 +36,22 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
         if (!user_query?.trim()) {
           return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
+        const nsNorm = normalizeNamespace(namespace);
+        if (!nsNorm) {
+          return jsonErrorResponse(
+            validationToolError('namespace cannot be empty', 'namespace', {
+              suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+            })
+          );
+        }
         const { data: namespacesInfo, cache_hit } = await getNamespacesWithCache();
-        const ns = namespacesInfo.find((n) => n.namespace === namespace);
+        const ns = namespacesInfo.find(
+          (n) => n.namespace === nsNorm || normalizeNamespace(n.namespace) === nsNorm
+        );
         const metadataFields = ns?.metadata ?? null;
         const result = suggestQueryParams(metadataFields, user_query.trim());
         if (result.namespace_found) {
-          markSuggested(namespace, {
+          markSuggested(nsNorm, {
             recommended_tool: result.recommended_tool,
             suggested_fields: result.suggested_fields,
             user_query: user_query.trim(),
