@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-05-13T21:21:47.950Z",
+  "node": "v22.22.0",
+  "warmup_iterations": 10,
+  "measured_iterations": 200,
+  "results": [
+    {
+      "name": "query_no_rerank",
+      "p50": 0.0583,
+      "p95": 0.0942,
+      "p99": 0.8578,
+      "min": 0.0243,
+      "max": 1.581,
+      "iterations": 200
+    },
+    {
+      "name": "query_with_rerank",
+      "p50": 0.0261,
+      "p95": 0.0484,
+      "p99": 0.1141,
+      "min": 0.0245,
+      "max": 0.2182,
+      "iterations": 200
+    },
+    {
+      "name": "guided_query_end_to_end",
+      "p50": 0.0166,
+      "p95": 0.02,
+      "p99": 0.0324,
+      "min": 0.0161,
+      "max": 0.2947,
+      "iterations": 200
+    },
+    {
+      "name": "list_namespaces_cache_miss",
+      "p50": 0.0005,
+      "p95": 0.0009,
+      "p99": 0.0014,
+      "min": 0.0004,
+      "max": 0.0596,
+      "iterations": 200
+    },
+    {
+      "name": "list_namespaces_cache_hit",
+      "p50": 0.0004,
+      "p95": 0.0005,
+      "p99": 0.0009,
+      "min": 0.0003,
+      "max": 0.1018,
+      "iterations": 200
+    }
+  ]
+}
