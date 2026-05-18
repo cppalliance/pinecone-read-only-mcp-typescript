@@ -17,9 +17,9 @@ A Model Context Protocol (MCP) server that provides semantic search over Pinecon
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | Deprecations & breaking changes |
 | [docs/CI_CD.md](docs/CI_CD.md) | GitHub Actions, SBOM, Docker, releases |
-| [RELEASING.md](RELEASING.md) | Pointer to the full release guide in `docs/` |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [SECURITY.md](SECURITY.md) | Vulnerability reporting |
+| [docs/RELEASING.md](docs/RELEASING.md) | npm publish via GitHub Releases |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
+| [docs/SECURITY.md](docs/SECURITY.md) | Vulnerability reporting |
 
 ## Error responses
 
@@ -34,6 +34,8 @@ When a tool fails, the MCP tool result sets **`isError: true`**. The `text` cont
 | `field` | **Required when `code` is `VALIDATION`:** the input parameter name (e.g. `query_text`, `namespace`) or a dot-path into `metadata_filter` (e.g. `author.$in`). |
 
 Success payloads are unchanged and do **not** wrap `ToolError`. Clients that still expect `{ "status": "error", "message": "..." }` must migrate to the shape above.
+
+For successful `query` / `guided_query` payloads, **rerank/hybrid fidelity** is described in [docs/TOOLS.md](docs/TOOLS.md) (row-level `reranked`, current lack of a top-level `degraded` envelope).
 
 ## Features
 
@@ -102,6 +104,12 @@ Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, 
 
 The server uses **process-global** memory for the suggest-flow gate (`suggest_query_params` context), namespaces cache, URL generator registry, and active configuration. **Stdio MCP (one client per Node process)** matches this model. If you embed `setupServer` behind a multi-tenant HTTP transport, isolate those structures per session yourself or treat the suggest-flow guard as best-effort only.
 
+### Library embedding (`setupServer`)
+
+Treat **`setupServer()` as one logical server per Node process**: it mutates shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A second `setupServer()` without a coordinated teardown can leave stale or mixed state for in-flight requests — **spawn a separate process** per isolated instance until an explicit lifecycle API is documented in the changelog.
+
+Recommended pattern: `resolveConfig` → `setPineconeClient(new PineconeClient(...))` → `await setupServer(config)` → connect one MCP transport. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+
 ### Custom URL generators
 
 Namespaces other than `mailing` and `slack-Cpplang` (or different URL rules for any namespace) can use programmatic registration — no fork required.
@@ -129,6 +137,17 @@ registerUrlGenerator('product-docs', myDocs);
 ```
 
 A fuller embedding sample lives in [examples/custom-url-generator.ts](examples/custom-url-generator.ts).
+
+### Examples
+
+| File | Description |
+| ---- | ----------- |
+| [examples/suggest-flow-demo.ts](examples/suggest-flow-demo.ts) | Manual **suggest_query_params → query** flow with namespace consistency notes. |
+| [examples/guided-query-demo.ts](examples/guided-query-demo.ts) | **guided_query** orchestration and how to read `decision_trace`. |
+| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupServer** wiring without the CLI binary. |
+| [examples/custom-url-generator.ts](examples/custom-url-generator.ts) | Custom **URL generator** registration for `generate_urls` / row enrichment. |
+
+Run with `npx tsx examples/<file>.ts` from a checkout (requires valid Pinecone env for live paths).
 
 ### Claude Desktop Configuration
 

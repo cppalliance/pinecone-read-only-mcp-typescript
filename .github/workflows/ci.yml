@@ -84,3 +84,8 @@ jobs:
 
       - name: Package dry run
         run: npm pack --dry-run
+
+      - name: Verify internal markdown links
+        run: |
+          npx --yes markdown-link-check@3 -c .markdown-link-check.json README.md CHANGELOG.md
+          find docs -type f -name '*.md' -print0 | xargs -0 -I{} npx --yes markdown-link-check@3 -c .markdown-link-check.json "{}"
