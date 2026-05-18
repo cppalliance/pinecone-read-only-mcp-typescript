@@ -8,6 +8,11 @@ export function setServerConfig(config: ServerConfig): void {
   activeConfig = config;
 }
 
+/** Clear active config so the next `getServerConfig()` resolves again (used by {@link teardownServer}). */
+export function resetServerConfig(): void {
+  activeConfig = null;
+}
+
 /**
  * Active server config for modules that cannot receive `ServerConfig` through parameters
  * (namespace cache TTL, suggest-flow gate, etc.).

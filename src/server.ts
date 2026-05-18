@@ -5,7 +5,8 @@
  *
  * Import from the package root:
  *
- * - {@link setupServer} — build an `McpServer` with all tools registered.
+ * - {@link setupServer} — build an `McpServer` with all tools registered (at most once per process unless {@link teardownServer} runs).
+ * - {@link teardownServer} — clear process-global server state so {@link setupServer} can run again (tests, re-embedding).
  * - {@link PineconeClient} — hybrid search, count, namespace listing, etc.
  * - {@link resolveConfig} — merge CLI-style overrides with `process.env`.
  * - {@link setPineconeClient} — inject a client instance before `setupServer()`.
@@ -21,8 +22,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from './constants.js';
 import type { ServerConfig } from './config.js';
-import { setServerConfig } from './server/config-context.js';
-import { registerBuiltinUrlGenerators } from './server/url-generation.js';
+import { setServerConfig, resetServerConfig } from './server/config-context.js';
+import { clearPineconeClient } from './server/client-context.js';
+import {
+  registerBuiltinUrlGenerators,
+  resetUrlGenerationRegistry,
+} from './server/url-generation.js';
+import { invalidateNamespacesCache } from './server/namespaces-cache.js';
+import { resetSuggestionFlow } from './server/suggestion-flow.js';
 import { registerCountTool } from './server/tools/count-tool.js';
 import { registerGuidedQueryTool } from './server/tools/guided-query-tool.js';
 import { registerGenerateUrlsTool } from './server/tools/generate-urls-tool.js';
@@ -75,7 +82,24 @@ export type {
   QueryResponse,
   QueryResultRowShape,
   KeywordIndexNamespacesResult,
+  HybridQueryResult,
+  HybridLegFailed,
 } from './types.js';
+
+let mcpServerInitialized = false;
+
+/**
+ * Reset process-global MCP server state (suggest-flow, namespace cache, active config,
+ * Pinecone client handle, URL generator registry). Call before a second {@link setupServer}.
+ */
+export function teardownServer(): void {
+  resetSuggestionFlow();
+  invalidateNamespacesCache();
+  resetServerConfig();
+  clearPineconeClient();
+  resetUrlGenerationRegistry();
+  mcpServerInitialized = false;
+}
 
 /**
  * Create and configure the MCP server with all tools.
@@ -85,9 +109,17 @@ export type {
  * and {@link setServerConfig} — see README “Deployment model”. Multi-tenant HTTP
  * multiplexing can violate the suggest-flow guarantee unless you isolate by session.
  *
+ * A second call in the same process throws unless {@link teardownServer} runs first.
+ *
  * @returns the configured `McpServer` instance, ready to connect to a transport.
  */
 export async function setupServer(config?: ServerConfig): Promise<McpServer> {
+  if (mcpServerInitialized) {
+    throw new Error(
+      'setupServer() already called in this process. The MCP server uses process-global state (suggest-flow, namespace cache, URL generators, config). Call teardownServer() first if you need to re-initialize.'
+    );
+  }
+
   if (config) {
     setServerConfig(config);
   }
@@ -114,5 +146,6 @@ export async function setupServer(config?: ServerConfig): Promise<McpServer> {
   registerGuidedQueryTool(server);
   registerGenerateUrlsTool(server);
 
+  mcpServerInitialized = true;
   return server;
 }

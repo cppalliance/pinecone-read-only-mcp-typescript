@@ -7,10 +7,11 @@ const sampleMerged: MergedHit[] = [
 ];
 
 describe('rerankResults', () => {
-  it('returns empty array when there are no merged hits', async () => {
+  it('returns empty outcome when there are no merged hits', async () => {
     const pc = {} as Parameters<typeof rerankResults>[0];
     const out = await rerankResults(pc, 'any-model', 'q', [], 5);
-    expect(out).toEqual([]);
+    expect(out.results).toEqual([]);
+    expect(out.degraded).toBe(false);
   });
 
   it('maps successful inference.rerank response', async () => {
@@ -26,21 +27,24 @@ describe('rerankResults', () => {
 
     const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);
 
-    expect(out).toHaveLength(1);
-    expect(out[0]?.reranked).toBe(true);
-    expect(out[0]?.id).toBe('1');
-    expect(out[0]?.content).toBe('hello');
-    expect(out[0]?.score).toBeCloseTo(0.99);
+    expect(out.results).toHaveLength(1);
+    expect(out.degraded).toBe(false);
+    expect(out.results[0]?.reranked).toBe(true);
+    expect(out.results[0]?.id).toBe('1');
+    expect(out.results[0]?.content).toBe('hello');
+    expect(out.results[0]?.score).toBeCloseTo(0.99);
   });
 
-  it('returns unreranked slice when rerank throws', async () => {
+  it('returns unreranked slice with degraded when rerank throws', async () => {
     const rerank = vi.fn().mockRejectedValue(new Error('rerank unavailable'));
     const pc = { inference: { rerank } } as Parameters<typeof rerankResults>[0];
 
     const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);
 
-    expect(out).toHaveLength(1);
-    expect(out[0]?.reranked).toBe(false);
-    expect(out[0]?.content).toBe('hello');
+    expect(out.results).toHaveLength(1);
+    expect(out.degraded).toBe(true);
+    expect(out.degradation_reason).toMatch(/^rerank_failed:/);
+    expect(out.results[0]?.reranked).toBe(false);
+    expect(out.results[0]?.content).toBe('hello');
   });
 });

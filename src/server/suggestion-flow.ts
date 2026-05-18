@@ -1,5 +1,6 @@
 import { getServerConfig } from './config-context.js';
 import type { RecommendedTool } from './query-suggestion.js';
+import { normalizeNamespace } from './namespace-utils.js';
 
 type FlowState = {
   updatedAt: number;
@@ -26,8 +27,12 @@ function sweepExpired(): void {
 
 /** Record that suggest_query_params was called for this namespace (enables query/count for the flow). */
 export function markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>): void {
+  const key = normalizeNamespace(namespace);
+  if (!key) {
+    throw new Error('markSuggested: namespace must not be empty after trim');
+  }
   sweepExpired();
-  stateByNamespace.set(namespace, {
+  stateByNamespace.set(key, {
     ...state,
     updatedAt: Date.now(),
   });
@@ -63,7 +68,15 @@ export function requireSuggested(namespace: string):
     };
   }
 
-  const state = stateByNamespace.get(namespace);
+  const key = normalizeNamespace(namespace);
+  if (!key) {
+    return {
+      ok: false,
+      message: 'namespace cannot be empty after trimming whitespace.',
+    };
+  }
+
+  const state = stateByNamespace.get(key);
   if (!state) {
     return {
       ok: false,
@@ -74,7 +87,7 @@ export function requireSuggested(namespace: string):
 
   const now = Date.now();
   if (now - state.updatedAt > cfg.cacheTtlMs) {
-    stateByNamespace.delete(namespace);
+    stateByNamespace.delete(key);
     return {
       ok: false,
       message:
@@ -85,7 +98,7 @@ export function requireSuggested(namespace: string):
   return { ok: true, flow: state };
 }
 
-/** Test-only: clear the in-memory flow state so each test starts clean. */
-export function resetSuggestionFlowForTests(): void {
+/** Clear suggest-flow gate state (used by {@link teardownServer} and tests). */
+export function resetSuggestionFlow(): void {
   stateByNamespace.clear();
 }

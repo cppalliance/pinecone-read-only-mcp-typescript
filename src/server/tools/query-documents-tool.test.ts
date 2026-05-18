@@ -7,7 +7,7 @@ import { registerQueryDocumentsTool } from './query-documents-tool.js';
 import {
   assertToolErrorCode,
   createMockServer,
-  makeSearchResult,
+  makeHybridQueryResult,
   parseToolJson,
 } from './test-helpers.js';
 
@@ -46,7 +46,7 @@ describe('query_documents tool handler', () => {
       },
     ]);
     mockedGetClient.mockReturnValue({
-      query: vi.fn().mockResolvedValue([makeSearchResult()]),
+      query: vi.fn().mockResolvedValue(makeHybridQueryResult()),
     } as never);
   });
 

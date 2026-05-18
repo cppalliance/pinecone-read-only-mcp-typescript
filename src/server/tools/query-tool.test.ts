@@ -6,6 +6,7 @@ import { registerQueryTool } from './query-tool.js';
 import {
   assertToolErrorCode,
   createMockServer,
+  makeHybridQueryResult,
   makeSearchResult,
   parseToolJson,
 } from './test-helpers.js';
@@ -31,13 +32,50 @@ describe('query tool handler (preset-driven)', () => {
     vi.clearAllMocks();
     vi.spyOn(suggestionFlow, 'requireSuggested').mockReturnValue(flowOk);
     mockedGetClient.mockReturnValue({
-      query: vi.fn().mockResolvedValue([makeSearchResult()]),
+      query: vi.fn().mockResolvedValue(makeHybridQueryResult()),
       count: vi.fn(),
     } as never);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('query: trims namespace for flow gate and Pinecone', async () => {
+    const requireSpy = vi.spyOn(suggestionFlow, 'requireSuggested').mockReturnValue(flowOk);
+    const server = createMockServer();
+    registerQueryTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+
+    await server.getHandler('query')!({
+      query_text: 'contracts',
+      namespace: 'wg21 ',
+      top_k: 5,
+      preset: 'full',
+      use_reranking: true,
+    });
+
+    expect(requireSpy).toHaveBeenCalledWith('wg21');
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        namespace: 'wg21',
+      })
+    );
+  });
+
+  it('query: returns VALIDATION when namespace is whitespace-only', async () => {
+    const server = createMockServer();
+    registerQueryTool(server as never);
+    const query = mockedGetClient().query as ReturnType<typeof vi.fn>;
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: '   ',
+      top_k: 5,
+      preset: 'full',
+    });
+    expect((raw as { isError?: boolean }).isError).toBe(true);
+    assertToolErrorCode(raw, 'VALIDATION');
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('query (preset=full): happy path calls client.query and returns formatted rows', async () => {
@@ -181,9 +219,11 @@ describe('query tool handler (preset-driven)', () => {
 
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
     mockedGetClient.mockReturnValue({
-      query: vi
-        .fn()
-        .mockResolvedValue([makeSearchResult({ reranked: false, score: 0.5, content: 'x' })]),
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          results: [makeSearchResult({ reranked: false, score: 0.5, content: 'x' })],
+        })
+      ),
       count: vi.fn(),
     } as never);
 

@@ -9,8 +9,9 @@ export type PineconeMetadataValue = string | number | boolean | string[];
  * Configuration for `new PineconeClient(config)`.
  *
  * `apiKey` is required. All other fields are optional and fall back to
- * sensible defaults; library consumers usually pass these through from
- * `ServerConfig`.
+ * sensible defaults from `src/constants.ts`. Values are expected to come from
+ * {@link resolveConfig} / CLI or an equivalent resolved object — `PineconeClient`
+ * does not read `process.env` directly.
  */
 export interface PineconeClientConfig {
   apiKey: string;
@@ -32,6 +33,22 @@ export interface SearchResult {
   score: number;
   metadata: Record<string, PineconeMetadataValue>;
   reranked: boolean;
+}
+
+/** Which hybrid leg failed when the other produced hits (partial hybrid success). */
+export type HybridLegFailed = 'dense' | 'sparse' | null;
+
+/**
+ * Outcome of {@link PineconeClient.query}: result rows plus degradation signals for MCP clients.
+ */
+export interface HybridQueryResult {
+  results: SearchResult[];
+  /** True when reranking was attempted and failed (rows may have `reranked: false`). */
+  degraded: boolean;
+  /** Present when {@link degraded} is true; suitable for LLM-facing tool output. */
+  degradation_reason?: string;
+  /** Set when exactly one of dense/sparse search failed but the other succeeded. */
+  hybrid_leg_failed: HybridLegFailed;
 }
 
 export interface PineconeHit {
@@ -132,6 +149,12 @@ export interface QueryResponse {
   /** Present when the query requested specific fields. */
   fields?: string[];
   results?: QueryResultRowShape[];
+  /** True when reranking was attempted but failed; see `degradation_reason`. */
+  degraded?: boolean;
+  /** Human-readable explanation when {@link degraded} is true. */
+  degradation_reason?: string;
+  /** Partial hybrid failure: one leg failed while the other returned hits. */
+  hybrid_leg_failed?: HybridLegFailed;
 }
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */

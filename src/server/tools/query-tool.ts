@@ -5,6 +5,7 @@ import type { QueryResponse } from '../../types.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
+import { normalizeNamespace } from '../namespace-utils.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -43,32 +44,46 @@ async function executeQuery(params: QueryExecParams) {
       }
     }
 
-    const flowCheck = requireSuggested(namespace);
+    const nsNorm = normalizeNamespace(namespace);
+    if (!nsNorm) {
+      return jsonErrorResponse(
+        validationToolError('namespace cannot be empty', 'namespace', {
+          suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+        })
+      );
+    }
+
+    const flowCheck = requireSuggested(nsNorm);
     if (!flowCheck.ok) {
-      return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
+      return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
     }
 
     const client = getPineconeClient();
-    const results = await client.query({
+    const queryOutcome = await client.query({
       query: query_text.trim(),
       topK: top_k,
-      namespace,
+      namespace: nsNorm,
       useReranking: use_reranking,
       metadataFilter: metadata_filter,
       fields: fields?.length ? fields : undefined,
     });
 
-    const formattedResults = formatQueryResultRows(results);
+    const formattedResults = formatQueryResultRows(queryOutcome.results);
 
     const response: QueryResponse = {
       status: 'success',
       mode,
       query: query_text,
-      namespace,
+      namespace: nsNorm,
       metadata_filter: metadata_filter,
       result_count: formattedResults.length,
       results: formattedResults,
       ...(fields?.length ? { fields } : {}),
+      degraded: queryOutcome.degraded,
+      ...(queryOutcome.degradation_reason !== undefined
+        ? { degradation_reason: queryOutcome.degradation_reason }
+        : {}),
+      hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
     };
     return jsonResponse(response);
   } catch (error) {

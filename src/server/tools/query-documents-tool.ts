@@ -7,6 +7,7 @@ import {
 } from '../../constants.js';
 import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
+import { normalizeNamespace } from '../namespace-utils.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
@@ -91,23 +92,32 @@ export function registerQueryDocumentsTool(server: McpServer): void {
           }
         }
 
-        const flowCheck = requireSuggested(namespace);
+        const nsNorm = normalizeNamespace(namespace);
+        if (!nsNorm) {
+          return jsonErrorResponse(
+            validationToolError('namespace cannot be empty', 'namespace', {
+              suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+            })
+          );
+        }
+
+        const flowCheck = requireSuggested(nsNorm);
         if (!flowCheck.ok) {
-          return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
+          return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
         }
 
         const chunkLimit = Math.min(QUERY_DOCUMENTS_MAX_CHUNKS, top_k * CHUNKS_PER_DOCUMENT);
         const client = getPineconeClient();
-        const results = await client.query({
+        const queryOutcome = await client.query({
           query: query_text.trim(),
           topK: chunkLimit,
-          namespace,
+          namespace: nsNorm,
           useReranking: true,
           metadataFilter: metadata_filter,
           fields: undefined,
         });
 
-        const reassembled = reassembleByDocument(results, {
+        const reassembled = reassembleByDocument(queryOutcome.results, {
           maxChunksPerDocument: max_chunks_per_document ?? 200,
         });
 
@@ -118,9 +128,14 @@ export function registerQueryDocumentsTool(server: McpServer): void {
         return jsonResponse({
           status: 'success',
           query: query_text.trim(),
-          namespace,
+          namespace: nsNorm,
           metadata_filter,
           result_count: topDocuments.length,
+          degraded: queryOutcome.degraded,
+          ...(queryOutcome.degradation_reason !== undefined
+            ? { degradation_reason: queryOutcome.degradation_reason }
+            : {}),
+          hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
           documents: topDocuments.map((doc) => ({
             document_id: doc.document_id,
             merged_content: doc.merged_content,

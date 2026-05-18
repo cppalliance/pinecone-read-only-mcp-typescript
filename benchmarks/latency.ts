@@ -222,7 +222,11 @@ function createBenchPineconeMock(): PineconeClient {
 
   return {
     async query() {
-      return mockQueryResults;
+      return {
+        results: mockQueryResults,
+        degraded: false,
+        hybrid_leg_failed: null,
+      };
     },
     async count() {
       return { count: 42, truncated: false };

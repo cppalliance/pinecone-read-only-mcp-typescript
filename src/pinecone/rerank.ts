@@ -6,6 +6,14 @@ import type { Pinecone } from '@pinecone-database/pinecone';
 import { error as logError } from '../logger.js';
 import type { MergedHit, SearchResult } from '../types.js';
 
+export type RerankOutcome = {
+  results: SearchResult[];
+  /** True when rerank was attempted and failed; results are unreranked slice. */
+  degraded: boolean;
+  /** Human-readable reason for MCP clients when {@link degraded} is true. */
+  degradation_reason?: string;
+};
+
 /**
  * Rerank merged hits using Pinecone's reranking model; on failure returns unreranked slice.
  */
@@ -15,9 +23,9 @@ export async function rerankResults(
   query: string,
   results: MergedHit[],
   topN: number
-): Promise<SearchResult[]> {
+): Promise<RerankOutcome> {
   if (!results || results.length === 0) {
-    return [];
+    return { results: [], degraded: false };
   }
 
   try {
@@ -48,16 +56,20 @@ export async function rerankResults(
         reranked: true,
       });
     }
-    return reranked;
+    return { results: reranked, degraded: false };
   } catch (error) {
     logError('Error reranking results', error);
-    // Fall back to returning unreranked results
-    return results.slice(0, topN).map((result) => ({
-      id: result._id || '',
-      content: result.chunk_text || '',
-      score: result._score || 0,
-      metadata: result.metadata || {},
-      reranked: false,
-    }));
+    const msg = error instanceof Error ? error.message : String(error);
+    return {
+      results: results.slice(0, topN).map((result) => ({
+        id: result._id || '',
+        content: result.chunk_text || '',
+        score: result._score || 0,
+        metadata: result.metadata || {},
+        reranked: false,
+      })),
+      degraded: true,
+      degradation_reason: `rerank_failed: ${msg}`,
+    };
   }
 }
