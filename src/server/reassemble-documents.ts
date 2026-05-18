@@ -93,8 +93,7 @@ export function reassembleByDocument(
   }
 
   if (skippedHits > 0) {
-    const sample =
-      sampleIdsForWarn.length > 0 ? ` sample_ids=${sampleIdsForWarn.join(',')}` : '';
+    const sample = sampleIdsForWarn.length > 0 ? ` sample_ids=${sampleIdsForWarn.join(',')}` : '';
     logWarn(
       `reassembleByDocument: skipped ${skippedHits} hit(s) with no document key (document_number, url, doc_id, or non-empty vector id).${sample}`
     );
