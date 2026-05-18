@@ -21,8 +21,9 @@ export interface QueryResultRow {
   document_id: string | null;
   /**
    * @deprecated Use `document_id`. Kept for one minor cycle and removed in
-   * the next major release. The first time a row is emitted with this alias
-   * during a session, a `WARN` log is fired so consumers see the deadline.
+   * the next major release. The first formatted query-result row in the
+   * process triggers a single `WARN` log per session so consumers see the
+   * deprecation deadline.
    */
   paper_number: string | null;
   title: string;
@@ -79,7 +80,7 @@ export function formatSearchResultAsRow(
       : null) ??
     null;
 
-  if (document_id !== null && !deprecationWarnedThisSession) {
+  if (!deprecationWarnedThisSession) {
     deprecationWarnedThisSession = true;
     logWarn(
       'paper_number is deprecated and will be removed in the next major release; use document_id instead.'

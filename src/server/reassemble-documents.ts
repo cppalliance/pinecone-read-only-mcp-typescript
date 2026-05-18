@@ -5,9 +5,13 @@
  */
 
 import type { PineconeMetadataValue, SearchResult } from '../types.js';
+import { warn as logWarn } from '../logger.js';
 
 /** Default metadata keys tried for chunk ordering (RecursiveCharacterTextSplitter often adds these). */
 const CHUNK_ORDER_KEYS = ['chunk_index', 'start_index', 'loc'] as const;
+
+/** Max vector ids listed in the one-per-call skip warning (for grep-friendly debugging). */
+const SKIP_WARN_SAMPLE_IDS = 3;
 
 /** Derive a stable document key from hit metadata: document_number → url → doc_id → hit.id. */
 function getDocumentKey(hit: SearchResult): string {
@@ -68,16 +72,31 @@ export function reassembleByDocument(
   const separator = options?.contentSeparator ?? '\n\n';
 
   const byDoc = new Map<string, SearchResult[]>();
+  let skippedHits = 0;
+  const sampleIdsForWarn: string[] = [];
 
   for (const hit of results) {
     const key = getDocumentKey(hit);
-    if (!key) continue;
+    if (!key) {
+      skippedHits++;
+      if (sampleIdsForWarn.length < SKIP_WARN_SAMPLE_IDS) {
+        sampleIdsForWarn.push(hit.id.trim() === '' ? '<empty>' : hit.id);
+      }
+      continue;
+    }
     let list = byDoc.get(key);
     if (!list) {
       list = [];
       byDoc.set(key, list);
     }
     list.push(hit);
+  }
+
+  if (skippedHits > 0) {
+    const sample = sampleIdsForWarn.length > 0 ? ` sample_ids=${sampleIdsForWarn.join(',')}` : '';
+    logWarn(
+      `reassembleByDocument: skipped ${skippedHits} hit(s) with no document key (document_number, url, doc_id, or non-empty vector id).${sample}`
+    );
   }
 
   const out: ReassembledDocument[] = [];
