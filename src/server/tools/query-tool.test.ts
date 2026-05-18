@@ -219,13 +219,11 @@ describe('query tool handler (preset-driven)', () => {
 
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
     mockedGetClient.mockReturnValue({
-      query: vi
-        .fn()
-        .mockResolvedValue(
-          makeHybridQueryResult({
-            results: [makeSearchResult({ reranked: false, score: 0.5, content: 'x' })],
-          })
-        ),
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          results: [makeSearchResult({ reranked: false, score: 0.5, content: 'x' })],
+        })
+      ),
       count: vi.fn(),
     } as never);
 
