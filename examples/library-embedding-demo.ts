@@ -22,7 +22,13 @@ import {
 } from '@will-cppa/pinecone-read-only-mcp';
 
 async function main(): Promise<void> {
-  const apiKey = process.env['PINECONE_API_KEY']?.trim() ?? 'demo-key-for-types';
+  const apiKey = process.env['PINECONE_API_KEY']?.trim();
+  if (!apiKey) {
+    console.log(
+      'Set PINECONE_API_KEY to run this example. Skipping live setup in doc-only mode.'
+    );
+    return;
+  }
   const config = resolveConfig({ apiKey });
 
   setPineconeClient(

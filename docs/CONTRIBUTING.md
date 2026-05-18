@@ -8,7 +8,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/CppDigest/pinecone-read-only-mcp-typescript.git
+git clone https://github.com/cppalliance/pinecone-read-only-mcp-typescript.git
 cd pinecone-read-only-mcp-typescript
 npm ci
 ```
