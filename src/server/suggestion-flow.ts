@@ -55,14 +55,6 @@ export function requireSuggested(namespace: string):
       ok: false;
       message: string;
     } {
-  const key = normalizeNamespace(namespace);
-  if (!key) {
-    return {
-      ok: false,
-      message: 'namespace cannot be empty after trimming whitespace.',
-    };
-  }
-
   const cfg = getServerConfig();
   if (cfg.disableSuggestFlow) {
     return {
@@ -73,6 +65,14 @@ export function requireSuggested(namespace: string):
         suggested_fields: [],
         user_query: '',
       },
+    };
+  }
+
+  const key = normalizeNamespace(namespace);
+  if (!key) {
+    return {
+      ok: false,
+      message: 'namespace cannot be empty after trimming whitespace.',
     };
   }
 

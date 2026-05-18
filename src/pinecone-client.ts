@@ -151,9 +151,17 @@ export class PineconeClient {
     }
 
     let hybridLegFailed: HybridLegFailed = null;
-    if (denseResult.status === 'rejected' && sparseResult.status === 'fulfilled') {
+    if (
+      denseResult.status === 'rejected' &&
+      sparseResult.status === 'fulfilled' &&
+      sparseHits.length > 0
+    ) {
       hybridLegFailed = 'dense';
-    } else if (sparseResult.status === 'rejected' && denseResult.status === 'fulfilled') {
+    } else if (
+      sparseResult.status === 'rejected' &&
+      denseResult.status === 'fulfilled' &&
+      denseHits.length > 0
+    ) {
       hybridLegFailed = 'sparse';
     }
 

@@ -212,7 +212,7 @@ export function registerGuidedQueryTool(server: McpServer): void {
         });
         const rerank_status: 'success' | 'skipped' | 'failed' = isFast
           ? 'skipped'
-          : queryOutcome.degraded
+          : queryOutcome.degraded && queryOutcome.hybrid_leg_failed === null
             ? 'failed'
             : 'success';
         const formattedResults = formatQueryResultRows(queryOutcome.results, {
