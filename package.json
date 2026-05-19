@@ -60,6 +60,7 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"*.json\" \".prettierrc\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"*.json\" \".prettierrc\"",
+    "docs:link-check": "node scripts/docs-link-check.mjs",
     "typecheck": "tsc --noEmit",
     "ci": "npm run typecheck && npm run lint && npm run format:check && npm run build && npm run test:coverage",
     "release:check": "npm run ci && npm pack --dry-run --ignore-scripts",

@@ -41,7 +41,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - `.env.example` log-level options corrected to the four levels actually supported (`DEBUG`, `INFO`, `WARN`, `ERROR`); the stale `WARNING`/`CRITICAL` values are gone.
 - README Slack URL example now matches the generator output (`https://app.slack.com/client/{team_id}/{channel_id}/p{messageId}`).
 - README "Comparison with Python Version" no longer claims an identical API; the new TypeScript-only tools (`guided_query`, `query_documents`, `keyword_search`, `namespace_router`, `suggest_query_params`, `count`, `generate_urls`) are listed explicitly.
-- `npm run ci` now runs `test:coverage` so merges are gated on coverage thresholds.
+- CI **quality** job: `npm run docs:link-check` runs `markdown-link-check` in a single `npx` invocation over `README.md`, `CHANGELOG.md`, and all `docs/**/*.md` (via `scripts/docs-link-check.mjs`) instead of one `npx` per file under `docs/`.
 - **Breaking (runtime / tooling):** `engines.node` is now **>=20.12.0**. Vitest **4** (bundled **rolldown**) imports `util.styleText` from `node:util` (added in Node **20.12**), and **`@vitest/coverage-v8`** uses `node:inspector/promises` (Node **≥19**). CI tests only **20.x** and **22.x**.
 - Dependabot groups related **vitest**, **typescript-eslint**, and **eslint/prettier** updates.
 

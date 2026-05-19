@@ -21,7 +21,7 @@
 
 **Job `quality`**
 
-- Ubuntu + Node 20: `npm audit --audit-level=moderate` (continue-on-error) → `npm pack --dry-run` → **markdown-link-check** on documentation paths (see workflow).
+- Ubuntu + Node 20: `npm audit --audit-level=moderate` (continue-on-error) → `npm pack --dry-run` → **`npm run docs:link-check`** (single `npx markdown-link-check` over `README.md`, `CHANGELOG.md`, and all `docs/**/*.md`).
 
 ---
 

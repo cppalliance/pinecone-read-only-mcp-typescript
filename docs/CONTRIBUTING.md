@@ -39,7 +39,7 @@ npm ci
 
 - Run `npm run ci` before pushing.
 - Keep changes focused; update `CHANGELOG.md` `[Unreleased]` for user-visible behavior.
-- Documentation changes should keep [README](../README.md) links and run markdown link check locally if you touch many relative links.
+- Documentation changes should keep [README](../README.md) links; run `npm run docs:link-check` locally if you touch many relative links.
 
 ## Documentation
 
