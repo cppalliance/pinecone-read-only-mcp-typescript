@@ -22,13 +22,7 @@ function getDocumentKey(hit: SearchResult): string {
   const nonEmpty = (v: unknown): string | undefined =>
     typeof v === 'string' && v.trim() !== '' ? v : undefined;
 
-  return (
-    nonEmpty(docNumber) ??
-    nonEmpty(url) ??
-    nonEmpty(docId) ??
-    nonEmpty(hit.id) ??
-    ''
-  );
+  return nonEmpty(docNumber) ?? nonEmpty(url) ?? nonEmpty(docId) ?? nonEmpty(hit.id) ?? '';
 }
 
 /** Return a numeric order for sorting chunks from metadata (chunk_index, start_index, or loc). */
