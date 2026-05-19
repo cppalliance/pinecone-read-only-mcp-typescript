@@ -176,18 +176,22 @@ describe('reassembleByDocument', () => {
     expect(warnSpy.mock.calls[0]?.[0]).toMatch(/sample_ids=<empty>/);
   });
 
-  it('includes sample vector ids in skip warning up to limit', () => {
-    const emptyDocNum = { document_number: '' } as Record<string, string>;
-    const results: SearchResult[] = [
-      { id: 'a', content: 'x', score: 0.1, metadata: emptyDocNum, reranked: false },
-      { id: 'b', content: 'y', score: 0.2, metadata: emptyDocNum, reranked: false },
-      { id: 'c', content: 'z', score: 0.3, metadata: emptyDocNum, reranked: false },
-      { id: 'd', content: 'w', score: 0.4, metadata: emptyDocNum, reranked: false },
-    ];
+  it('includes at most three sample entries in skip warning when many hits are skipped', () => {
+    const results: SearchResult[] = Array.from({ length: 4 }, (_, i) => ({
+      id: '',
+      content: `chunk-${i}`,
+      score: 0.1 * (i + 1),
+      metadata: {},
+      reranked: false,
+    }));
     reassembleByDocument(results);
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const msg = String(warnSpy.mock.calls[0]?.[0]);
     expect(msg).toMatch(/skipped 4 hit/);
-    expect(msg.match(/sample_ids=([^\s.]+)/)?.[1]).toBe('a,b,c');
+    const samplePart = msg.match(/sample_ids=(.+)$/)?.[1];
+    expect(samplePart).toBeDefined();
+    const samples = samplePart!.split(',');
+    expect(samples).toHaveLength(3);
+    expect(samples.every((s) => s === '<empty>')).toBe(true);
   });
 });
