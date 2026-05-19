@@ -6,7 +6,12 @@
  * `process.env` directly anymore — they receive their slice of the config.
  */
 
-import { DEFAULT_INDEX_NAME, DEFAULT_RERANK_MODEL, FLOW_CACHE_TTL_MS } from './constants.js';
+import {
+  DEFAULT_INDEX_NAME,
+  DEFAULT_RERANK_MODEL,
+  DEFAULT_TOP_K,
+  FLOW_CACHE_TTL_MS,
+} from './constants.js';
 
 /** Allowed log levels, in ascending severity. */
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
@@ -48,9 +53,6 @@ export interface ServerConfig {
 
 /** Default per-call timeout for Pinecone requests, in milliseconds. */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
-
-/** Default top-k mirrors constants.DEFAULT_TOP_K but is duplicated here to avoid a cycle. */
-const DEFAULT_TOP_K = 10;
 
 function asLogLevel(value: string | undefined, fallback: LogLevel): LogLevel {
   const allowed: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];

@@ -11,6 +11,8 @@ import type {
   KeywordSearchParams,
   KeywordIndexNamespacesResult,
   SearchableIndex,
+  HybridQueryResult,
+  HybridLegFailed,
 } from './types.js';
 import {
   DEFAULT_INDEX_NAME,
@@ -35,16 +37,16 @@ export class PineconeClient {
   private defaultTopK: number;
   private readonly indexSession: PineconeIndexSession;
 
-  /** Create a client with the given config; env vars override index name, rerank model, and top-k. */
+  /**
+   * Create a client from a resolved {@link PineconeClientConfig}.
+   * Index name, rerank model, and default top-k come only from this object (typically
+   * built via {@link resolveConfig} / CLI); this class does not read `process.env`.
+   */
   constructor(config: PineconeClientConfig) {
-    const indexName = config.indexName || process.env['PINECONE_INDEX_NAME'] || DEFAULT_INDEX_NAME;
+    const indexName = config.indexName ?? DEFAULT_INDEX_NAME;
     this.indexSession = new PineconeIndexSession(config.apiKey, indexName);
-    this.rerankModel =
-      config.rerankModel || process.env['PINECONE_RERANK_MODEL'] || DEFAULT_RERANK_MODEL;
-    const envTopK = process.env['PINECONE_TOP_K'];
-    const parsedEnvTopK = envTopK !== undefined ? parseInt(envTopK, 10) : NaN;
-    this.defaultTopK =
-      config.defaultTopK ?? (Number.isFinite(parsedEnvTopK) ? parsedEnvTopK : DEFAULT_TOP_K);
+    this.rerankModel = config.rerankModel ?? DEFAULT_RERANK_MODEL;
+    this.defaultTopK = config.defaultTopK ?? DEFAULT_TOP_K;
   }
 
   /** Sparse index name `{indexName}-sparse` (keyword / hybrid sparse). */
@@ -105,7 +107,7 @@ export class PineconeClient {
     return searchIndexImpl(index, query, topK, namespace, metadataFilter, options);
   }
 
-  async query(params: QueryParams): Promise<SearchResult[]> {
+  async query(params: QueryParams): Promise<HybridQueryResult> {
     const {
       query,
       topK: requestedTopK,
@@ -148,17 +150,37 @@ export class PineconeClient {
       throw new Error('Hybrid search failed: both dense and sparse index searches failed.');
     }
 
+    let hybridLegFailed: HybridLegFailed = null;
+    if (
+      denseResult.status === 'rejected' &&
+      sparseResult.status === 'fulfilled' &&
+      sparseHits.length > 0
+    ) {
+      hybridLegFailed = 'dense';
+    } else if (
+      sparseResult.status === 'rejected' &&
+      denseResult.status === 'fulfilled' &&
+      denseHits.length > 0
+    ) {
+      hybridLegFailed = 'sparse';
+    }
+
     const mergedResults = mergeResults(denseHits, sparseHits);
 
+    let degraded = false;
+    let degradation_reason: string | undefined;
     let documents: SearchResult[];
     if (useReranking) {
-      documents = await rerankResultsImpl(
+      const rerankOut = await rerankResultsImpl(
         this.indexSession.ensureClient(),
         this.rerankModel,
         query,
         mergedResults,
         topK
       );
+      documents = rerankOut.results;
+      degraded = rerankOut.degraded;
+      degradation_reason = rerankOut.degradation_reason;
     } else {
       documents = sliceMergedHitsToSearchResults(mergedResults, topK);
     }
@@ -167,7 +189,12 @@ export class PineconeClient {
       `Retrieved ${documents.length} documents from hybrid search (dense: ${denseHits.length}, sparse: ${sparseHits.length})`
     );
 
-    return documents;
+    return {
+      results: documents,
+      degraded,
+      ...(degradation_reason !== undefined ? { degradation_reason } : {}),
+      hybrid_leg_failed: hybridLegFailed,
+    };
   }
 
   async keywordSearch(params: KeywordSearchParams): Promise<SearchResult[]> {

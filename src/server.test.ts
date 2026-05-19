@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { validateMetadataFilter, suggestQueryParams } from './server.js';
+import { describe, expect, it, afterEach } from 'vitest';
+import {
+  validateMetadataFilter,
+  suggestQueryParams,
+  setupServer,
+  teardownServer,
+  setPineconeClient,
+  resolveConfig,
+  PineconeClient,
+  hasUrlGenerator,
+} from './server.js';
 
 describe('suggestQueryParams', () => {
   const wg21Fields = {
@@ -94,5 +103,51 @@ describe('validateMetadataFilter', () => {
     });
 
     expect(result).toContain('must use an array of primitive values');
+  });
+});
+
+describe('setupServer lifecycle', () => {
+  afterEach(() => {
+    teardownServer();
+  });
+
+  it('throws on second setupServer without teardown', async () => {
+    const cfg = resolveConfig({ apiKey: 'lifecycle-test-key' });
+    setPineconeClient(
+      new PineconeClient({
+        apiKey: cfg.apiKey,
+        indexName: cfg.indexName,
+        rerankModel: cfg.rerankModel,
+        defaultTopK: cfg.defaultTopK,
+      })
+    );
+    await setupServer(cfg);
+    await expect(setupServer(cfg)).rejects.toThrow(/teardownServer/);
+  });
+
+  it('allows setup after teardown and reinstalls built-in URL generators', async () => {
+    const cfg = resolveConfig({ apiKey: 'lifecycle-test-key-2' });
+    setPineconeClient(
+      new PineconeClient({
+        apiKey: cfg.apiKey,
+        indexName: cfg.indexName,
+        rerankModel: cfg.rerankModel,
+        defaultTopK: cfg.defaultTopK,
+      })
+    );
+    await setupServer(cfg);
+    expect(hasUrlGenerator('mailing')).toBe(true);
+    teardownServer();
+    expect(hasUrlGenerator('mailing')).toBe(false);
+    setPineconeClient(
+      new PineconeClient({
+        apiKey: cfg.apiKey,
+        indexName: cfg.indexName,
+        rerankModel: cfg.rerankModel,
+        defaultTopK: cfg.defaultTopK,
+      })
+    );
+    await setupServer(cfg);
+    expect(hasUrlGenerator('mailing')).toBe(true);
   });
 });

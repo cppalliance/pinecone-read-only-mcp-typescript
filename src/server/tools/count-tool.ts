@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
+import { normalizeNamespace } from '../namespace-utils.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -53,6 +54,14 @@ export function registerCountTool(server: McpServer): void {
     async (params) => {
       try {
         const { namespace, query_text, metadata_filter } = params;
+        const nsNorm = normalizeNamespace(namespace);
+        if (!nsNorm) {
+          return jsonErrorResponse(
+            validationToolError('namespace cannot be empty', 'namespace', {
+              suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+            })
+          );
+        }
         if (!query_text.trim()) {
           return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
         }
@@ -62,21 +71,21 @@ export function registerCountTool(server: McpServer): void {
             return jsonErrorResponse(validationToolError(err.message, err.field));
           }
         }
-        const flowCheck = requireSuggested(namespace);
+        const flowCheck = requireSuggested(nsNorm);
         if (!flowCheck.ok) {
-          return jsonErrorResponse(flowGateToolError(namespace, flowCheck.message));
+          return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
         }
         const client = getPineconeClient();
         const { count, truncated } = await client.count({
           query: query_text.trim(),
-          namespace,
+          namespace: nsNorm,
           metadataFilter: metadata_filter,
         });
         const response: CountResponse = {
           status: COUNT_RESPONSE_STATUS,
           count,
           truncated,
-          namespace,
+          namespace: nsNorm,
           metadata_filter,
         };
         return jsonResponse(response);

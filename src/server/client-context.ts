@@ -15,3 +15,8 @@ export function getPineconeClient(): PineconeClient {
 export function setPineconeClient(client: PineconeClient): void {
   pineconeClient = client;
 }
+
+/** Clear the shared client (used by {@link teardownServer} and tests). */
+export function clearPineconeClient(): void {
+  pineconeClient = null;
+}

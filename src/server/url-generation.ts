@@ -136,6 +136,15 @@ export function registerBuiltinUrlGenerators(options?: RegisterBuiltinUrlGenerat
 }
 
 /**
+ * Clear all URL generators and the built-in registration latch.
+ * Used by {@link teardownServer} so a subsequent `setupServer()` can reinstall built-ins.
+ */
+export function resetUrlGenerationRegistry(): void {
+  urlGenerators.clear();
+  builtinGeneratorsRegistered = false;
+}
+
+/**
  * Register a URL generator for a namespace, replacing any existing entry.
  *
  * @param namespace exact namespace name (matches the value returned by `list_namespaces`).

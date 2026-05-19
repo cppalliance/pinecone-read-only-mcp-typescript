@@ -1,4 +1,4 @@
-import type { SearchResult } from '../../types.js';
+import type { HybridQueryResult, SearchResult } from '../../types.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
@@ -73,6 +73,18 @@ export function makeSearchResult(overrides?: Partial<SearchResult>): SearchResul
     metadata: { document_number: 'WG21-P1234', title: 'T', author: 'A', url: 'https://x' },
     reranked: true,
     ...overrides,
+  };
+}
+
+/** Default hybrid query outcome for mocked {@link PineconeClient.query}. */
+export function makeHybridQueryResult(overrides?: Partial<HybridQueryResult>): HybridQueryResult {
+  return {
+    results: overrides?.results ?? [makeSearchResult()],
+    degraded: overrides?.degraded ?? false,
+    ...(overrides?.degradation_reason !== undefined
+      ? { degradation_reason: overrides.degradation_reason }
+      : {}),
+    hybrid_leg_failed: overrides?.hybrid_leg_failed ?? null,
   };
 }
 
