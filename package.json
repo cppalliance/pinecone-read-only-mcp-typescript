@@ -35,12 +35,12 @@
   "license": "BSL-1.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CppDigest/pinecone-read-only-mcp-typescript.git"
+    "url": "git+https://github.com/cppalliance/pinecone-read-only-mcp-typescript.git"
   },
   "bugs": {
-    "url": "https://github.com/CppDigest/pinecone-read-only-mcp-typescript/issues"
+    "url": "https://github.com/cppalliance/pinecone-read-only-mcp-typescript/issues"
   },
-  "homepage": "https://github.com/CppDigest/pinecone-read-only-mcp-typescript#readme",
+  "homepage": "https://github.com/cppalliance/pinecone-read-only-mcp-typescript#readme",
   "engines": {
     "node": ">=20.12.0"
   },

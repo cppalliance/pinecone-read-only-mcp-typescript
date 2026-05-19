@@ -32,6 +32,6 @@ Do not run the production image as root unless you have a compensating security 
 
 ## Reporting vulnerabilities
 
-Open a **private** security advisory or issue per repository policy on [GitHub](https://github.com/CppDigest/pinecone-read-only-mcp-typescript/security). Do not post exploit details in public issues before a fix is available.
+Open a **private** security advisory or issue per repository policy on [GitHub](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/security). Do not post exploit details in public issues before a fix is available.
 
 Include: affected version, reproduction steps, and impact assessment.

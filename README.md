@@ -3,35 +3,35 @@
 [![npm version](https://img.shields.io/npm/v/@will-cppa/pinecone-read-only-mcp.svg)](https://www.npmjs.com/package/@will-cppa/pinecone-read-only-mcp)
 [![Node.js Version](https://img.shields.io/node/v/@will-cppa/pinecone-read-only-mcp.svg)](https://nodejs.org)
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
-[![CI](https://github.com/CppDigest/pinecone-read-only-mcp-typescript/workflows/CI/badge.svg)](https://github.com/CppDigest/pinecone-read-only-mcp-typescript/actions)
+[![CI](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/workflows/CI/badge.svg)](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/actions)
 
 A Model Context Protocol (MCP) server that provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
 ## Documentation
 
-| Doc | Description |
-|-----|---------------|
-| [docs/README.md](docs/README.md) | Index of all guides |
-| [docs/TOOLS.md](docs/TOOLS.md) | Tool catalog & flows |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Env vars, CLI flags, library config |
-| [docs/FAQ.md](docs/FAQ.md) | Common questions |
-| [docs/MIGRATION.md](docs/MIGRATION.md) | Deprecations & breaking changes |
-| [docs/CI_CD.md](docs/CI_CD.md) | GitHub Actions, SBOM, Docker, releases |
-| [docs/RELEASING.md](docs/RELEASING.md) | npm publish via GitHub Releases |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
-| [docs/SECURITY.md](docs/SECURITY.md) | Vulnerability reporting |
+| Doc                                            | Description                            |
+| ---------------------------------------------- | -------------------------------------- |
+| [docs/README.md](docs/README.md)               | Index of all guides                    |
+| [docs/TOOLS.md](docs/TOOLS.md)                 | Tool catalog & flows                   |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Env vars, CLI flags, library config    |
+| [docs/FAQ.md](docs/FAQ.md)                     | Common questions                       |
+| [docs/MIGRATION.md](docs/MIGRATION.md)         | Deprecations & breaking changes        |
+| [docs/CI_CD.md](docs/CI_CD.md)                 | GitHub Actions, SBOM, Docker, releases |
+| [docs/RELEASING.md](docs/RELEASING.md)         | npm publish via GitHub Releases        |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)   | How to contribute                      |
+| [docs/SECURITY.md](docs/SECURITY.md)           | Vulnerability reporting                |
 
 ## Error responses
 
 When a tool fails, the MCP tool result sets **`isError: true`**. The `text` content is JSON matching **`ToolError`** (parse with `toolErrorSchema` from `@will-cppa/pinecone-read-only-mcp`).
 
-| Field | Description |
-| ----- | ----------- |
-| `code` | `FLOW_GATE` — `suggest_query_params` was not run for this namespace (or context expired). `VALIDATION` — bad input or metadata filter. `PINECONE_ERROR` — SDK / network / server failure. `TIMEOUT` — outbound Pinecone call exceeded `--request-timeout-ms`. |
-| `message` | Human-readable detail (`DEBUG` log level may surface raw SDK messages in the message for `PINECONE_ERROR` / `TIMEOUT`). |
-| `recoverable` | Whether the client can plausibly fix the issue and retry (`true` for flow gate, validation, timeouts; typically `false` for generic Pinecone errors). |
-| `suggestion` | Optional hint. **`FLOW_GATE`** always includes: `Call suggest_query_params for namespace '<ns>' first`. **`TIMEOUT`** suggests retrying or increasing the request timeout. |
-| `field` | **Required when `code` is `VALIDATION`:** the input parameter name (e.g. `query_text`, `namespace`) or a dot-path into `metadata_filter` (e.g. `author.$in`). |
+| Field         | Description                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`        | `FLOW_GATE` — `suggest_query_params` was not run for this namespace (or context expired). `VALIDATION` — bad input or metadata filter. `PINECONE_ERROR` — SDK / network / server failure. `TIMEOUT` — outbound Pinecone call exceeded `--request-timeout-ms`. |
+| `message`     | Human-readable detail (`DEBUG` log level may surface raw SDK messages in the message for `PINECONE_ERROR` / `TIMEOUT`).                                                                                                                                       |
+| `recoverable` | Whether the client can plausibly fix the issue and retry (`true` for flow gate, validation, timeouts; typically `false` for generic Pinecone errors).                                                                                                         |
+| `suggestion`  | Optional hint. **`FLOW_GATE`** always includes: `Call suggest_query_params for namespace '<ns>' first`. **`TIMEOUT`** suggests retrying or increasing the request timeout.                                                                                    |
+| `field`       | **Required when `code` is `VALIDATION`:** the input parameter name (e.g. `query_text`, `namespace`) or a dot-path into `metadata_filter` (e.g. `author.$in`).                                                                                                 |
 
 Success payloads are unchanged and do **not** wrap `ToolError`. Clients that still expect `{ "status": "error", "message": "..." }` must migrate to the shape above.
 
@@ -78,7 +78,7 @@ npm install -g @will-cppa/pinecone-read-only-mcp
 ### From Source
 
 ```bash
-git clone https://github.com/CppDigest/pinecone-read-only-mcp-typescript.git
+git clone https://github.com/cppallance/pinecone-read-only-mcp-typescript.git
 cd pinecone-read-only-mcp-typescript
 npm install
 npm run build
@@ -90,13 +90,13 @@ You need a **Pinecone API key** and (by default) a **dense** index plus matching
 
 Quick reference:
 
-| Variable | Required | Default |
-| -------- | -------- | ------- |
-| `PINECONE_API_KEY` | Yes (for live Pinecone) | — |
-| `PINECONE_INDEX_NAME` | No | `rag-hybrid` |
-| `PINECONE_SPARSE_INDEX_NAME` | No | `{index}-sparse` |
-| `PINECONE_READ_ONLY_MCP_LOG_LEVEL` | No | `INFO` (`DEBUG`–`ERROR`) |
-| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No | `text` (`json` for log pipelines) |
+| Variable                            | Required                | Default                           |
+| ----------------------------------- | ----------------------- | --------------------------------- |
+| `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
+| `PINECONE_INDEX_NAME`               | No                      | `rag-hybrid`                      |
+| `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
+| `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |
+| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                      | `text` (`json` for log pipelines) |
 
 Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, `--request-timeout-ms`, `--disable-suggest-flow`, etc.).
 
@@ -140,12 +140,12 @@ A fuller embedding sample lives in [examples/custom-url-generator.ts](examples/c
 
 ### Examples
 
-| File | Description |
-| ---- | ----------- |
-| [examples/suggest-flow-demo.ts](examples/suggest-flow-demo.ts) | Manual **suggest_query_params → query** flow with namespace consistency notes. |
-| [examples/guided-query-demo.ts](examples/guided-query-demo.ts) | **guided_query** orchestration and how to read `decision_trace`. |
-| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupServer** wiring without the CLI binary. |
-| [examples/custom-url-generator.ts](examples/custom-url-generator.ts) | Custom **URL generator** registration for `generate_urls` / row enrichment. |
+| File                                                                     | Description                                                                    |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| [examples/suggest-flow-demo.ts](examples/suggest-flow-demo.ts)           | Manual **suggest_query_params → query** flow with namespace consistency notes. |
+| [examples/guided-query-demo.ts](examples/guided-query-demo.ts)           | **guided_query** orchestration and how to read `decision_trace`.               |
+| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupServer** wiring without the CLI binary.                    |
+| [examples/custom-url-generator.ts](examples/custom-url-generator.ts)     | Custom **URL generator** registration for `generate_urls` / row enrichment.    |
 
 Run with `npx tsx examples/<file>.ts` from a checkout (requires valid Pinecone env for live paths).
 
@@ -335,9 +335,9 @@ Suggests which **fields** to request and which path to use (`count`, or hybrid q
 
 **Parameters:**
 
-| Parameter    | Type   | Required | Description                                                                                     |
-| ------------ | ------ | -------- | ----------------------------------------------------------------------------------------------- |
-| `namespace`  | string | Yes      | Namespace to query (must match a name from `list_namespaces`)                                   |
+| Parameter    | Type   | Required | Description                                                                                        |
+| ------------ | ------ | -------- | -------------------------------------------------------------------------------------------------- |
+| `namespace`  | string | Yes      | Namespace to query (must match a name from `list_namespaces`)                                      |
 | `user_query` | string | Yes      | User’s question or intent (e.g. "list papers by John Doe with titles", "how many papers by Wong?") |
 
 **Returns:** `suggested_fields` (only fields that exist in that namespace), `use_count_tool`, `recommended_tool`, `explanation`, and `namespace_found`.
@@ -375,7 +375,7 @@ It returns both the final result and a `decision_trace` for transparency.
 | `namespace`       | string  | No       | -       | Optional explicit namespace                                                         |
 | `metadata_filter` | object  | No       | -       | Optional metadata filter                                                            |
 | `top_k`           | integer | No       | `10`    | Query result size for query paths (1-100)                                           |
-| `preferred_tool`  | enum    | No       | `auto`  | One of `auto`, `count`, `fast`, `detailed`, `full`                                 |
+| `preferred_tool`  | enum    | No       | `auto`  | One of `auto`, `count`, `fast`, `detailed`, `full`                                  |
 | `enrich_urls`     | boolean | No       | `true`  | Auto-generate URLs for `mailing` and `slack-Cpplang` when `metadata.url` is missing |
 
 **Returns:** JSON containing `decision_trace` and `result`.
@@ -416,7 +416,7 @@ Returns the **unique document count** matching a metadata filter and semantic qu
 | ----------------- | ------ | -------- | -------------------------------------------------------------------------------------------- |
 | `namespace`       | string | Yes      | Namespace to count in (use `list_namespaces` to discover)                                    |
 | `query_text`      | string | Yes      | Search query; use a broad term (e.g. `"paper"`, `"document"`) when counting by metadata only |
-| `metadata_filter` | object | No       | Same operators as `query` (e.g. `{"author": {"$in": ["John Doe"]}}` for wg21-papers)       |
+| `metadata_filter` | object | No       | Same operators as `query` (e.g. `{"author": {"$in": ["John Doe"]}}` for wg21-papers)         |
 
 **Returns:** JSON with `count` (unique documents, up to 10,000), and `truncated: true` if there are at least 10,000 matches.
 
@@ -438,13 +438,13 @@ Performs **keyword (lexical/sparse-only)** search over the dedicated sparse inde
 
 **Parameters:**
 
-| Parameter         | Type     | Required | Default | Description                                                                 |
-| ----------------- | -------- | -------- | ------- | --------------------------------------------------------------------------- |
-| `query_text`      | string   | Yes      | -       | Search query text (keyword/lexical match)                                   |
-| `namespace`       | string   | Yes      | -       | Namespace to search (use `list_namespaces` to discover)                     |
-| `top_k`           | integer  | No       | `10`    | Number of results to return (1-100)                                         |
-| `metadata_filter` | object   | No       | -       | Optional metadata filter (same operators as `query`)                         |
-| `fields`          | string[] | No       | -       | Optional field names to return; omit for all fields                        |
+| Parameter         | Type     | Required | Default | Description                                             |
+| ----------------- | -------- | -------- | ------- | ------------------------------------------------------- |
+| `query_text`      | string   | Yes      | -       | Search query text (keyword/lexical match)               |
+| `namespace`       | string   | Yes      | -       | Namespace to search (use `list_namespaces` to discover) |
+| `top_k`           | integer  | No       | `10`    | Number of results to return (1-100)                     |
+| `metadata_filter` | object   | No       | -       | Optional metadata filter (same operators as `query`)    |
+| `fields`          | string[] | No       | -       | Optional field names to return; omit for all fields     |
 
 **Returns:** JSON with `status`, `query`, `namespace`, `index` (sparse index name), `result_count`, and `results` (ids, metadata, scores). Result rows match the `query` tool shape (e.g. `paper_number`, `title`, `author`, `url`, `content`, `score`, `reranked: false`).
 
@@ -586,7 +586,7 @@ Metadata filters allow you to narrow down search results based on document prope
 ### Setup Development Environment
 
 ```bash
-git clone https://github.com/CppDigest/pinecone-read-only-mcp-typescript.git
+git clone https://github.com/cppalliance/pinecone-read-only-mcp-typescript.git
 cd pinecone-read-only-mcp-typescript
 npm install
 ```
@@ -617,9 +617,11 @@ The script prints a table of p50, p95, and p99 latencies in milliseconds and wri
 
 1. **Connectivity and keyword search (script):**  
    Run the search test script (includes a keyword search step against the sparse index):
+
    ```bash
    PINECONE_API_KEY=your-key npm run test:search
    ```
+
    If the sparse index (`rag-hybrid-sparse` by default) does not exist or has no data, the keyword search step is skipped with a warning.
 
 2. **Via MCP client:**  
@@ -681,7 +683,7 @@ npm run dev -- --api-key YOUR_API_KEY
 
 ## Comparison with Python Version
 
-This TypeScript implementation grew out of the [Python version](https://github.com/CppDigest/pinecone-read-only-mcp) and now exposes a strict superset of its tool surface, including:
+This TypeScript implementation grew out of the [Python version](https://github.com/cppalliance/pinecone-read-only-mcp) and now exposes a strict superset of its tool surface, including:
 
 - `guided_query` (single-call orchestrator with decision trace)
 - `query_documents` (full-document reassembly from chunks)
@@ -739,14 +741,14 @@ This project uses:
 
 ## Related Projects
 
-- [Python version](https://github.com/CppDigest/pinecone-read-only-mcp) - Original Python implementation
+- [Python version](https://github.com/cppalliance/pinecone-read-only-mcp) - Original Python implementation
 - [Pinecone MCP](https://github.com/pinecone-io/pinecone-mcp) - Full-featured Pinecone MCP with write capabilities
 
 ## Support
 
 For issues and questions:
 
-- GitHub Issues: [https://github.com/CppDigest/pinecone-read-only-mcp-typescript/issues](https://github.com/CppDigest/pinecone-read-only-mcp-typescript/issues)
+- GitHub Issues: [https://github.com/cppalliance/pinecone-read-only-mcp-typescript/issues](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/issues)
 - Email: will@cppalliance.org
 
 ## Changelog

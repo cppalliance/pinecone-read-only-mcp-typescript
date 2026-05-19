@@ -90,7 +90,7 @@ details. Newer shipped changes are recorded in this changelog by version.
 - Environment variable support
 - Full documentation and examples
 
-[Unreleased]: https://github.com/CppDigest/pinecone-read-only-mcp-typescript/compare/v0.1.6...HEAD
-[0.1.6]: https://github.com/CppDigest/pinecone-read-only-mcp-typescript/compare/v0.1.1...v0.1.6
-[0.1.1]: https://github.com/CppDigest/pinecone-read-only-mcp-typescript/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/CppDigest/pinecone-read-only-mcp-typescript/releases/tag/v0.1.0
+[Unreleased]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.1...v0.1.6
+[0.1.1]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/releases/tag/v0.1.0
