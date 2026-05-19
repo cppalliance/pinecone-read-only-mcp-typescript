@@ -19,11 +19,14 @@ function getDocumentKey(hit: SearchResult): string {
   const docNumber = m['document_number'];
   const url = m['url'];
   const docId = m['doc_id'];
+  const nonEmpty = (v: unknown): string | undefined =>
+    typeof v === 'string' && v.trim() !== '' ? v : undefined;
+
   return (
-    (typeof docNumber === 'string' ? docNumber : undefined) ??
-    (typeof url === 'string' ? url : undefined) ??
-    (typeof docId === 'string' ? docId : undefined) ??
-    hit.id ??
+    nonEmpty(docNumber) ??
+    nonEmpty(url) ??
+    nonEmpty(docId) ??
+    nonEmpty(hit.id) ??
     ''
   );
 }
