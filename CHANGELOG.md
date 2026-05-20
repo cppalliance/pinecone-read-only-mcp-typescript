@@ -25,6 +25,9 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - Vitest **global** coverage thresholds in `vitest.config.ts` (lines 73%, statements 72%, branches 58%, functions 76% — measured baseline minus slack); `npm run test:coverage` exits non-zero when any bucket regresses.
 - `@vitest/coverage-v8` devDependency for coverage reports (`lcov`, `json-summary`, HTML).
 - `docs/` reference set (TOOLS, CONFIGURATION, SECURITY, CONTRIBUTING, CI_CD, FAQ, MIGRATION, RELEASING) and worked examples `examples/suggest-flow-demo.ts`, `examples/guided-query-demo.ts`, `examples/library-embedding-demo.ts`.
+- `teardownServer()` export to reset process-global MCP state (suggest-flow gate, namespaces cache, URL generator registry, active config, shared `PineconeClient`) so `setupServer()` can run again in the same Node process (tests, re-embedding).
+- Namespace trimming for the suggest-flow gate and gated tools (`normalizeNamespace`); use the same trimmed `namespace` for `suggest_query_params` and downstream `query` / `count` / `query_documents`.
+- Successful `query` / `query_documents` / `guided_query` payloads may include `degraded`, `degradation_reason`, and `hybrid_leg_failed` when rerank or a hybrid leg fails but the tool still returns hits; `guided_query` `decision_trace` adds `rerank_status`.
 
 ### Changed
 
@@ -34,7 +37,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - **Breaking (MCP):** Single hybrid `query` tool with `preset` (`fast` | `detailed` | `full`); removed separate `query_fast` / `query_detailed` tool registrations.
 - `resolveConfig()` throws if the Pinecone API key is missing (after trim); library callers must supply `apiKey` via overrides or set `PINECONE_API_KEY`.
 - `withTimeout` aborts an internal `AbortSignal` on deadline (cooperative cancellation).
-- `PineconeClient`: shared hit-field extraction, safer merge dedup without empty `_id` collisions, metadata sampling skips zero-vector probe when dimension is unknown, `listNamespacesFromKeywordIndex` surfaces errors via `{ ok: false }`.
+- `PineconeClient`: constructor reads index name, rerank model, and default top-k only from `PineconeClientConfig` (not `process.env`); shared hit-field extraction, safer merge dedup without empty `_id` collisions, metadata sampling skips zero-vector probe when dimension is unknown, `listNamespacesFromKeywordIndex` surfaces errors via `{ ok: false }`.
+- `setupServer()` throws if called twice in one process without `teardownServer()` first; README library-embedding section documents the teardown pattern.
 - Metadata filter manual validation accepts primitive arrays for `$in`/`$nin` including numbers (matches Zod).
 - README: deployment model for process-global gate/cache/registry; adjusted feature wording vs pre-1.0 semver.
 - `.npmignore` no longer excludes `dist/` (still shipped via `package.json` `files`).

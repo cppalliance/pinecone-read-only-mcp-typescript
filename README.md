@@ -35,7 +35,7 @@ When a tool fails, the MCP tool result sets **`isError: true`**. The `text` cont
 
 Success payloads are unchanged and do **not** wrap `ToolError`. Clients that still expect `{ "status": "error", "message": "..." }` must migrate to the shape above.
 
-For successful `query` / `guided_query` payloads, **rerank/hybrid fidelity** is described in [docs/TOOLS.md](docs/TOOLS.md) (row-level `reranked`, current lack of a top-level `degraded` envelope).
+For successful `query` / `guided_query` payloads, **rerank/hybrid fidelity** is described in [docs/TOOLS.md](docs/TOOLS.md#rerank-and-hybrid-degradation) (row-level `reranked`, top-level `degraded` / `degradation_reason`, and optional `hybrid_leg_failed`).
 
 ## Features
 
@@ -106,9 +106,11 @@ The server uses **process-global** memory for the suggest-flow gate (`suggest_qu
 
 ### Library embedding (`setupServer`)
 
-Treat **`setupServer()` as one logical server per Node process**: it mutates shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A second `setupServer()` without a coordinated teardown can leave stale or mixed state for in-flight requests — **spawn a separate process** per isolated instance until an explicit lifecycle API is documented in the changelog.
+Treat **`setupServer()` as one logical server per Node process**: it mutates shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A **second** `setupServer()` in the same process **throws** unless you call **`teardownServer()`** first.
 
-Recommended pattern: `resolveConfig` → `setPineconeClient(new PineconeClient(...))` → `await setupServer(config)` → connect one MCP transport. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+Recommended pattern: `resolveConfig` → `setPineconeClient(new PineconeClient(...))` → `await setupServer(config)` → connect one MCP transport. For tests or re-initialization in the same process, call `teardownServer()` then `setupServer(config)` again. For isolated production tenants, prefer **one server per Node process** (or separate OS processes) rather than sharing one embedder across tenants.
+
+Import `setupServer` and `teardownServer` from `@will-cppa/pinecone-read-only-mcp`. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
