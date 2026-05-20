@@ -17,8 +17,8 @@ export function createLinkedTransports(): {
     onerror: undefined,
     async start() {},
     async send(message: JSONRPCMessage) {
-      if (closed) return;
       queueMicrotask(() => {
+        if (closed) return;
         serverTransport.onmessage?.(message);
       });
     },
@@ -36,8 +36,8 @@ export function createLinkedTransports(): {
     onerror: undefined,
     async start() {},
     async send(message: JSONRPCMessage) {
-      if (closed) return;
       queueMicrotask(() => {
+        if (closed) return;
         clientTransport.onmessage?.(message);
       });
     },
