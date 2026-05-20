@@ -35,7 +35,7 @@ When a tool fails, the MCP tool result sets **`isError: true`**. The `text` cont
 
 Success payloads are unchanged and do **not** wrap `ToolError`. Clients that still expect `{ "status": "error", "message": "..." }` must migrate to the shape above.
 
-For successful `query` / `guided_query` payloads, **rerank/hybrid fidelity** is described in [docs/TOOLS.md](docs/TOOLS.md#rerank-and-hybrid-degradation) (row-level `reranked`, top-level `degraded` / `degradation_reason`, and optional `hybrid_leg_failed`).
+For successful `query`, `query_documents`, and `guided_query` payloads, **rerank/hybrid fidelity** is described in [docs/TOOLS.md](docs/TOOLS.md#rerank-and-hybrid-degradation) (row-level `reranked`, top-level `degraded` / `degradation_reason`, and optional `hybrid_leg_failed`; `query_documents` propagates the same fields on its nested query payload when applicable).
 
 ## Features
 
