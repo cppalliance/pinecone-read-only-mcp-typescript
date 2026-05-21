@@ -99,7 +99,7 @@ Tools **`query`**, **`count`**, and **`query_documents`** require a prior succes
 | `metadata_filter` | object | no | Metadata filter |
 | `fields` | string[] | no | Pinecone fields to return |
 
-**Success (`QueryResponse`):** `{ status: 'success', mode?: 'query' \| 'query_fast' \| 'query_detailed', query, namespace, metadata_filter?, result_count, results[], fields? }`.
+**Success (`QueryResponse`):** `{ status: 'success', mode?: 'query' \| 'query_fast' \| 'query_detailed', query, namespace, metadata_filter?, result_count, results[], fields?, degraded?, degradation_reason?, hybrid_leg_failed? }`.
 
 Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `url`, `content`, `score`, `reranked`, optional `metadata`.
 
@@ -114,9 +114,19 @@ Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `
 }
 ```
 
-### Rerank fallback and row-level fidelity
+### Rerank and hybrid degradation
 
-When reranking is requested but the rerank API fails, the server still returns **`status: 'success'`** with rows where `reranked: false`. Treat **`reranked: false`** as lower confidence when reranking was expected (`preset` detailed/full). Structured stderr logs include the failure; there is **no** separate top-level `degraded` flag in the current JSON envelope—client UX should combine `preset`, `use_reranking`, and per-row `reranked` (see project issue backlog for envelope-level degradation).
+When reranking is requested but the rerank API fails, the server still returns **`status: 'success'`** with rows where `reranked: false`, plus envelope fields:
+
+| Field | When set | Meaning |
+| ----- | -------- | ------- |
+| `degraded` | `true` | Rerank was attempted and failed (or another degradation path fired) |
+| `degradation_reason` | string | Human-readable detail for MCP/LLM clients (e.g. `rerank_failed: timeout after 5000ms`) |
+| `hybrid_leg_failed` | `'dense'` \| `'sparse'` \| omitted / `null` | Exactly one hybrid search leg failed while the other returned hits |
+
+Treat **`degraded: true`** as lower confidence even when `status` is `success`. Combine with per-row `reranked`, `preset`, and `use_reranking`. Structured stderr logs may include additional detail.
+
+`query_documents` propagates the same flags on its nested query payload when applicable.
 
 ---
 
@@ -167,7 +177,9 @@ When reranking is requested but the rerank API fails, the server still returns *
 
 **Success:** `{ status: 'success', decision_trace, result }` where `result` is either a count payload or a `QueryResponse`-shaped query payload.
 
-**`decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`.
+**`decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`, `rerank_status` (`success` \| `skipped` \| `failed`).
+
+When the inner query path runs, `result` includes the same `degraded`, `degradation_reason`, and `hybrid_leg_failed` fields as `query` (see [Rerank and hybrid degradation](#rerank-and-hybrid-degradation)).
 
 **Example:**
 

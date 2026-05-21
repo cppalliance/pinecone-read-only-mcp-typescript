@@ -8,10 +8,8 @@
  *
  * **Single process:** `setupServer` registers tools against process-global
  * singletons (suggest-flow state, namespaces cache, URL registry, active config).
- * Do **not** call `setupServer` twice in one process for isolated tenants unless
- * you accept shared state — prefer **one server per Node process** or external
- * process isolation. (A future release may add an explicit teardown API; see
- * CHANGELOG when available.)
+ * A second `setupServer` throws — call `teardownServer()` first to re-initialize
+ * (tests). For isolated tenants in production, prefer one server per Node process.
  */
 
 import {
