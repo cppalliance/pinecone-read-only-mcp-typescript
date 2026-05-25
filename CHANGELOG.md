@@ -8,6 +8,11 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `PINECONE_INDEX_NAME` (or `--index-name`) is required; hardcoded Alliance **index** default removed. Package root export is the generic **core** layer (`setupCoreServer`); full CLI parity uses `@will-cppa/pinecone-read-only-mcp/alliance` (`setupAllianceServer`, built-in URL generators). Core has **no** rerank default; CLI and `resolveAllianceConfig` / `setupAllianceServer` still apply `bge-reranker-v2-m3` when `PINECONE_RERANK_MODEL` is unset so key+index-only MCP configs keep reranking.
+- Hybrid `query` / `guided_query` set `rerank_skipped_reason: no_model` and `decision_trace.rerank_status: skipped_no_model` when reranking was requested but no rerank model is configured (core-only embedders). `setupCoreServer` logs a WARN when rerank is disabled.
+
 ### Added
 
 - `UrlGeneratorFn` type alias (same as `UrlGenerator`) and `RegisterBuiltinUrlGeneratorsOptions` with `reinstallBuiltins` on `registerBuiltinUrlGenerators()` to restore default `mailing` / `slack-Cpplang` generators after overrides; README “Custom URL generators” section and tests for custom registration and built-in override.

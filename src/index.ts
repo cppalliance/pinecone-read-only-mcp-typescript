@@ -3,24 +3,25 @@
 /**
  * Pinecone Read-Only MCP CLI entry point.
  *
- * Thin composition root: parseCli() -> resolveConfig() -> setupServer(config)
- * -> connect to stdio transport. All argv parsing lives in `src/cli.ts`;
- * all configuration/defaults live in `src/config.ts`.
+ * Thin composition root: parseCli() -> resolveAllianceConfig() -> setupAllianceServer(config)
+ * -> connect to stdio transport.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as dotenv from 'dotenv';
 import { parseCli, printHelp, printVersion } from './cli.js';
-import { resolveConfig, type ServerConfig } from './config.js';
-import { PineconeClient } from './pinecone-client.js';
-import { setupServer, setPineconeClient } from './server.js';
+import { resolveAllianceConfig } from './alliance/config.js';
+import type { ServerConfig } from './core/config.js';
+import { PineconeClient } from './core/pinecone-client.js';
+import { setPineconeClient } from './core/server/client-context.js';
+import { setupAllianceServer } from './alliance/setup.js';
 import { setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
 
 dotenv.config();
 
 /**
  * Build a config from CLI argv + environment, exiting fast on
- * --help, --version, or missing API key.
+ * --help, --version, or missing API key / index name.
  */
 function buildConfigOrExit(): ServerConfig {
   const parsed = parseCli();
@@ -34,7 +35,7 @@ function buildConfigOrExit(): ServerConfig {
   }
 
   try {
-    return resolveConfig(parsed.overrides);
+    return resolveAllianceConfig(parsed.overrides);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Error: ${message}\n`);
@@ -82,9 +83,12 @@ async function main(): Promise<void> {
     process.stderr.write(
       `Using Pinecone index: ${config.indexName} (sparse: ${config.sparseIndexName})\n`
     );
+    if (config.rerankModel) {
+      process.stderr.write(`Rerank model: ${config.rerankModel}\n`);
+    }
     process.stderr.write(`Log level: ${config.logLevel} (format: ${config.logFormat})\n`);
 
-    const server = await setupServer(config);
+    const server = await setupAllianceServer(config);
     const transport = new StdioServerTransport();
     await server.connect(transport);
 

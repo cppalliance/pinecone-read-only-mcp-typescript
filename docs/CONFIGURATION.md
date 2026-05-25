@@ -6,7 +6,7 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 
 **CLI / `ConfigOverrides` > environment variables > built-in defaults.**
 
-`resolveConfig` in `src/config.ts` applies this order for each field.
+`resolveConfig` in `src/core/config.ts` applies this order for each field.
 
 ---
 
@@ -15,9 +15,9 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | Field | Source | Default / notes |
 | ----- | ------ | --------------- |
 | `apiKey` | `apiKey` / `PINECONE_API_KEY` | **Required** (non-empty after trim) |
-| `indexName` | `indexName` / `PINECONE_INDEX_NAME` | `rag-hybrid` |
+| `indexName` | `indexName` / `PINECONE_INDEX_NAME` | **Required** (no default) |
 | `sparseIndexName` | `sparseIndexName` / `PINECONE_SPARSE_INDEX_NAME` | `{indexName}-sparse` |
-| `rerankModel` | `rerankModel` / `PINECONE_RERANK_MODEL` | `bge-reranker-v2-m3` |
+| `rerankModel` | `rerankModel` / `PINECONE_RERANK_MODEL` | Core: unset disables reranking. Alliance CLI / `resolveAllianceConfig`: defaults to `bge-reranker-v2-m3` when unset |
 | `defaultTopK` | `defaultTopK` / `PINECONE_TOP_K` | `10` (positive int) |
 | `logLevel` | `logLevel` / `PINECONE_READ_ONLY_MCP_LOG_LEVEL` | `INFO` (`DEBUG`–`ERROR`) |
 | `logFormat` | `logFormat` / `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | `text` or `json` |
@@ -26,7 +26,15 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | `disableSuggestFlow` | `disableSuggestFlow` / `PINECONE_DISABLE_SUGGEST_FLOW` | `false` (bool parsing: true/1/yes/on) |
 | `checkIndexes` | `checkIndexes` / `PINECONE_CHECK_INDEXES` | `false` |
 
-**Throws** if `apiKey` is missing after trim.
+**Throws** if `apiKey` or `indexName` is missing after trim.
+
+For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and call `setupAllianceServer(config)`.
+
+### Alliance rerank default
+
+`resolveConfig` (core) never invents a rerank model. **`resolveAllianceConfig`** and **`setupAllianceServer`** call `applyAllianceRerankDefault()` so deployments that only set `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` (typical MCP configs) still use `bge-reranker-v2-m3`. Override with `PINECONE_RERANK_MODEL` or `--rerank-model` anytime.
+
+Generic embedders using only `setupCoreServer` should set `PINECONE_RERANK_MODEL` explicitly or accept disabled reranking (startup WARN).
 
 ---
 
@@ -52,9 +60,9 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 
 ## Library embedding
 
-1. Build `ServerConfig` with `resolveConfig({ apiKey: '...', ... })` or pass explicit overrides.
-2. Construct `PineconeClient` and `setPineconeClient(client)` before `setupServer(config)` (mirrors `src/index.ts`).
-3. `await setupServer(config)` then connect an MCP transport.
+1. Build `ServerConfig` with `resolveAllianceConfig({ apiKey: '...', indexName: '...', ... })` for the full surface, or `resolveConfig` for core-only (no rerank default).
+2. Construct `PineconeClient` and `setPineconeClient(client)` before `setupAllianceServer(config)` (mirrors `src/index.ts`).
+3. `await setupAllianceServer(config)` (or `setupCoreServer` for generic tools only) then connect an MCP transport.
 
 See [README deployment model](../README.md#deployment-model) and [examples/library-embedding-demo.ts](../examples/library-embedding-demo.ts).
 

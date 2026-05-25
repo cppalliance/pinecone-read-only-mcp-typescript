@@ -167,7 +167,7 @@ async function test() {
         `⚠️  Keyword search skipped: sparse index has no namespaces (or index unavailable).`
       );
       console.log(
-        `   Ensure the sparse index (e.g. rag-hybrid-sparse) exists and has data.`
+        `   Ensure the sparse index (PINECONE_INDEX_NAME-sparse) exists and has data.`
       );
     } else {
       const sparseTestNamespace = sparseNamespaces[0].namespace;

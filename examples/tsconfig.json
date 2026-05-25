@@ -4,11 +4,13 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "strict": true,
+    "ignoreDeprecations": "6.0",
     "noEmit": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
+    "types": ["node"],
     "paths": {
-      "@will-cppa/pinecone-read-only-mcp": ["../dist/server.js"]
+      "@will-cppa/pinecone-read-only-mcp": ["../src/core/index.ts"],
+      "@will-cppa/pinecone-read-only-mcp/alliance": ["../src/alliance/index.ts"]
     }
   },
   "include": ["./**/*.ts"]

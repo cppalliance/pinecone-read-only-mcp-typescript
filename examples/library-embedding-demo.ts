@@ -2,22 +2,21 @@
  * Library embedding: build the MCP server from a Node script (not the CLI).
  *
  * Pattern (mirrors `src/index.ts`):
- *   1. `resolveConfig({ apiKey, ... })` — never rely on ambient env alone in libraries.
+ *   1. `resolveAllianceConfig({ apiKey, indexName, ... })` for full surface (includes rerank default).
  *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)`.
- *   3. `await setupServer(config)` then `server.connect(transport)`.
+ *   3. `await setupAllianceServer(config)` then `server.connect(transport)`.
  *
- * **Single process:** `setupServer` registers tools against process-global
+ * **Single process:** `setupAllianceServer` registers tools against process-global
  * singletons (suggest-flow state, namespaces cache, URL registry, active config).
- * A second `setupServer` throws — call `teardownServer()` first to re-initialize
+ * A second setup call throws — call `teardownServer()` first to re-initialize
  * (tests). For isolated tenants in production, prefer one server per Node process.
  */
 
+import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
 import {
-  PineconeClient,
-  resolveConfig,
-  setPineconeClient,
-  setupServer,
-} from '@will-cppa/pinecone-read-only-mcp';
+  resolveAllianceConfig,
+  setupAllianceServer,
+} from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -27,7 +26,12 @@ async function main(): Promise<void> {
     );
     return;
   }
-  const config = resolveConfig({ apiKey });
+  const indexName = process.env['PINECONE_INDEX_NAME']?.trim();
+  if (!indexName) {
+    console.log('Set PINECONE_INDEX_NAME to run this example. Skipping live setup in doc-only mode.');
+    return;
+  }
+  const config = resolveAllianceConfig({ apiKey, indexName });
 
   setPineconeClient(
     new PineconeClient({
@@ -40,7 +44,7 @@ async function main(): Promise<void> {
     })
   );
 
-  const server = await setupServer(config);
+  const server = await setupAllianceServer(config);
   // const transport = new StdioServerTransport();
   // await server.connect(transport);
   void server;
