@@ -3,11 +3,7 @@
  * that must not live in the generic core package.
  */
 
-import {
-  resolveConfig,
-  type ConfigOverrides,
-  type ServerConfig,
-} from '../core/config.js';
+import { resolveConfig, type ConfigOverrides, type ServerConfig } from '../core/config.js';
 
 /** Default Pinecone inference rerank model for C++ Alliance deployments (CLI / alliance entry). */
 export const DEFAULT_ALLIANCE_RERANK_MODEL = 'bge-reranker-v2-m3';

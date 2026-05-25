@@ -9,10 +9,7 @@ describe('guidedRerankStatus', () => {
 
   it('returns skipped_no_model when outcome reports no rerank model', () => {
     expect(
-      guidedRerankStatus(
-        true,
-        makeHybridQueryResult({ rerank_skipped_reason: 'no_model' })
-      )
+      guidedRerankStatus(true, makeHybridQueryResult({ rerank_skipped_reason: 'no_model' }))
     ).toBe('skipped_no_model');
   });
 
