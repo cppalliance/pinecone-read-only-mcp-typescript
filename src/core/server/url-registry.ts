@@ -68,12 +68,12 @@ export function registerUrlGenerator(namespace: string, generator: UrlGeneratorF
 
 /** Remove a namespace's URL generator. Returns true if a generator was removed. */
 export function unregisterUrlGenerator(namespace: string): boolean {
-  return urlGenerators.delete(namespace);
+  return urlGenerators.delete(namespace.trim());
 }
 
 /** True when the namespace has a registered URL generator (does not consider `metadata.url`). */
 export function hasUrlGenerator(namespace: string): boolean {
-  return urlGenerators.has(namespace);
+  return urlGenerators.has(namespace.trim());
 }
 
 /**
@@ -89,7 +89,7 @@ export function generateUrlForNamespace(
     return { url: existingUrl, method: 'metadata.url' };
   }
 
-  const generator = urlGenerators.get(namespace);
+  const generator = urlGenerators.get(namespace.trim());
   if (generator) {
     return generator(metadata);
   }

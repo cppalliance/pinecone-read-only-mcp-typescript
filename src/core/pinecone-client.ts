@@ -37,7 +37,8 @@ export class PineconeClient {
    */
   constructor(config: PineconeClientConfig) {
     this.indexSession = new PineconeIndexSession(config.apiKey, config.indexName);
-    this.rerankModel = config.rerankModel;
+    const normalizedRerankModel = config.rerankModel?.trim();
+    this.rerankModel = normalizedRerankModel ? normalizedRerankModel : undefined;
     this.defaultTopK = config.defaultTopK ?? DEFAULT_TOP_K;
   }
 

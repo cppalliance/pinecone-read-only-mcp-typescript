@@ -16,11 +16,12 @@
  * `PINECONE_API_KEY` and `PINECONE_INDEX_NAME`, then wire an MCP transport.
  */
 
-import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
 import {
-  resolveAllianceConfig,
-  setupAllianceServer,
-} from '@will-cppa/pinecone-read-only-mcp/alliance';
+  PineconeClient,
+  resolveConfig,
+  setPineconeClient,
+} from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -33,7 +34,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const config = resolveAllianceConfig({ apiKey, indexName });
+  const config = resolveConfig({ apiKey, indexName });
   setPineconeClient(
     new PineconeClient({
       apiKey: config.apiKey,

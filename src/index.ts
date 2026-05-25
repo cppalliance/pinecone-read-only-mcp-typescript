@@ -3,15 +3,14 @@
 /**
  * Pinecone Read-Only MCP CLI entry point.
  *
- * Thin composition root: parseCli() -> resolveAllianceConfig() -> setupAllianceServer(config)
+ * Thin composition root: parseCli() -> resolveConfig() -> setupAllianceServer(config)
  * -> connect to stdio transport.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as dotenv from 'dotenv';
 import { parseCli, printHelp, printVersion } from './cli.js';
-import { resolveAllianceConfig } from './alliance/config.js';
-import type { ServerConfig } from './core/config.js';
+import { resolveConfig, type ServerConfig } from './core/config.js';
 import { PineconeClient } from './core/pinecone-client.js';
 import { setPineconeClient } from './core/server/client-context.js';
 import { setupAllianceServer } from './alliance/setup.js';
@@ -35,7 +34,7 @@ function buildConfigOrExit(): ServerConfig {
   }
 
   try {
-    return resolveAllianceConfig(parsed.overrides);
+    return resolveConfig(parsed.overrides);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Error: ${message}\n`);

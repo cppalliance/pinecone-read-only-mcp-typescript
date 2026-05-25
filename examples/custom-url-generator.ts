@@ -18,13 +18,11 @@
 import {
   PineconeClient,
   registerUrlGenerator,
+  resolveConfig,
   setPineconeClient,
   type UrlGenerationResult,
 } from '@will-cppa/pinecone-read-only-mcp';
-import {
-  resolveAllianceConfig,
-  setupAllianceServer,
-} from '@will-cppa/pinecone-read-only-mcp/alliance';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 registerUrlGenerator('product-docs', (metadata): UrlGenerationResult => {
   const product = typeof metadata['product'] === 'string' ? metadata['product'] : null;
@@ -44,8 +42,14 @@ registerUrlGenerator('product-docs', (metadata): UrlGenerationResult => {
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
-  const indexName = process.env['PINECONE_INDEX_NAME']?.trim() ?? 'demo-index';
-  const config = resolveAllianceConfig({ apiKey: apiKey ?? 'demo-key', indexName });
+  const indexName = process.env['PINECONE_INDEX_NAME']?.trim();
+  if (!apiKey || !indexName) {
+    console.log(
+      '[custom-url-generator] Set PINECONE_API_KEY and PINECONE_INDEX_NAME to run live.'
+    );
+    return;
+  }
+  const config = resolveConfig({ apiKey, indexName });
 
   setPineconeClient(
     new PineconeClient({

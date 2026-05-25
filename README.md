@@ -93,18 +93,18 @@ The codebase is split into two layers:
 
 ## Configuration
 
-You need a **Pinecone API key** and a **dense index name** (`PINECONE_INDEX_NAME`); sparse index defaults to `{index}-sparse`. **CLI and `setupAllianceServer`** apply the Alliance rerank default (`bge-reranker-v2-m3`) when `PINECONE_RERANK_MODEL` is unset so existing key+index-only MCP configs keep reranking. **Generic core** (`setupCoreServer` / package root) has no rerank default — set `PINECONE_RERANK_MODEL` or pass `rerankModel` explicitly. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
+You need a **Pinecone API key** and a **dense index name** (`PINECONE_INDEX_NAME`); sparse index defaults to `{index}-sparse`. **Reranking** uses `PINECONE_RERANK_MODEL` when set; otherwise defaults to `bge-reranker-v2-m3` (same as typical MCP configs with only key + index). See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
 
 Quick reference:
 
-| Variable                            | Required                | Default                           |
-| ----------------------------------- | ----------------------- | --------------------------------- |
-| `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
-| `PINECONE_INDEX_NAME`               | Yes                     | — (no default)                    |
-| `PINECONE_RERANK_MODEL`             | No (Alliance CLI default if unset) | Alliance: `bge-reranker-v2-m3`; core-only: disabled |
-| `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
-| `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |
-| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                      | `text` (`json` for log pipelines) |
+| Variable                            | Required                           | Default                                             |
+| ----------------------------------- | ---------------------------------- | --------------------------------------------------- |
+| `PINECONE_API_KEY`                  | Yes (for live Pinecone)            | —                                                   |
+| `PINECONE_INDEX_NAME`               | Yes                                | — (no default)                                      |
+| `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` when unset   |
+| `PINECONE_SPARSE_INDEX_NAME`        | No                                 | `{index}-sparse`                                    |
+| `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                                 | `INFO` (`DEBUG`–`ERROR`)                            |
+| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                                 | `text` (`json` for log pipelines)                   |
 
 Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, `--request-timeout-ms`, `--disable-suggest-flow`, etc.).
 
@@ -119,7 +119,7 @@ Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per 
 - **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
 - **Full Alliance surface (CLI parity):** `import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-Recommended pattern for the full tool surface: `resolveAllianceConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. Use `resolveConfig` only for **core-only** embedding (no implicit rerank default). See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+Recommended pattern: `resolveConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
@@ -130,15 +130,17 @@ Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult`
 ```ts
 import {
   registerUrlGenerator,
-  resolveConfig,
   setPineconeClient,
   PineconeClient,
   type UrlGenerationResult,
   type UrlGeneratorFn,
-} from '@will-cppa/pinecone-read-only-mcp';
-import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+} from '`@will-cppa/pinecone-read-only-mcp`';
+import {
+  setupAllianceServer,
+  resolveAllianceConfig,
+} from '`@will-cppa/pinecone-read-only-mcp/alliance`';
 
-const config = resolveConfig({ apiKey: '...', indexName: 'your-index' });
+const config = resolveAllianceConfig({ apiKey: '...', indexName: 'your-index' });
 setPineconeClient(new PineconeClient({ apiKey: config.apiKey, indexName: config.indexName }));
 const server = await setupAllianceServer(config);
 

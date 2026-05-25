@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  applyAllianceRerankDefault,
-  DEFAULT_ALLIANCE_RERANK_MODEL,
-  resolveAllianceConfig,
-} from './config.js';
+import { DEFAULT_RERANK_MODEL } from '../core/config.js';
+import { resolveAllianceConfig } from './config.js';
 
 describe('resolveAllianceConfig', () => {
   it('applies Alliance rerank default when env and overrides omit rerankModel', () => {
@@ -11,7 +8,7 @@ describe('resolveAllianceConfig', () => {
       { apiKey: 'sk-test', indexName: 'my-index' },
       { PINECONE_API_KEY: 'sk-test', PINECONE_INDEX_NAME: 'my-index' }
     );
-    expect(cfg.rerankModel).toBe(DEFAULT_ALLIANCE_RERANK_MODEL);
+    expect(cfg.rerankModel).toBe(DEFAULT_RERANK_MODEL);
   });
 
   it('preserves explicit rerankModel from overrides', () => {
@@ -33,24 +30,5 @@ describe('resolveAllianceConfig', () => {
       }
     );
     expect(cfg.rerankModel).toBe('env-reranker');
-  });
-});
-
-describe('applyAllianceRerankDefault', () => {
-  it('does not replace an existing rerankModel', () => {
-    const cfg = applyAllianceRerankDefault({
-      apiKey: 'k',
-      indexName: 'i',
-      sparseIndexName: 'i-sparse',
-      rerankModel: 'already-set',
-      defaultTopK: 10,
-      logLevel: 'INFO',
-      logFormat: 'text',
-      cacheTtlMs: 1800_000,
-      requestTimeoutMs: 15_000,
-      disableSuggestFlow: false,
-      checkIndexes: false,
-    });
-    expect(cfg.rerankModel).toBe('already-set');
   });
 });

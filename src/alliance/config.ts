@@ -1,33 +1,27 @@
 /**
- * Alliance-layer configuration: wraps {@link resolveConfig} with deployment defaults
- * that must not live in the generic core package.
+ * Alliance entry re-exports core config. Rerank default lives in {@link resolveConfig}
+ * (`PINECONE_RERANK_MODEL` when set, else `bge-reranker-v2-m3`).
  */
 
-import { resolveConfig, type ConfigOverrides, type ServerConfig } from '../core/config.js';
+import {
+  DEFAULT_RERANK_MODEL,
+  resolveConfig,
+  type ConfigOverrides,
+  type ServerConfig,
+} from '../core/config.js';
 
-/** Default Pinecone inference rerank model for C++ Alliance deployments (CLI / alliance entry). */
-export const DEFAULT_ALLIANCE_RERANK_MODEL = 'bge-reranker-v2-m3';
+/** @deprecated Use {@link DEFAULT_RERANK_MODEL} from core config. */
+export const DEFAULT_ALLIANCE_RERANK_MODEL = DEFAULT_RERANK_MODEL;
 
-/**
- * Apply the Alliance rerank default when no model was provided via env or overrides.
- * Core {@link resolveConfig} intentionally leaves `rerankModel` unset so generic adopters
- * do not silently use an Alliance-specific model name.
- */
+/** @deprecated No-op; {@link resolveConfig} already applies the rerank default. */
 export function applyAllianceRerankDefault(config: ServerConfig): ServerConfig {
-  if (config.rerankModel !== undefined) {
-    return config;
-  }
-  return { ...config, rerankModel: DEFAULT_ALLIANCE_RERANK_MODEL };
+  return config;
 }
 
-/**
- * Build {@link ServerConfig} for the full Alliance MCP surface (CLI and `setupAllianceServer`).
- * Same requirements as core (`apiKey`, `indexName`); supplies {@link DEFAULT_ALLIANCE_RERANK_MODEL}
- * when `PINECONE_RERANK_MODEL` and `rerankModel` overrides are absent.
- */
+/** Alias for {@link resolveConfig} (Alliance CLI and `setupAllianceServer`). */
 export function resolveAllianceConfig(
   overrides: ConfigOverrides = {},
   env: NodeJS.ProcessEnv = process.env
 ): ServerConfig {
-  return applyAllianceRerankDefault(resolveConfig(overrides, env));
+  return resolveConfig(overrides, env);
 }

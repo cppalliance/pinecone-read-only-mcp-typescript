@@ -1,6 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
-import { warn as logWarn } from '../logger.js';
 import type { ServerConfig } from './config.js';
 import { clearPineconeClient } from './server/client-context.js';
 import { setServerConfig, resetServerConfig } from './server/config-context.js';
@@ -46,12 +45,6 @@ export async function setupCoreServer(config?: ServerConfig): Promise<McpServer>
 
   if (config) {
     setServerConfig(config);
-    if (!config.rerankModel) {
-      logWarn(
-        'Reranking disabled: set PINECONE_RERANK_MODEL or pass rerankModel. ' +
-          'Alliance deployments: use resolveAllianceConfig / setupAllianceServer for the default rerank model.'
-      );
-    }
   }
 
   const server = new McpServer(

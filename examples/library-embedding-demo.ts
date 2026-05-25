@@ -2,7 +2,7 @@
  * Library embedding: build the MCP server from a Node script (not the CLI).
  *
  * Pattern (mirrors `src/index.ts`):
- *   1. `resolveAllianceConfig({ apiKey, indexName, ... })` for full surface (includes rerank default).
+ *   1. `resolveConfig({ apiKey, indexName, ... })` — env rerank model or default bge-reranker-v2-m3.
  *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)`.
  *   3. `await setupAllianceServer(config)` then `server.connect(transport)`.
  *
@@ -12,11 +12,12 @@
  * (tests). For isolated tenants in production, prefer one server per Node process.
  */
 
-import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
 import {
-  resolveAllianceConfig,
-  setupAllianceServer,
-} from '@will-cppa/pinecone-read-only-mcp/alliance';
+  PineconeClient,
+  resolveConfig,
+  setPineconeClient,
+} from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
     console.log('Set PINECONE_INDEX_NAME to run this example. Skipping live setup in doc-only mode.');
     return;
   }
-  const config = resolveAllianceConfig({ apiKey, indexName });
+  const config = resolveConfig({ apiKey, indexName });
 
   setPineconeClient(
     new PineconeClient({

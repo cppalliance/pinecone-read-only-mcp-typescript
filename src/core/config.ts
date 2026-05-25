@@ -27,8 +27,8 @@ export interface ServerConfig {
   indexName: string;
   /** Sparse index name. Defaults to `${indexName}-sparse`. */
   sparseIndexName: string;
-  /** Reranker model identifier. When unset, reranking is disabled. */
-  rerankModel?: string;
+  /** Reranker model identifier (`PINECONE_RERANK_MODEL` or {@link DEFAULT_RERANK_MODEL}). */
+  rerankModel: string;
   /** Default top-k when callers omit it on `query`. */
   defaultTopK: number;
   /** Minimum log level emitted to stderr. */
@@ -47,6 +47,9 @@ export interface ServerConfig {
 
 /** Default per-call timeout for Pinecone requests, in milliseconds. */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+/** Default Pinecone inference rerank model when `PINECONE_RERANK_MODEL` is unset. */
+export const DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
 
 function asLogLevel(value: string | undefined, fallback: LogLevel): LogLevel {
   const allowed: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -118,7 +121,8 @@ export function resolveConfig(
     trimOptional(overrides.sparseIndexName ?? env['PINECONE_SPARSE_INDEX_NAME']) ??
     `${indexName}-sparse`;
 
-  const rerankModel = trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']);
+  const rerankModel =
+    trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']) ?? DEFAULT_RERANK_MODEL;
 
   const defaultTopK = overrides.defaultTopK ?? asPositiveInt(env['PINECONE_TOP_K'], DEFAULT_TOP_K);
   const logLevel = asLogLevel(
@@ -143,7 +147,7 @@ export function resolveConfig(
     apiKey,
     indexName,
     sparseIndexName,
-    ...(rerankModel !== undefined ? { rerankModel } : {}),
+    rerankModel,
     defaultTopK,
     logLevel,
     logFormat,

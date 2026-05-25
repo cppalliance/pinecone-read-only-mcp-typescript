@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveConfig } from './config.js';
+import { DEFAULT_RERANK_MODEL, resolveConfig } from './config.js';
 
 describe('resolveConfig', () => {
   it('throws when API key is missing', () => {
@@ -16,14 +16,26 @@ describe('resolveConfig', () => {
     expect(() => resolveConfig({ apiKey: 'sk-test' }, {})).toThrow(/Missing Pinecone index name/);
   });
 
-  it('leaves rerankModel undefined when env and overrides omit it', () => {
+  it('uses DEFAULT_RERANK_MODEL when env and overrides omit rerankModel', () => {
     const cfg = resolveConfig(
       { apiKey: 'sk-test', indexName: 'my-index' },
       { PINECONE_API_KEY: 'sk-test', PINECONE_INDEX_NAME: 'my-index' }
     );
     expect(cfg.indexName).toBe('my-index');
     expect(cfg.sparseIndexName).toBe('my-index-sparse');
-    expect(cfg.rerankModel).toBeUndefined();
+    expect(cfg.rerankModel).toBe(DEFAULT_RERANK_MODEL);
+  });
+
+  it('uses PINECONE_RERANK_MODEL from env when set', () => {
+    const cfg = resolveConfig(
+      { apiKey: 'sk-test', indexName: 'my-index' },
+      {
+        PINECONE_API_KEY: 'sk-test',
+        PINECONE_INDEX_NAME: 'my-index',
+        PINECONE_RERANK_MODEL: 'env-reranker',
+      }
+    );
+    expect(cfg.rerankModel).toBe('env-reranker');
   });
 
   it('sets rerankModel when provided', () => {

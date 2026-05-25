@@ -138,7 +138,7 @@ Options:
   --api-key TEXT              Pinecone API key (or PINECONE_API_KEY)
   --index-name TEXT           Dense index (required, or PINECONE_INDEX_NAME)
   --sparse-index-name TEXT    Sparse index [default: {index-name}-sparse]
-  --rerank-model TEXT         Reranker model (optional; omit to disable reranking)
+  --rerank-model TEXT         Reranker model (default: bge-reranker-v2-m3, or PINECONE_RERANK_MODEL)
   --top-k N                   Default top-k for queries [env: PINECONE_TOP_K]
   --log-level LEVEL           DEBUG | INFO | WARN | ERROR [default: INFO]
   --log-format FORMAT         text | json [default: text]
