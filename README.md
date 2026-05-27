@@ -129,18 +129,16 @@ Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult`
 
 ```ts
 import {
-  registerUrlGenerator,
-  setPineconeClient,
   PineconeClient,
+  registerUrlGenerator,
+  resolveConfig,
+  setPineconeClient,
   type UrlGenerationResult,
   type UrlGeneratorFn,
-} from '`@will-cppa/pinecone-read-only-mcp`';
-import {
-  setupAllianceServer,
-  resolveAllianceConfig,
-} from '`@will-cppa/pinecone-read-only-mcp/alliance`';
+} from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
-const config = resolveAllianceConfig({ apiKey: '...', indexName: 'your-index' });
+const config = resolveConfig({ apiKey: '...', indexName: 'your-index' });
 setPineconeClient(new PineconeClient({ apiKey: config.apiKey, indexName: config.indexName }));
 const server = await setupAllianceServer(config);
 

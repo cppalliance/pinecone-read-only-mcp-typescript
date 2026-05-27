@@ -136,6 +136,9 @@ export function registerQueryDocumentsTool(server: McpServer): void {
             ? { degradation_reason: queryOutcome.degradation_reason }
             : {}),
           hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
+          ...(queryOutcome.rerank_skipped_reason !== undefined
+            ? { rerank_skipped_reason: queryOutcome.rerank_skipped_reason }
+            : {}),
           documents: topDocuments.map((doc) => ({
             document_id: doc.document_id,
             merged_content: doc.merged_content,

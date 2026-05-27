@@ -181,7 +181,7 @@ export class PineconeClient {
       if (useReranking && this.rerankModel === undefined) {
         rerank_skipped_reason = 'no_model';
         degradation_reason =
-          'rerank_skipped_no_model: set PINECONE_RERANK_MODEL, pass rerankModel in config, or use resolveAllianceConfig / setupAllianceServer for the Alliance default rerank model.';
+          'rerank_skipped_no_model: set PINECONE_RERANK_MODEL, pass rerankModel in config, or construct PineconeClient from resolveConfig().';
       }
     }
 

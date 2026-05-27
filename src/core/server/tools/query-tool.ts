@@ -84,6 +84,9 @@ async function executeQuery(params: QueryExecParams) {
         ? { degradation_reason: queryOutcome.degradation_reason }
         : {}),
       hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
+      ...(queryOutcome.rerank_skipped_reason !== undefined
+        ? { rerank_skipped_reason: queryOutcome.rerank_skipped_reason }
+        : {}),
     };
     return jsonResponse(response);
   } catch (error) {

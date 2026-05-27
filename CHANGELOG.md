@@ -11,7 +11,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 ### Changed
 
 - **Breaking:** `PINECONE_INDEX_NAME` (or `--index-name`) is required; hardcoded Alliance **index** default removed. Package root export is the generic **core** layer (`setupCoreServer`); full CLI parity uses `@will-cppa/pinecone-read-only-mcp/alliance` (`setupAllianceServer`, built-in URL generators). `resolveConfig` uses `PINECONE_RERANK_MODEL` when set, else defaults to `bge-reranker-v2-m3`.
-- Hybrid `query` / `guided_query` set `rerank_skipped_reason: no_model` and `decision_trace.rerank_status: skipped_no_model` when reranking was requested but `PineconeClient` was constructed without a rerank model (manual library use).
+- When reranking was requested but `PineconeClient` has no rerank model (manual library use): `query` / `query_documents` include `rerank_skipped_reason: no_model`; `guided_query` sets `decision_trace.rerank_status: skipped_no_model`.
 
 ### Added
 

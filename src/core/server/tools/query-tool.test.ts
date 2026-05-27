@@ -217,6 +217,34 @@ describe('query tool handler (preset-driven)', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it('query: forwards rerank_skipped_reason when rerank was skipped (no model)', async () => {
+    mockedGetClient.mockReturnValue({
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          rerank_skipped_reason: 'no_model',
+          degradation_reason: 'rerank_skipped_no_model: set PINECONE_RERANK_MODEL',
+        })
+      ),
+      count: vi.fn(),
+    } as never);
+
+    const server = createMockServer();
+    registerQueryTool(server as never);
+
+    const body = parseToolJson(
+      await server.getHandler('query')!({
+        query_text: 'hello',
+        namespace: 'wg21',
+        top_k: 3,
+        preset: 'detailed',
+      })
+    );
+
+    expect(body.status).toBe('success');
+    expect(body.rerank_skipped_reason).toBe('no_model');
+    expect(body.degradation_reason).toMatch(/rerank_skipped_no_model/);
+  });
+
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
     mockedGetClient.mockReturnValue({
       query: vi.fn().mockResolvedValue(

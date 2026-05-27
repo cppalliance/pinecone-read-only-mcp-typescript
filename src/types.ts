@@ -53,7 +53,7 @@ export interface HybridQueryResult {
   hybrid_leg_failed: HybridLegFailed;
   /**
    * Set when `useReranking` was true but no rerank model is configured on the client
-   * (generic core embedders). Alliance CLI uses {@link resolveAllianceConfig} to avoid this.
+   * (manual `PineconeClient` without `rerankModel`). Normal MCP/CLI use sets a model via {@link resolveConfig}.
    */
   rerank_skipped_reason?: RerankSkippedReason;
 }
@@ -162,6 +162,8 @@ export interface QueryResponse {
   degradation_reason?: string;
   /** Partial hybrid failure: one leg failed while the other returned hits. */
   hybrid_leg_failed?: HybridLegFailed;
+  /** Present when reranking was requested but no rerank model is on the client. */
+  rerank_skipped_reason?: RerankSkippedReason;
 }
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */
