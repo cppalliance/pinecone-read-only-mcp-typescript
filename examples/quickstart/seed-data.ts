@@ -132,6 +132,7 @@ async function upsertToIndex(
     return;
   }
 
+  // Pinecone TS SDK v7: index({ name }) and upsertRecords({ records }) per UpsertRecordsOptions.
   const index = pc.index({ name: indexName }).namespace(namespace);
   await index.upsertRecords({ records });
   console.log(`Upserted ${records.length} records → index "${indexName}", namespace "${namespace}"`);
@@ -147,7 +148,6 @@ async function main(): Promise<void> {
       '[seed-data] Set PINECONE_API_KEY and PINECONE_INDEX_NAME in examples/quickstart/.env (see .env.example).'
     );
     process.exit(dryRun ? 0 : 1);
-    return;
   }
 
   const sparseIndexName =
