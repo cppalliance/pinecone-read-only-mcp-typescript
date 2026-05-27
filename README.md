@@ -93,14 +93,14 @@ The codebase is split into two layers:
 
 ## Configuration
 
-You need a **Pinecone API key** and a **dense index name** (`PINECONE_INDEX_NAME`); sparse index defaults to `{index}-sparse`. **Reranking** uses `PINECONE_RERANK_MODEL` when set; otherwise defaults to `bge-reranker-v2-m3` (same as typical MCP configs with only key + index). See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
+You need a **Pinecone API key**. **Index** uses `PINECONE_INDEX_NAME` when set, else defaults to `rag-hybrid`; sparse index defaults to `{index}-sparse`. **Reranking** uses `PINECONE_RERANK_MODEL` when set, else `bge-reranker-v2-m3`. MCP configs with only `PINECONE_API_KEY` keep prior Alliance defaults. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
 
 Quick reference:
 
 | Variable                            | Required                | Default                           |
 | ----------------------------------- | ----------------------- | --------------------------------- |
 | `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
-| `PINECONE_INDEX_NAME`               | Yes                     | — (no default)                    |
+| `PINECONE_INDEX_NAME`               | No                      | `rag-hybrid` when unset           |
 | `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` when unset   |
 | `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
 | `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |

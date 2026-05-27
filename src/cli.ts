@@ -136,7 +136,7 @@ Usage: pinecone-read-only-mcp [options]
 
 Options:
   --api-key TEXT              Pinecone API key (or PINECONE_API_KEY)
-  --index-name TEXT           Dense index (required, or PINECONE_INDEX_NAME)
+  --index-name TEXT           Dense index (default: rag-hybrid, or PINECONE_INDEX_NAME)
   --sparse-index-name TEXT    Sparse index [default: {index-name}-sparse]
   --rerank-model TEXT         Reranker model (default: bge-reranker-v2-m3, or PINECONE_RERANK_MODEL)
   --top-k N                   Default top-k for queries [env: PINECONE_TOP_K]

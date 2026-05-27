@@ -18,12 +18,12 @@ export type LogFormat = 'text' | 'json';
  * Unified runtime configuration for the MCP server.
  *
  * Built once by `parseCli()` (or constructed directly by library consumers)
- * and threaded through setup. `apiKey` and `indexName` are required.
+ * and threaded through setup. `apiKey` is required; `indexName` defaults via {@link DEFAULT_INDEX_NAME}.
  */
 export interface ServerConfig {
   /** Pinecone API key. Required. */
   apiKey: string;
-  /** Dense (hybrid) index name. Required. */
+  /** Dense (hybrid) index name (`PINECONE_INDEX_NAME` or {@link DEFAULT_INDEX_NAME}). */
   indexName: string;
   /** Sparse index name. Defaults to `${indexName}-sparse`. */
   sparseIndexName: string;
@@ -50,6 +50,9 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 /** Default Pinecone inference rerank model when `PINECONE_RERANK_MODEL` is unset. */
 export const DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
+
+/** Default dense index name when `PINECONE_INDEX_NAME` is unset. */
+export const DEFAULT_INDEX_NAME = 'rag-hybrid';
 
 function asLogLevel(value: string | undefined, fallback: LogLevel): LogLevel {
   const allowed: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -99,7 +102,7 @@ export interface ConfigOverrides {
  * Build a `ServerConfig` from CLI overrides, environment variables, and defaults.
  * CLI > env > default precedence is preserved.
  *
- * @throws Error when no API key or index name is provided.
+ * @throws Error when no API key is provided.
  */
 export function resolveConfig(
   overrides: ConfigOverrides,
@@ -112,10 +115,8 @@ export function resolveConfig(
     );
   }
 
-  const indexName = trimOptional(overrides.indexName ?? env['PINECONE_INDEX_NAME']);
-  if (!indexName) {
-    throw new Error('Missing Pinecone index name: set PINECONE_INDEX_NAME or pass --index-name.');
-  }
+  const indexName =
+    trimOptional(overrides.indexName ?? env['PINECONE_INDEX_NAME']) ?? DEFAULT_INDEX_NAME;
 
   const sparseIndexName =
     trimOptional(overrides.sparseIndexName ?? env['PINECONE_SPARSE_INDEX_NAME']) ??

@@ -15,7 +15,7 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | Field | Source | Default / notes |
 | ----- | ------ | --------------- |
 | `apiKey` | `apiKey` / `PINECONE_API_KEY` | **Required** (non-empty after trim) |
-| `indexName` | `indexName` / `PINECONE_INDEX_NAME` | **Required** (no default) |
+| `indexName` | `indexName` / `PINECONE_INDEX_NAME` | `rag-hybrid` when env and overrides omit it |
 | `sparseIndexName` | `sparseIndexName` / `PINECONE_SPARSE_INDEX_NAME` | `{indexName}-sparse` |
 | `rerankModel` | `rerankModel` / `PINECONE_RERANK_MODEL` | `bge-reranker-v2-m3` when env and overrides omit it |
 | `defaultTopK` | `defaultTopK` / `PINECONE_TOP_K` | `10` (positive int) |
@@ -26,13 +26,13 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | `disableSuggestFlow` | `disableSuggestFlow` / `PINECONE_DISABLE_SUGGEST_FLOW` | `false` (bool parsing: true/1/yes/on) |
 | `checkIndexes` | `checkIndexes` / `PINECONE_CHECK_INDEXES` | `false` |
 
-**Throws** if `apiKey` or `indexName` is missing after trim.
+**Throws** if `apiKey` is missing after trim.
 
 For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and call `setupAllianceServer(config)`.
 
 ### Rerank model
 
-`resolveConfig` uses `PINECONE_RERANK_MODEL` (or `--rerank-model`) when set; otherwise **`bge-reranker-v2-m3`**. MCP configs that only set API key and index name keep reranking without extra env vars.
+`resolveConfig` uses `PINECONE_INDEX_NAME` / `PINECONE_RERANK_MODEL` when set; otherwise **`rag-hybrid`** and **`bge-reranker-v2-m3`**. MCP configs that only set `PINECONE_API_KEY` keep the same defaults as before.
 
 ---
 

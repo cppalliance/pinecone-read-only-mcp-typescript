@@ -8,7 +8,8 @@ export type PineconeMetadataValue = string | number | boolean | string[];
 /**
  * Configuration for `new PineconeClient(config)`.
  *
- * `apiKey` and `indexName` are required. Values are expected to come from
+ * `apiKey` is required; `indexName` comes from {@link resolveConfig} (env or default).
+ * Values are expected to come from
  * {@link resolveConfig} / CLI or an equivalent resolved object — `PineconeClient`
  * does not read `process.env` directly.
  */
