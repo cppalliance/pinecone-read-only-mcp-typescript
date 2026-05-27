@@ -69,6 +69,9 @@ async function main(): Promise<void> {
   try {
     console.log('\n--- list_namespaces ---');
     const listRaw = await client.callTool({ name: 'list_namespaces', arguments: {} });
+    if (listRaw.isError) {
+      throw new Error(`list_namespaces failed: ${JSON.stringify(listRaw)}`);
+    }
     const listPayload = parseToolJson(listRaw) as {
       status?: string;
       count?: number;
