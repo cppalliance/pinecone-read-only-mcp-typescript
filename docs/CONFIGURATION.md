@@ -62,7 +62,7 @@ For the full Alliance tool surface (including `suggest_query_params`, `guided_qu
 2. Construct `PineconeClient` and `setPineconeClient(client)` before `setupAllianceServer(config)` (mirrors `src/index.ts`).
 3. `await setupAllianceServer(config)` (or `setupCoreServer` for generic tools only) then connect an MCP transport.
 
-See [README deployment model](../README.md#deployment-model) and [examples/library-embedding-demo.ts](../examples/library-embedding-demo.ts).
+See [README deployment model](../README.md#deployment-model), [examples/quickstart/README.md](../examples/quickstart/README.md) (generic), and [examples/alliance/library-embedding-demo.ts](../examples/alliance/library-embedding-demo.ts) (Alliance surface).
 
 ---
 
