@@ -3,18 +3,16 @@
  *
  * The Pinecone Read-Only MCP exposes a per-namespace URL registry so library
  * consumers can synthesize URLs from metadata when records do not already
- * carry a `url` field. Built-ins cover `mailing` (Boost archives) and
- * `slack-Cpplang`; everything else is up to you.
+ * carry a `url` field. Built-in `mailing` / `slack-Cpplang` generators are
+ * registered by `setupAllianceServer` (Alliance layer); everything else is up to you.
  *
  * Usage:
- *   1. Import { registerUrlGenerator, setupServer, ... } from the package.
- *   2. Call registerUrlGenerator(namespace, fn) BEFORE setupServer(config) so
- *      the registry is populated when the server registers tools.
- *   3. The generate_urls tool, plus query/keyword_search/guided_query rows,
- *      will pick up the generator automatically.
+ *   1. Import `registerUrlGenerator` from `@will-cppa/pinecone-read-only-mcp`.
+ *   2. Import `setupAllianceServer` from `@will-cppa/pinecone-read-only-mcp/alliance`.
+ *   3. Call `registerUrlGenerator(namespace, fn)` before `setupAllianceServer(config)`.
+ *   4. The generate_urls tool and query row enrichment use the registry automatically.
  *
- * Run from a project that depends on the package, or replace the import
- * with a relative path when running inside this repo.
+ * Run from a project that depends on the package, or use this repo after `npm run build`.
  */
 
 import {
@@ -22,12 +20,10 @@ import {
   registerUrlGenerator,
   resolveConfig,
   setPineconeClient,
-  setupServer,
   type UrlGenerationResult,
 } from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
-// Example domain: a documentation index whose chunks carry { product, slug }
-// metadata. We turn that into https://docs.example.com/{product}/{slug}.
 registerUrlGenerator('product-docs', (metadata): UrlGenerationResult => {
   const product = typeof metadata['product'] === 'string' ? metadata['product'] : null;
   const slug = typeof metadata['slug'] === 'string' ? metadata['slug'] : null;
@@ -45,7 +41,16 @@ registerUrlGenerator('product-docs', (metadata): UrlGenerationResult => {
 });
 
 async function main(): Promise<void> {
-  const config = resolveConfig({ apiKey: process.env['PINECONE_API_KEY'] ?? 'demo-key' });
+  const apiKey = process.env['PINECONE_API_KEY']?.trim();
+  const indexName = process.env['PINECONE_INDEX_NAME']?.trim();
+  if (!apiKey || !indexName) {
+    console.log(
+      '[custom-url-generator] Set PINECONE_API_KEY and PINECONE_INDEX_NAME to run live.'
+    );
+    return;
+  }
+  const config = resolveConfig({ apiKey, indexName });
+
   setPineconeClient(
     new PineconeClient({
       apiKey: config.apiKey,
@@ -56,10 +61,7 @@ async function main(): Promise<void> {
     })
   );
 
-  const server = await setupServer(config);
-  // `server` is ready to connect to a transport. The generate_urls tool
-  // (and any query result enrichment) will route `product-docs` records
-  // through the generator registered above.
+  const server = await setupAllianceServer(config);
   void server;
   console.log('Custom URL generator registered for namespace "product-docs".');
 }

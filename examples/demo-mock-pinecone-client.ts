@@ -33,7 +33,7 @@ const demoHit: SearchResult = {
 
 export class DemoMockPineconeClient extends PineconeClient {
   constructor() {
-    super({ apiKey: '00000000-0000-0000-0000-000000000000' });
+    super({ apiKey: '00000000-0000-0000-0000-000000000000', indexName: 'demo-index' });
   }
 
   override async listNamespacesWithMetadata(): Promise<

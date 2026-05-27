@@ -2,8 +2,6 @@
  * Constants for Pinecone Read-Only MCP
  */
 
-export const DEFAULT_INDEX_NAME = 'rag-hybrid';
-export const DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
 export const DEFAULT_TOP_K = 10;
 export const MAX_TOP_K = 100;
 export const MIN_TOP_K = 1;
@@ -40,13 +38,13 @@ A semantic search server that provides hybrid search capabilities over Pinecone 
 
 Features:
 - Hybrid Search: Combines dense and sparse embeddings for superior recall
-- Semantic Reranking: Uses a configurable reranker model (default bge-reranker-v2-m3) for improved precision
+- Semantic Reranking: Uses a configurable reranker model when PINECONE_RERANK_MODEL is set; disabled when unset
 - Dynamic Namespace Discovery: Automatically discovers available namespaces
 - Metadata Filtering: Supports optional metadata filters for refined searches
 - Namespace Router: Suggests likely namespace(s) from natural-language intent
 - Count: Use the count tool for "how many X?" questions; it uses semantic search only and minimal fields (no content) for performance, returning unique document count.
 - URL Generation: Use generate_urls to synthesize URLs for namespaces that have a registered generator when metadata lacks url.
-- Document reassembly: Use query_documents to get whole documents (chunks grouped and merged by document_number/doc_id/url) for content analysis or summarization. query_documents always reranks for best document-level relevance.
+- Document reassembly: Use query_documents to get whole documents (chunks grouped and merged by document_number/doc_id/url) for content analysis or summarization. query_documents reranks when a rerank model is configured.
 - Keyword search: Use keyword_search to query the sparse index for lexical/keyword-only retrieval without reranking.
 
 Usage:

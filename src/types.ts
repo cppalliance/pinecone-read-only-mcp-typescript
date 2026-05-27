@@ -8,18 +8,18 @@ export type PineconeMetadataValue = string | number | boolean | string[];
 /**
  * Configuration for `new PineconeClient(config)`.
  *
- * `apiKey` is required. All other fields are optional and fall back to
- * sensible defaults from `src/constants.ts`. Values are expected to come from
+ * `apiKey` is required; `indexName` comes from {@link resolveConfig} (env or default).
+ * Values are expected to come from
  * {@link resolveConfig} / CLI or an equivalent resolved object — `PineconeClient`
  * does not read `process.env` directly.
  */
 export interface PineconeClientConfig {
   apiKey: string;
-  /** Dense (hybrid) index name. */
-  indexName?: string;
+  /** Dense (hybrid) index name. Required. */
+  indexName: string;
   /** Sparse index name. Defaults to `${indexName}-sparse`. */
   sparseIndexName?: string;
-  /** Reranker model identifier. */
+  /** Reranker model identifier. When unset, reranking is disabled. */
   rerankModel?: string;
   /** Default top-k for `query()`. */
   defaultTopK?: number;
@@ -41,6 +41,9 @@ export type HybridLegFailed = 'dense' | 'sparse' | null;
 /**
  * Outcome of {@link PineconeClient.query}: result rows plus degradation signals for MCP clients.
  */
+/** Why semantic rerank was not applied despite `useReranking: true`. */
+export type RerankSkippedReason = 'no_model';
+
 export interface HybridQueryResult {
   results: SearchResult[];
   /** True when reranking was attempted and failed (rows may have `reranked: false`). */
@@ -49,6 +52,11 @@ export interface HybridQueryResult {
   degradation_reason?: string;
   /** Set when exactly one of dense/sparse search failed but the other succeeded. */
   hybrid_leg_failed: HybridLegFailed;
+  /**
+   * Set when `useReranking` was true but no rerank model is configured on the client
+   * (manual `PineconeClient` without `rerankModel`). Normal MCP/CLI use sets a model via {@link resolveConfig}.
+   */
+  rerank_skipped_reason?: RerankSkippedReason;
 }
 
 export interface PineconeHit {
@@ -155,6 +163,8 @@ export interface QueryResponse {
   degradation_reason?: string;
   /** Partial hybrid failure: one leg failed while the other returned hits. */
   hybrid_leg_failed?: HybridLegFailed;
+  /** Present when reranking was requested but no rerank model is on the client. */
+  rerank_skipped_reason?: RerankSkippedReason;
 }
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */

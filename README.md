@@ -84,16 +84,24 @@ npm install
 npm run build
 ```
 
+## Architecture
+
+The codebase is split into two layers:
+
+- **`src/core/`** — generic MCP–Pinecone bridge (`PineconeClient`, `resolveConfig`, core MCP tools). Import from `@will-cppa/pinecone-read-only-mcp` (package root).
+- **`src/alliance/`** — C++ Alliance app tools (`suggest_query_params`, `guided_query`, Boost/Slack URL builtins). Import from `@will-cppa/pinecone-read-only-mcp/alliance` and call `setupAllianceServer(config)` for the full tool surface (what the CLI uses).
+
 ## Configuration
 
-You need a **Pinecone API key** and (by default) a **dense** index plus matching **sparse** index; see [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every environment variable and CLI flag.
+You need a **Pinecone API key**. **Index** uses `PINECONE_INDEX_NAME` when set, else defaults to `rag-hybrid`; sparse index defaults to `{index}-sparse`. **Reranking** uses `PINECONE_RERANK_MODEL` when set, else `bge-reranker-v2-m3`. MCP configs with only `PINECONE_API_KEY` keep prior Alliance defaults. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
 
 Quick reference:
 
 | Variable                            | Required                | Default                           |
 | ----------------------------------- | ----------------------- | --------------------------------- |
 | `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
-| `PINECONE_INDEX_NAME`               | No                      | `rag-hybrid`                      |
+| `PINECONE_INDEX_NAME`               | No                      | `rag-hybrid` when unset           |
+| `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` when unset   |
 | `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
 | `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |
 | `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                      | `text` (`json` for log pipelines) |
@@ -102,31 +110,37 @@ Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, 
 
 ### Deployment model
 
-The server uses **process-global** memory for the suggest-flow gate (`suggest_query_params` context), namespaces cache, URL generator registry, and active configuration. **Stdio MCP (one client per Node process)** matches this model. If you embed `setupServer` behind a multi-tenant HTTP transport, isolate those structures per session yourself or treat the suggest-flow guard as best-effort only.
+The server uses **process-global** memory for the suggest-flow gate (`suggest_query_params` context), namespaces cache, URL generator registry, and active configuration. **Stdio MCP (one client per Node process)** matches this model. If you embed `setupAllianceServer` behind a multi-tenant HTTP transport, isolate those structures per session yourself or treat the suggest-flow guard as best-effort only.
 
-### Library embedding (`setupServer`)
+### Library embedding
 
-Treat **`setupServer()` as one logical server per Node process**: it mutates shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A **second** `setupServer()` in the same process **throws** unless you call **`teardownServer()`** first.
+Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per Node process**: they mutate shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A **second** setup call in the same process **throws** unless you call **`teardownServer()`** first.
 
-Recommended pattern: `resolveConfig` → `setPineconeClient(new PineconeClient(...))` → `await setupServer(config)` → connect one MCP transport. For tests or re-initialization in the same process, call `teardownServer()` then `setupServer(config)` again. For isolated production tenants, prefer **one server per Node process** (or separate OS processes) rather than sharing one embedder across tenants.
+- **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
+- **Full Alliance surface (CLI parity):** `import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-Import `setupServer` and `teardownServer` from `@will-cppa/pinecone-read-only-mcp`. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+Recommended pattern: `resolveConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
 Namespaces other than `mailing` and `slack-Cpplang` (or different URL rules for any namespace) can use programmatic registration — no fork required.
 
-Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult` from `@will-cppa/pinecone-read-only-mcp`. Register **additional** namespaces before tools that emit URLs run (typically right after `setupServer` resolves config). To **replace** the built-in `mailing` or `slack-Cpplang` generators, call `registerUrlGenerator` **after** `setupServer`, because `setupServer` installs the defaults first.
+Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult` from `@will-cppa/pinecone-read-only-mcp`. Register **additional** namespaces before tools that emit URLs run. Built-in `mailing` / `slack-Cpplang` generators are installed by `setupAllianceServer` (not by `setupCoreServer`).
 
 ```ts
 import {
+  PineconeClient,
   registerUrlGenerator,
-  setupServer,
+  resolveConfig,
+  setPineconeClient,
   type UrlGenerationResult,
   type UrlGeneratorFn,
 } from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
-const server = await setupServer(config);
+const config = resolveConfig({ apiKey: '...', indexName: 'your-index' });
+setPineconeClient(new PineconeClient({ apiKey: config.apiKey, indexName: config.indexName }));
+const server = await setupAllianceServer(config);
 
 const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
   const id = typeof metadata.doc_id === 'string' ? metadata.doc_id : null;
@@ -146,7 +160,7 @@ A fuller embedding sample lives in [examples/custom-url-generator.ts](examples/c
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | [examples/suggest-flow-demo.ts](examples/suggest-flow-demo.ts)           | Manual **suggest_query_params → query** flow with namespace consistency notes. |
 | [examples/guided-query-demo.ts](examples/guided-query-demo.ts)           | **guided_query** orchestration and how to read `decision_trace`.               |
-| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupServer** wiring without the CLI binary.                    |
+| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupAllianceServer** wiring without the CLI binary.            |
 | [examples/custom-url-generator.ts](examples/custom-url-generator.ts)     | Custom **URL generator** registration for `generate_urls` / row enrichment.    |
 
 Run with `npx tsx examples/<file>.ts` from a checkout (requires valid Pinecone env for live paths).
@@ -162,7 +176,9 @@ Add to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
       "env": {
-        "PINECONE_API_KEY": "your-api-key-here"
+        "PINECONE_API_KEY": "your-api-key-here",
+        "PINECONE_INDEX_NAME": "your-index-name"
+        "PINECONE_RERANK_MODEL": "your-rerank-model"
       }
     }
   }
@@ -230,11 +246,13 @@ node node_modules/@will-cppa/pinecone-read-only-mcp/dist/index.js --api-key YOUR
 
 ```
 --api-key TEXT           Pinecone API key (or set PINECONE_API_KEY env var)
---index-name TEXT        Pinecone index name [default: rag-hybrid]
---rerank-model TEXT      Reranking model [default: bge-reranker-v2-m3]
+--index-name TEXT        Dense index (required, or PINECONE_INDEX_NAME)
+--rerank-model TEXT      Reranker model (defalut: bge-reranker-v2-m3)
 --log-level TEXT         Logging level [default: INFO]
 --help, -h               Show help message
 ```
+
+Run `pinecone-read-only-mcp --help` for the full option list.
 
 ## Deployment
 
@@ -264,7 +282,7 @@ docker build -t pinecone-read-only-mcp:latest .
 # run (stdio MCP server)
 docker run --rm -i \
   -e PINECONE_API_KEY=YOUR_API_KEY \
-  -e PINECONE_INDEX_NAME=rag-hybrid \
+  -e PINECONE_INDEX_NAME=your-index-name \
   pinecone-read-only-mcp:latest
 ```
 
@@ -436,7 +454,7 @@ Returns the **unique document count** matching a metadata filter and semantic qu
 
 ### `keyword_search`
 
-Performs **keyword (lexical/sparse-only)** search over the dedicated sparse index (default: `rag-hybrid-sparse`, i.e. `{PINECONE_INDEX_NAME}-sparse`). Use for exact or keyword-style queries. Does not use the dense index or semantic reranking. Call `list_namespaces` first to discover namespaces; `suggest_query_params` is optional.
+Performs **keyword (lexical/sparse-only)** search over the sparse index (`{PINECONE_INDEX_NAME}-sparse` by default). Use for exact or keyword-style queries. Does not use the dense index or semantic reranking. Call `list_namespaces` first to discover namespaces; `suggest_query_params` is optional.
 
 **Parameters:**
 
@@ -457,7 +475,7 @@ Performs **keyword (lexical/sparse-only)** search over the dedicated sparse inde
   "status": "success",
   "query": "contracts C++",
   "namespace": "wg21-papers",
-  "index": "rag-hybrid-sparse",
+  "index": "your-index-sparse",
   "result_count": 5,
   "results": [
     {
@@ -624,7 +642,7 @@ The script prints a table of p50, p95, and p99 latencies in milliseconds and wri
    PINECONE_API_KEY=your-key npm run test:search
    ```
 
-   If the sparse index (`rag-hybrid-sparse` by default) does not exist or has no data, the keyword search step is skipped with a warning.
+   If the sparse index (`{PINECONE_INDEX_NAME}-sparse`) does not exist or has no data, the keyword search step is skipped with a warning.
 
 2. **Via MCP client:**  
    Start the server and call the `keyword_search` tool with `query_text`, `namespace` (from `list_namespaces`), and optional `top_k` or `metadata_filter`. Response shape is the same as the `query` tool (e.g. `results` with ids, metadata, scores; `reranked` is always `false`).

@@ -13,27 +13,28 @@
  * optional `fields` from `suggested_fields`.
  *
  * This file is runnable without Pinecone only in **documentation mode**; set
- * `PINECONE_API_KEY` and wire an MCP transport to execute real tool calls.
+ * `PINECONE_API_KEY` and `PINECONE_INDEX_NAME`, then wire an MCP transport.
  */
 
 import {
   PineconeClient,
   resolveConfig,
   setPineconeClient,
-  setupServer,
 } from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
-  if (!apiKey) {
+  const indexName = process.env['PINECONE_INDEX_NAME']?.trim();
+  if (!apiKey || !indexName) {
     console.log(
-      '[suggest-flow-demo] Set PINECONE_API_KEY to run against Pinecone. ' +
+      '[suggest-flow-demo] Set PINECONE_API_KEY and PINECONE_INDEX_NAME to run against Pinecone. ' +
         'Flow: list_namespaces → suggest_query_params → query (same trimmed namespace).'
     );
     return;
   }
 
-  const config = resolveConfig({ apiKey });
+  const config = resolveConfig({ apiKey, indexName });
   setPineconeClient(
     new PineconeClient({
       apiKey: config.apiKey,
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
     })
   );
 
-  const server = await setupServer(config);
+  const server = await setupAllianceServer(config);
   // With an MCP client connected to `server`, invoke tools in order:
   // 1) suggest_query_params({ namespace: "mailing".trim(), user_query: "..." })
   // 2) query({ query_text, namespace: "mailing", preset: "detailed", ... })

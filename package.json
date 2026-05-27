@@ -3,13 +3,17 @@
   "version": "0.1.6",
   "description": "A Model Context Protocol (MCP) server that provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.",
   "type": "module",
-  "main": "dist/server.js",
-  "module": "dist/server.js",
-  "types": "dist/server.d.ts",
+  "main": "dist/core/index.js",
+  "module": "dist/core/index.js",
+  "types": "dist/core/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/server.d.ts",
-      "import": "./dist/server.js"
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./alliance": {
+      "types": "./dist/alliance/index.d.ts",
+      "import": "./dist/alliance/index.js"
     },
     "./package.json": "./package.json"
   },

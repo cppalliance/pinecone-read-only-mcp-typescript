@@ -3,8 +3,8 @@
  * for {@link resolveConfig}; environment variables remain the fallback there.
  */
 
-import { DEFAULT_INDEX_NAME, DEFAULT_RERANK_MODEL, SERVER_VERSION } from './constants.js';
-import type { ConfigOverrides } from './config.js';
+import { SERVER_VERSION } from './constants.js';
+import type { ConfigOverrides } from './core/config.js';
 
 export type ParseCliResult =
   | { kind: 'help' }
@@ -136,9 +136,9 @@ Usage: pinecone-read-only-mcp [options]
 
 Options:
   --api-key TEXT              Pinecone API key (or PINECONE_API_KEY)
-  --index-name TEXT           Dense index [default: ${DEFAULT_INDEX_NAME}]
+  --index-name TEXT           Dense index (default: rag-hybrid, or PINECONE_INDEX_NAME)
   --sparse-index-name TEXT    Sparse index [default: {index-name}-sparse]
-  --rerank-model TEXT         Reranker model [default: ${DEFAULT_RERANK_MODEL}]
+  --rerank-model TEXT         Reranker model (default: bge-reranker-v2-m3, or PINECONE_RERANK_MODEL)
   --top-k N                   Default top-k for queries [env: PINECONE_TOP_K]
   --log-level LEVEL           DEBUG | INFO | WARN | ERROR [default: INFO]
   --log-format FORMAT         text | json [default: text]

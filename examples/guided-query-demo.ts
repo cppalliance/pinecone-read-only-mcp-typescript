@@ -10,7 +10,7 @@
  * selected namespace, suggested fields/tools, and the final `selected_tool`.
  * Use the trace in UIs or logs to explain why a path was chosen.
  *
- * **Reranking fidelity:** when reranking was expected, inspect each row's
+ * **Reranking fidelity:** when a rerank model is configured, inspect each row's
  * `reranked` boolean; `false` can indicate rerank was skipped or failed while
  * still returning HTTP/MCP success (see docs/TOOLS.md).
  */
@@ -19,20 +19,21 @@ import {
   PineconeClient,
   resolveConfig,
   setPineconeClient,
-  setupServer,
 } from '@will-cppa/pinecone-read-only-mcp';
+import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
-  if (!apiKey) {
+  const indexName = process.env['PINECONE_INDEX_NAME']?.trim();
+  if (!apiKey || !indexName) {
     console.log(
-      '[guided-query-demo] Set PINECONE_API_KEY to run live. ' +
+      '[guided-query-demo] Set PINECONE_API_KEY and PINECONE_INDEX_NAME to run live. ' +
         'Call guided_query with user_query; read decision_trace + result in the JSON response.'
     );
     return;
   }
 
-  const config = resolveConfig({ apiKey });
+  const config = resolveConfig({ apiKey, indexName });
   setPineconeClient(
     new PineconeClient({
       apiKey: config.apiKey,
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
     })
   );
 
-  const server = await setupServer(config);
+  const server = await setupAllianceServer(config);
   void server;
   console.log('Server ready — call guided_query({ user_query, preferred_tool?: "auto" }).');
 }

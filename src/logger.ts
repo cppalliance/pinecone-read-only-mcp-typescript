@@ -11,7 +11,7 @@
  * cannot leak through `error()`.
  */
 
-import type { LogFormat, LogLevel } from './config.js';
+import type { LogFormat, LogLevel } from './core/config.js';
 
 const LEVEL_ORDER: Record<LogLevel, number> = {
   DEBUG: 0,
