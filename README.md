@@ -97,14 +97,14 @@ You need a **Pinecone API key** and a **dense index name** (`PINECONE_INDEX_NAME
 
 Quick reference:
 
-| Variable                            | Required                           | Default                                             |
-| ----------------------------------- | ---------------------------------- | --------------------------------------------------- |
-| `PINECONE_API_KEY`                  | Yes (for live Pinecone)            | —                                                   |
-| `PINECONE_INDEX_NAME`               | Yes                                | — (no default)                                      |
+| Variable                            | Required                | Default                           |
+| ----------------------------------- | ----------------------- | --------------------------------- |
+| `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
+| `PINECONE_INDEX_NAME`               | Yes                     | — (no default)                    |
 | `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` when unset   |
-| `PINECONE_SPARSE_INDEX_NAME`        | No                                 | `{index}-sparse`                                    |
-| `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                                 | `INFO` (`DEBUG`–`ERROR`)                            |
-| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                                 | `text` (`json` for log pipelines)                   |
+| `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
+| `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |
+| `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                      | `text` (`json` for log pipelines) |
 
 Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, `--request-timeout-ms`, `--disable-suggest-flow`, etc.).
 
@@ -247,7 +247,7 @@ node node_modules/@will-cppa/pinecone-read-only-mcp/dist/index.js --api-key YOUR
 ```
 --api-key TEXT           Pinecone API key (or set PINECONE_API_KEY env var)
 --index-name TEXT        Dense index (required, or PINECONE_INDEX_NAME)
---rerank-model TEXT      Reranker model (optional; omit to disable reranking)
+--rerank-model TEXT      Reranker model (defalut: bge-reranker-v2-m3)
 --log-level TEXT         Logging level [default: INFO]
 --help, -h               Show help message
 ```
