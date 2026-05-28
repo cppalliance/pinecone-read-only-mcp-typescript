@@ -66,7 +66,6 @@ async function main(): Promise<void> {
   const client = new Client({ name: 'quickstart-demo', version: '1.0.0' });
   await client.connect(clientTransport);
 
-  let connected = true;
   try {
     console.log('\n--- list_namespaces ---');
     const listRaw = await client.callTool({ name: 'list_namespaces', arguments: {} });
@@ -122,11 +121,9 @@ async function main(): Promise<void> {
 
     console.log('\nQuickstart MCP demo completed successfully.');
   } finally {
-    if (connected) {
-      await client.close();
-      await server.close();
-      teardownServer();
-    }
+    await client.close();
+    await server.close();
+    teardownServer();
   }
 }
 
