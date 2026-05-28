@@ -84,6 +84,10 @@ npm install
 npm run build
 ```
 
+## Quick start
+
+To try the server on **your own** Pinecone project (free tier, no Alliance index), follow [examples/quickstart/README.md](examples/quickstart/README.md): create two integrated-embedding indexes, copy [examples/quickstart/.env.example](examples/quickstart/.env.example), seed sample data, and run the MCP demo. Use an explicit `PINECONE_INDEX_NAME` in that flow rather than relying on Alliance default index names.
+
 ## Architecture
 
 The codebase is split into two layers:
@@ -119,7 +123,7 @@ Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per 
 - **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
 - **Full Alliance surface (CLI parity):** `import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-Recommended pattern: `resolveConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer`). For the **full Alliance surface**, use `resolveConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
@@ -152,18 +156,22 @@ const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
 registerUrlGenerator('product-docs', myDocs);
 ```
 
-A fuller embedding sample lives in [examples/custom-url-generator.ts](examples/custom-url-generator.ts).
+A fuller embedding sample lives in [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts).
 
 ### Examples
 
-| File                                                                     | Description                                                                    |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| [examples/suggest-flow-demo.ts](examples/suggest-flow-demo.ts)           | Manual **suggest_query_params → query** flow with namespace consistency notes. |
-| [examples/guided-query-demo.ts](examples/guided-query-demo.ts)           | **guided_query** orchestration and how to read `decision_trace`.               |
-| [examples/library-embedding-demo.ts](examples/library-embedding-demo.ts) | Programmatic **setupAllianceServer** wiring without the CLI binary.            |
-| [examples/custom-url-generator.ts](examples/custom-url-generator.ts)     | Custom **URL generator** registration for `generate_urls` / row enrichment.    |
+**Generic quickstart** — [examples/quickstart/](examples/quickstart/) (setup guide, seed script, `setupCoreServer` MCP demo).
 
-Run with `npx tsx examples/<file>.ts` from a checkout (requires valid Pinecone env for live paths).
+**Alliance / advanced** — [examples/alliance/](examples/alliance/):
+
+| File | Description |
+| ---- | ----------- |
+| [examples/alliance/suggest-flow-demo.ts](examples/alliance/suggest-flow-demo.ts) | Manual **suggest_query_params → query** flow |
+| [examples/alliance/guided-query-demo.ts](examples/alliance/guided-query-demo.ts) | **guided_query** and `decision_trace` |
+| [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) | **setupAllianceServer** without the CLI |
+| [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts) | Custom **URL generator** registration |
+
+Run with `npx tsx examples/<path>.ts` from a checkout (requires valid Pinecone env for live paths). See [examples/README.md](examples/README.md).
 
 ### Claude Desktop Configuration
 
@@ -177,7 +185,7 @@ Add to your `claude_desktop_config.json`:
       "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
       "env": {
         "PINECONE_API_KEY": "your-api-key-here",
-        "PINECONE_INDEX_NAME": "your-index-name"
+        "PINECONE_INDEX_NAME": "your-index-name",
         "PINECONE_RERANK_MODEL": "your-rerank-model"
       }
     }
