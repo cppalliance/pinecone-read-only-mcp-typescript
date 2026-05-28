@@ -8,6 +8,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-29
+
 ### Changed
 
 - Package root export is the generic **core** layer (`setupCoreServer`); full CLI parity uses `@will-cppa/pinecone-read-only-mcp/alliance` (`setupAllianceServer`, built-in URL generators). `resolveConfig` uses env when set, else defaults: index **`rag-hybrid`**, rerank **`bge-reranker-v2-m3`** (constants `DEFAULT_INDEX_NAME` / `DEFAULT_RERANK_MODEL` in `src/core/config.ts`).
@@ -99,7 +101,8 @@ details. Newer shipped changes are recorded in this changelog by version.
 - Environment variable support
 - Full documentation and examples
 
-[Unreleased]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.1...v0.1.6
 [0.1.1]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/releases/tag/v0.1.0

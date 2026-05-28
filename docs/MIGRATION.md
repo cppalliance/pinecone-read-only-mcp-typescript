@@ -1,8 +1,10 @@
 # Migration guide
 
-This guide is for **library and MCP client authors** upgrading from earlier **0.1.x** lines. The `[Unreleased]` section of [`CHANGELOG.md`](../CHANGELOG.md) is the authoritative list of changes; this document shows **how** to migrate.
+This guide is for **library and MCP client authors** upgrading from earlier **0.1.x** lines. The **[0.2.0]** section of [`CHANGELOG.md`](../CHANGELOG.md) is the authoritative list of changes; this document shows **how** to migrate.
 
-## Migrating to v0.2.0 (upcoming)
+Under [semver 0.y.z](https://semver.org/spec/v2.0.0.html#spec-item-4), **0.1.x → 0.2.0 is a breaking minor** — pin `@0.2.0` only after reading this guide.
+
+## Migrating to v0.2.0
 
 ### Namespace trimming and suggest-flow
 
@@ -120,6 +122,18 @@ await callTool('query', {
 
 ---
 
+### 5. Node.js >= 20.12.0
+
+**Rationale:** `engines.node` is now **>=20.12.0**. Vitest **4** (bundled **rolldown**) imports `util.styleText` from `node:util` (added in Node **20.12**), and **`@vitest/coverage-v8`** uses `node:inspector/promises`. CI tests **20.x** and **22.x** only.
+
+**Migration steps:**
+
+1. Upgrade local Node to **20.12+** (or **22.x**).
+2. Update CI images / `actions/setup-node` to **20.12+** if you pin an older 20.x patch.
+3. Re-run your MCP client or library tests after upgrading.
+
+---
+
 ## Summary checklist
 
 - [ ] Normalize and reuse namespace strings across suggest + gated tools.
@@ -127,3 +141,4 @@ await callTool('query', {
 - [ ] Remove reliance on in-body `status: 'error'` for query responses.
 - [ ] Update `recommended_tool` handling to `count` \| `fast` \| `detailed` \| `full`.
 - [ ] Map legacy fast/detailed tool calls to `query` + `preset`.
+- [ ] Run on Node.js **>=20.12.0**.
