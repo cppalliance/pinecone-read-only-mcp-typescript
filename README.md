@@ -7,6 +7,12 @@
 
 A Model Context Protocol (MCP) server that provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
+**Current version: 0.2.0** (npm `latest` after publish). Pin `@0.2.0` in install and MCP config for reproducible upgrades.
+
+## Upgrading from 0.1.x
+
+Version **0.2.0** includes breaking MCP and type changes. See [docs/MIGRATION.md](docs/MIGRATION.md) for before/after examples and the [CHANGELOG](CHANGELOG.md#020---2026-05-29) **Changed** section for the full list.
+
 ## Documentation
 
 | Doc                                            | Description                            |
@@ -44,7 +50,7 @@ For successful `query`, `query_documents`, and `guided_query` payloads, **rerank
 - **Dynamic Namespace Discovery**: Automatically discovers available namespaces in your Pinecone index
 - **Metadata Filtering**: Supports optional metadata filters for refined searches
 - **Fast presets**: Lazy initialization, connection pooling, and efficient result merging; use the `query` tool `preset=fast | detailed | full` to trade latency vs quality (no published benchmarks yet — treat descriptions as qualitative).
-- **Production-oriented defaults**: Input validation, error handling, and configurable logging (semantic versioning is pre-1.0 — review CHANGELOG before upgrading).
+- **Production-oriented defaults**: Input validation, error handling, and configurable logging; upgrading from **0.1.x** — see [MIGRATION.md](docs/MIGRATION.md).
 - **TypeScript Support**: Full TypeScript support with type definitions
 
 ## Installation
@@ -54,25 +60,25 @@ For successful `query`, `query_documents`, and `guided_query` payloads, **rerank
 ### As a Package
 
 ```bash
-npm install @will-cppa/pinecone-read-only-mcp
+npm install @will-cppa/pinecone-read-only-mcp@0.2.0
 ```
 
 Or using yarn:
 
 ```bash
-yarn add @will-cppa/pinecone-read-only-mcp
+yarn add @will-cppa/pinecone-read-only-mcp@0.2.0
 ```
 
 Or using pnpm:
 
 ```bash
-pnpm add @will-cppa/pinecone-read-only-mcp
+pnpm add @will-cppa/pinecone-read-only-mcp@0.2.0
 ```
 
 ### Global Installation
 
 ```bash
-npm install -g @will-cppa/pinecone-read-only-mcp
+npm install -g @will-cppa/pinecone-read-only-mcp@0.2.0
 ```
 
 ### From Source
@@ -182,7 +188,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "pinecone-search": {
       "command": "npx",
-      "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
+      "args": ["-y", "@will-cppa/pinecone-read-only-mcp@0.2.0"],
       "env": {
         "PINECONE_API_KEY": "your-api-key-here",
         "PINECONE_INDEX_NAME": "your-index-name",
@@ -202,7 +208,7 @@ Or with explicit options:
       "command": "npx",
       "args": [
         "-y",
-        "@will-cppa/pinecone-read-only-mcp",
+        "@will-cppa/pinecone-read-only-mcp@0.2.0",
         "--api-key",
         "your-api-key-here",
         "--index-name",
@@ -235,7 +241,7 @@ For a global installation:
 Run the server using npx (no installation required):
 
 ```bash
-npx @will-cppa/pinecone-read-only-mcp --api-key YOUR_API_KEY
+npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY
 ```
 
 Or if installed globally:
@@ -275,10 +281,10 @@ Run `pinecone-read-only-mcp --help` for the full option list.
 
 ```bash
 # install
-npm i @will-cppa/pinecone-read-only-mcp
+npm i @will-cppa/pinecone-read-only-mcp@0.2.0
 
 # run
-npx @will-cppa/pinecone-read-only-mcp --api-key YOUR_API_KEY
+npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY
 ```
 
 ### Deploy with Docker
