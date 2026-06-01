@@ -18,17 +18,20 @@ export type LogFormat = 'text' | 'json';
  * Unified runtime configuration for the MCP server.
  *
  * Built once by `parseCli()` (or constructed directly by library consumers)
- * and threaded through setup. `apiKey` is required; `indexName` defaults via {@link DEFAULT_INDEX_NAME}.
+ * and threaded through setup. `apiKey` and `indexName` are required.
  */
 export interface ServerConfig {
   /** Pinecone API key. Required. */
   apiKey: string;
-  /** Dense (hybrid) index name (`PINECONE_INDEX_NAME` or {@link DEFAULT_INDEX_NAME}). */
+  /** Dense (hybrid) index name (`PINECONE_INDEX_NAME` or CLI `--index-name`). Required. */
   indexName: string;
   /** Sparse index name. Defaults to `${indexName}-sparse`. */
   sparseIndexName: string;
-  /** Reranker model identifier (`PINECONE_RERANK_MODEL` or {@link DEFAULT_RERANK_MODEL}). */
-  rerankModel: string;
+  /**
+   * Reranker model identifier when set via env or overrides.
+   * Omitted when unset — {@link PineconeClient} skips reranking unless a model is provided.
+   */
+  rerankModel?: string;
   /** Default top-k when callers omit it on `query`. */
   defaultTopK: number;
   /** Minimum log level emitted to stderr. */
@@ -47,12 +50,6 @@ export interface ServerConfig {
 
 /** Default per-call timeout for Pinecone requests, in milliseconds. */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
-
-/** Default Pinecone inference rerank model when `PINECONE_RERANK_MODEL` is unset. */
-export const DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
-
-/** Default dense index name when `PINECONE_INDEX_NAME` is unset. */
-export const DEFAULT_INDEX_NAME = 'rag-hybrid';
 
 function asLogLevel(value: string | undefined, fallback: LogLevel): LogLevel {
   const allowed: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -77,7 +74,8 @@ function asBool(value: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
-function trimOptional(value: string | undefined): string | undefined {
+/** Trim env/CLI strings; returns `undefined` for missing or whitespace-only values. */
+export function trimOptional(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
   const t = value.trim();
   return t.length > 0 ? t : undefined;
@@ -102,7 +100,7 @@ export interface ConfigOverrides {
  * Build a `ServerConfig` from CLI overrides, environment variables, and defaults.
  * CLI > env > default precedence is preserved.
  *
- * @throws Error when no API key is provided.
+ * @throws Error when no API key or index name is provided.
  */
 export function resolveConfig(
   overrides: ConfigOverrides,
@@ -115,15 +113,18 @@ export function resolveConfig(
     );
   }
 
-  const indexName =
-    trimOptional(overrides.indexName ?? env['PINECONE_INDEX_NAME']) ?? DEFAULT_INDEX_NAME;
+  const indexName = trimOptional(overrides.indexName ?? env['PINECONE_INDEX_NAME']);
+  if (!indexName) {
+    throw new Error(
+      'Missing Pinecone index name: set PINECONE_INDEX_NAME or pass --index-name (or indexName in ConfigOverrides for library use).'
+    );
+  }
 
   const sparseIndexName =
     trimOptional(overrides.sparseIndexName ?? env['PINECONE_SPARSE_INDEX_NAME']) ??
     `${indexName}-sparse`;
 
-  const rerankModel =
-    trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']) ?? DEFAULT_RERANK_MODEL;
+  const rerankModel = trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']);
 
   const defaultTopK = overrides.defaultTopK ?? asPositiveInt(env['PINECONE_TOP_K'], DEFAULT_TOP_K);
   const logLevel = asLogLevel(
@@ -148,7 +149,7 @@ export function resolveConfig(
     apiKey,
     indexName,
     sparseIndexName,
-    rerankModel,
+    ...(rerankModel !== undefined ? { rerankModel } : {}),
     defaultTopK,
     logLevel,
     logFormat,

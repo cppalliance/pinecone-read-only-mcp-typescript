@@ -103,15 +103,15 @@ The codebase is split into two layers:
 
 ## Configuration
 
-You need a **Pinecone API key**. **Index** uses `PINECONE_INDEX_NAME` when set, else defaults to `rag-hybrid`; sparse index defaults to `{index}-sparse`. **Reranking** uses `PINECONE_RERANK_MODEL` when set, else `bge-reranker-v2-m3`. MCP configs with only `PINECONE_API_KEY` keep prior Alliance defaults. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable and CLI flag.
+You need a **Pinecone API key**. **Index** (`PINECONE_INDEX_NAME` or `--index-name`) is required for core/library use; the **published CLI** defaults to `rag-hybrid` when unset (Alliance deployment). Sparse index defaults to `{index}-sparse`. **Rerank:** set `PINECONE_RERANK_MODEL` to enable; the CLI defaults to `bge-reranker-v2-m3` when unset. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) (core vs Alliance table).
 
-Quick reference:
+Quick reference (published CLI / Alliance — core embedders require index, no index/rerank defaults):
 
-| Variable                            | Required                | Default                           |
+| Variable                            | Required                | Default (Alliance CLI)            |
 | ----------------------------------- | ----------------------- | --------------------------------- |
 | `PINECONE_API_KEY`                  | Yes (for live Pinecone) | —                                 |
-| `PINECONE_INDEX_NAME`               | No                      | `rag-hybrid` when unset           |
-| `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` when unset   |
+| `PINECONE_INDEX_NAME`               | No (CLI) / Yes (core)   | `rag-hybrid` (CLI only)           |
+| `PINECONE_RERANK_MODEL`             | No                      | `bge-reranker-v2-m3` (CLI only)   |
 | `PINECONE_SPARSE_INDEX_NAME`        | No                      | `{index}-sparse`                  |
 | `PINECONE_READ_ONLY_MCP_LOG_LEVEL`  | No                      | `INFO` (`DEBUG`–`ERROR`)          |
 | `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | No                      | `text` (`json` for log pipelines) |
@@ -228,7 +228,7 @@ For a global installation:
   "mcpServers": {
     "pinecone-search": {
       "command": "pinecone-read-only-mcp",
-      "args": ["--api-key", "your-api-key-here"]
+      "args": ["--api-key", "your-api-key-here", "--index-name", "your-index-name"]
     }
   }
 }
@@ -241,19 +241,19 @@ For a global installation:
 Run the server using npx (no installation required):
 
 ```bash
-npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY
+npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY --index-name YOUR_INDEX
 ```
 
 Or if installed globally:
 
 ```bash
-pinecone-read-only-mcp --api-key YOUR_API_KEY
+pinecone-read-only-mcp --api-key YOUR_API_KEY --index-name YOUR_INDEX
 ```
 
 Or if installed locally in your project:
 
 ```bash
-node node_modules/@will-cppa/pinecone-read-only-mcp/dist/index.js --api-key YOUR_API_KEY
+node node_modules/@will-cppa/pinecone-read-only-mcp/dist/index.js --api-key YOUR_API_KEY --index-name YOUR_INDEX
 ```
 
 ### Available Options
@@ -736,10 +736,18 @@ Other benefits:
 
 ### API Key Issues
 
-If you see "Pinecone API key is required" error:
+If you see "Missing Pinecone API key" at startup:
 
 1. Ensure `PINECONE_API_KEY` environment variable is set, OR
 2. Pass `--api-key` option when running the server
+
+### Missing Index Name
+
+If you see "Missing Pinecone index name" at startup:
+
+1. Set `PINECONE_INDEX_NAME` in your MCP config or `.env`, OR
+2. Pass `--index-name` when running the server
+3. Alliance deployers: see [examples/alliance/.env.example](examples/alliance/.env.example)
 
 ### Index Not Found
 

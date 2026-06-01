@@ -1,27 +1,35 @@
 /**
- * Alliance entry re-exports core config. Rerank default lives in {@link resolveConfig}
- * (`PINECONE_RERANK_MODEL` when set, else `bge-reranker-v2-m3`).
+ * Alliance config resolver: applies C++ Alliance deployment defaults, then delegates to core {@link resolveConfig}.
  */
 
 import {
-  DEFAULT_RERANK_MODEL,
   resolveConfig,
+  trimOptional,
   type ConfigOverrides,
   type ServerConfig,
 } from '../core/config.js';
 
-/** @deprecated Use {@link DEFAULT_RERANK_MODEL} from core config. */
-export const DEFAULT_ALLIANCE_RERANK_MODEL = DEFAULT_RERANK_MODEL;
+/** C++ Alliance default dense index when env/CLI omit `PINECONE_INDEX_NAME`. */
+export const ALLIANCE_DEFAULT_INDEX_NAME = 'rag-hybrid';
 
-/** @deprecated No-op; {@link resolveConfig} already applies the rerank default. */
-export function applyAllianceRerankDefault(config: ServerConfig): ServerConfig {
-  return config;
-}
+/** C++ Alliance default rerank model when env/CLI omit `PINECONE_RERANK_MODEL`. */
+export const ALLIANCE_DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
 
-/** Alias for {@link resolveConfig} (Alliance CLI and `setupAllianceServer`). */
+/** @deprecated Use {@link ALLIANCE_DEFAULT_RERANK_MODEL}. */
+export const DEFAULT_ALLIANCE_RERANK_MODEL = ALLIANCE_DEFAULT_RERANK_MODEL;
+
+/**
+ * Build {@link ServerConfig} for Alliance CLI and `setupAllianceServer`.
+ * Fills index and rerank from Alliance defaults when unset, then calls core `resolveConfig`.
+ */
 export function resolveAllianceConfig(
   overrides: ConfigOverrides = {},
   env: NodeJS.ProcessEnv = process.env
 ): ServerConfig {
-  return resolveConfig(overrides, env);
+  const indexName =
+    trimOptional(overrides.indexName ?? env['PINECONE_INDEX_NAME']) ?? ALLIANCE_DEFAULT_INDEX_NAME;
+  const rerankModel =
+    trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']) ??
+    ALLIANCE_DEFAULT_RERANK_MODEL;
+  return resolveConfig({ ...overrides, indexName, rerankModel }, env);
 }

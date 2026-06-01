@@ -2,7 +2,7 @@
  * Library embedding: build the MCP server from a Node script (not the CLI).
  *
  * Pattern (mirrors `src/index.ts`):
- *   1. `resolveConfig({ apiKey, indexName, ... })` — env rerank model or default bge-reranker-v2-m3.
+ *   1. `resolveAllianceConfig({ apiKey, indexName, ... })` — Alliance index/rerank defaults when unset.
  *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)`.
  *   3. `await setupAllianceServer(config)` then `server.connect(transport)`.
  *

@@ -136,9 +136,9 @@ Usage: pinecone-read-only-mcp [options]
 
 Options:
   --api-key TEXT              Pinecone API key (or PINECONE_API_KEY)
-  --index-name TEXT           Dense index (default: rag-hybrid, or PINECONE_INDEX_NAME)
+  --index-name TEXT           Dense index (PINECONE_INDEX_NAME; Alliance CLI default: rag-hybrid)
   --sparse-index-name TEXT    Sparse index [default: {index-name}-sparse]
-  --rerank-model TEXT         Reranker model (default: bge-reranker-v2-m3, or PINECONE_RERANK_MODEL)
+  --rerank-model TEXT         Reranker (PINECONE_RERANK_MODEL; Alliance CLI default: bge-reranker-v2-m3)
   --top-k N                   Default top-k for queries [env: PINECONE_TOP_K]
   --log-level LEVEL           DEBUG | INFO | WARN | ERROR [default: INFO]
   --log-format FORMAT         text | json [default: text]
@@ -152,8 +152,8 @@ Options:
 Environment variables are documented in README.md (CLI overrides win when both are set).
 
 Examples:
-  pinecone-read-only-mcp --api-key YOUR_KEY
-  export PINECONE_API_KEY=YOUR_KEY && pinecone-read-only-mcp --index-name my-index
+  export PINECONE_API_KEY=YOUR_KEY && pinecone-read-only-mcp
+  pinecone-read-only-mcp --api-key YOUR_KEY --index-name my-index
 `);
 }
 

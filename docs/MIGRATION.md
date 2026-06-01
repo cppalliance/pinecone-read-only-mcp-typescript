@@ -4,6 +4,25 @@ This guide is for **library and MCP client authors** upgrading from earlier **0.
 
 Under [semver 0.y.z](https://semver.org/spec/v2.0.0.html#spec-item-4), **0.1.x → 0.2.0 is a breaking minor** — pin `@0.2.0` only after reading this guide.
 
+## Unreleased: core vs Alliance config defaults
+
+**Rationale:** Generic npm consumers must not silently connect to Alliance infrastructure or inherit Alliance rerank settings when using `resolveConfig` from the package root.
+
+**Migration (core / `setupCoreServer`):**
+
+1. Add `PINECONE_INDEX_NAME` to MCP `env` blocks, `.env`, or Docker `-e`, or pass `indexName` in `ConfigOverrides`.
+2. Set `PINECONE_RERANK_MODEL` only when you want reranking; omit it to skip rerank (previously defaulted to `bge-reranker-v2-m3` in core).
+3. Code that imported `DEFAULT_INDEX_NAME` or `DEFAULT_RERANK_MODEL` from the package root should use your own constants or [examples/alliance/preset.ts](../examples/alliance/preset.ts) for Alliance values.
+
+Core `resolveConfig` throws `Missing Pinecone index name: …` when the index is unset (same pattern as the API key error).
+
+**Alliance CLI / `setupAllianceServer` (unchanged for typical MCP configs):**
+
+- The binary uses `resolveAllianceConfig`; API-key-only configs still default to `rag-hybrid` and `bge-reranker-v2-m3`.
+- Explicit env overrides still win. Copy [examples/alliance/.env.example](../examples/alliance/.env.example) to document Alliance conventions.
+
+---
+
 ## Migrating to v0.2.0
 
 ### Namespace trimming and suggest-flow

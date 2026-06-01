@@ -32,7 +32,7 @@ export const QUERY_DOCUMENTS_MAX_CHUNKS = 500;
 export const SERVER_NAME = 'Pinecone Read-Only MCP';
 export { SERVER_VERSION } from './server-version.js';
 
-export const SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns a decision_trace you can show the user. For manual flows, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate). Use \`query_documents\` for full-document reading, \`keyword_search\` for exact-keyword retrieval against the sparse index, and \`generate_urls\` when records need URLs synthesized from metadata.
+export const SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns a decision_trace you can show the user. The server process requires \`PINECONE_INDEX_NAME\` (or \`--index-name\`) in addition to \`PINECONE_API_KEY\`; misconfiguration surfaces at startup, not as tool errors. For manual flows, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate). Use \`query_documents\` for full-document reading, \`keyword_search\` for exact-keyword retrieval against the sparse index, and \`generate_urls\` when records need URLs synthesized from metadata.
 
 A semantic search server that provides hybrid search capabilities over Pinecone vector indexes with automatic namespace discovery.
 
