@@ -8,6 +8,10 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+### Added
+
+- Formal deprecation policy ([docs/deprecation-policy.md](docs/deprecation-policy.md)) and breaking-change release notes template ([docs/templates/breaking-change-release-notes.md](docs/templates/breaking-change-release-notes.md)).
+
 ## [0.2.0] - 2026-05-29
 
 ### Changed
