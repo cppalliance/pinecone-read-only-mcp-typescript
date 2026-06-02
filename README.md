@@ -13,6 +13,10 @@ A Model Context Protocol (MCP) server that provides semantic search over Pinecon
 
 Version **0.2.0** includes breaking MCP and type changes. See [docs/MIGRATION.md](docs/MIGRATION.md) for before/after examples and the [CHANGELOG](CHANGELOG.md#020---2026-05-29) **Changed** section for the full list.
 
+## Release policy
+
+While the package is **`0.y.z`**, minor releases may include breaking changes ([semver §4](https://semver.org/spec/v2.0.0.html#spec-item-4)) — pin an exact npm version for reproducible MCP and library use. Deprecated APIs stay available for at least **two minor releases** before removal; breaking releases ship with CHANGELOG entries, [MIGRATION.md](docs/MIGRATION.md) steps, and (for publishes) structured GitHub Release notes. Full rules: [docs/deprecation-policy.md](docs/deprecation-policy.md).
+
 ## Documentation
 
 | Doc                                            | Description                            |
@@ -22,6 +26,7 @@ Version **0.2.0** includes breaking MCP and type changes. See [docs/MIGRATION.md
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Env vars, CLI flags, library config    |
 | [docs/FAQ.md](docs/FAQ.md)                     | Common questions                       |
 | [docs/MIGRATION.md](docs/MIGRATION.md)         | Deprecations & breaking changes        |
+| [docs/deprecation-policy.md](docs/deprecation-policy.md) | Release & deprecation policy   |
 | [docs/CI_CD.md](docs/CI_CD.md)                 | GitHub Actions, SBOM, Docker, releases |
 | [docs/RELEASING.md](docs/RELEASING.md)         | npm publish via GitHub Releases        |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)   | How to contribute                      |
