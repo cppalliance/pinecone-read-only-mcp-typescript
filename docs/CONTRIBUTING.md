@@ -41,6 +41,14 @@ npm ci
 - Keep changes focused; update `CHANGELOG.md` `[Unreleased]` for user-visible behavior.
 - Documentation changes should keep [README](../README.md) links; run `npm run docs:link-check` locally if you touch many relative links.
 
+### Deprecations and breaking changes
+
+Follow [deprecation-policy.md](./deprecation-policy.md). In summary:
+
+- **Deprecating** an API: add `### Deprecated` in CHANGELOG with a removal target (minimum two minor releases), update [MIGRATION.md](./MIGRATION.md), and use `@deprecated` in types when applicable.
+- **Breaking** a release (especially while `0.y.z`): use labeled bullets — `**Breaking (MCP):**`, `**Breaking (types):**`, etc. — each with what changed, who is affected, and a link to a MIGRATION anchor.
+- **Removing** deprecated APIs: add `### Removed` only after the deprecation window; keep migration text in MIGRATION.md.
+
 ## Documentation
 
 Authoritative reference lives under [`docs/`](./README.md). When adding tools or config knobs, update `docs/TOOLS.md` and `docs/CONFIGURATION.md` in the same PR when possible.
