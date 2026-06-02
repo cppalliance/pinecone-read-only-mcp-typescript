@@ -127,9 +127,9 @@ The server uses **process-global** memory for the suggest-flow gate (`suggest_qu
 Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per Node process**: they mutate shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A **second** setup call in the same process **throws** unless you call **`teardownServer()`** first.
 
 - **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
-- **Full Alliance surface (CLI parity):** `import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance'`
+- **Full Alliance surface (CLI parity):** `import { setupAllianceServer, resolveAllianceConfig } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer`). For the **full Alliance surface**, use `resolveConfig({ apiKey, indexName, ... })` → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer` + `resolveConfig` with required `indexName`). For the **full Alliance surface**, use `resolveAllianceConfig({ apiKey, ... })` (Alliance index/rerank defaults when omitted, same as the CLI) → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
@@ -141,15 +141,21 @@ Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult`
 import {
   PineconeClient,
   registerUrlGenerator,
-  resolveConfig,
   setPineconeClient,
   type UrlGenerationResult,
   type UrlGeneratorFn,
 } from '@will-cppa/pinecone-read-only-mcp';
-import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
-const config = resolveConfig({ apiKey: '...', indexName: 'your-index' });
-setPineconeClient(new PineconeClient({ apiKey: config.apiKey, indexName: config.indexName }));
+const config = resolveAllianceConfig({ apiKey: '...' }); // optional: indexName, rerankModel
+setPineconeClient(
+  new PineconeClient({
+    apiKey: config.apiKey,
+    indexName: config.indexName,
+    sparseIndexName: config.sparseIndexName,
+    rerankModel: config.rerankModel,
+  })
+);
 const server = await setupAllianceServer(config);
 
 const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
