@@ -10,12 +10,14 @@ They assume a Pinecone index you control with compatible data (not necessarily t
 
 ## Required environment
 
+Copy [`.env.example`](./.env.example) to `.env` and set your API key. For C++ Alliance infrastructure, use `PINECONE_INDEX_NAME=rag-hybrid` as documented there.
+
 | Variable | Required | Notes |
 | -------- | -------- | ----- |
 | `PINECONE_API_KEY` | Yes | For live runs |
-| `PINECONE_INDEX_NAME` | Yes | Your dense index name |
+| `PINECONE_INDEX_NAME` | Yes | Dense index name (Alliance: `rag-hybrid`) |
 
-Optional: `PINECONE_RERANK_MODEL`, `PINECONE_SPARSE_INDEX_NAME`, etc. See [docs/CONFIGURATION.md](../../docs/CONFIGURATION.md). CLI-only configs that set only `PINECONE_API_KEY` still use documented defaults (`rag-hybrid`, `bge-reranker-v2-m3`).
+Optional: `PINECONE_RERANK_MODEL`, `PINECONE_SPARSE_INDEX_NAME`, etc. See [docs/CONFIGURATION.md](../../docs/CONFIGURATION.md). The **published CLI** uses `resolveAllianceConfig` and defaults to `rag-hybrid` / `bge-reranker-v2-m3` when those env vars are omitted. Demo constants: [`preset.ts`](./preset.ts).
 
 ## Files
 

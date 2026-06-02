@@ -5,7 +5,8 @@
 
 export * from '../core/index.js';
 export {
-  applyAllianceRerankDefault,
+  ALLIANCE_DEFAULT_INDEX_NAME,
+  ALLIANCE_DEFAULT_RERANK_MODEL,
   DEFAULT_ALLIANCE_RERANK_MODEL,
   resolveAllianceConfig,
 } from './config.js';

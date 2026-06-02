@@ -18,8 +18,8 @@ export function resetServerConfig(): void {
  * (namespace cache TTL, suggest-flow gate, etc.).
  *
  * When setup runs without an explicit config, falls back to `resolveConfig({})`
- * (requires `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` or the call throws). Embedders
- * should pass `config` into `setupCoreServer(config)` / `setupAllianceServer(config)`.
+ * (requires `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` or throws). Alliance apps should
+ * pass config from `resolveAllianceConfig()` into `setupAllianceServer(config)`.
  */
 export function getServerConfig(): ServerConfig {
   if (!activeConfig) {

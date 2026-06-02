@@ -8,9 +8,9 @@ export type PineconeMetadataValue = string | number | boolean | string[];
 /**
  * Configuration for `new PineconeClient(config)`.
  *
- * `apiKey` is required; `indexName` comes from {@link resolveConfig} (env or default).
- * Values are expected to come from
- * {@link resolveConfig} / CLI or an equivalent resolved object — `PineconeClient`
+ * `apiKey` and `indexName` are required via {@link resolveConfig} (env, CLI, or overrides).
+ * `rerankModel` is optional — omit to disable reranking. Alliance {@link resolveAllianceConfig} supplies a default rerank model when unset.
+ * Values are expected to come from a resolved `ServerConfig` — `PineconeClient`
  * does not read `process.env` directly.
  */
 export interface PineconeClientConfig {
