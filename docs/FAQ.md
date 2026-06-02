@@ -2,7 +2,7 @@
 
 ## Why does `query` return `FLOW_GATE`?
 
-Call **`suggest_query_params`** for that namespace first (within the cache TTL). Or use **`guided_query`**, which performs suggestion internally.
+On **Alliance** setups (`resolveAllianceConfig` / CLI), call **`suggest_query_params`** for that namespace first (within the cache TTL), or use **`guided_query`**, which performs suggestion internally. On **core** `setupCoreServer` / `resolveConfig`, the gate is **off** by default; if you enabled it (`PINECONE_DISABLE_SUGGEST_FLOW=false`), you need `suggest_query_params` or must switch to Alliance tools.
 
 ## Does `keyword_search` need `suggest_query_params`?
 
@@ -14,7 +14,7 @@ They are unified into **`query`** with `preset`: `fast`, `detailed`, or `full`. 
 
 ## How do I disable the suggest gate for testing?
 
-Set **`PINECONE_DISABLE_SUGGEST_FLOW=true`** or pass **`--disable-suggest-flow`**. Prefer fixing the client flow in production.
+**Core:** gate is already off via `resolveConfig` default. **Alliance:** set **`PINECONE_DISABLE_SUGGEST_FLOW=true`** or pass **`--disable-suggest-flow`**. Prefer fixing the client flow in production when using Alliance.
 
 ## Where are benchmarks?
 

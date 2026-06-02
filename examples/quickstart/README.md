@@ -38,7 +38,6 @@ Edit `.env`:
 
 - `PINECONE_API_KEY` — your API key
 - `PINECONE_INDEX_NAME` — dense index name (e.g. `my-mcp-demo`)
-- `PINECONE_DISABLE_SUGGEST_FLOW=true` — required for `setupCoreServer` (no `suggest_query_params` tool)
 
 Optional: `PINECONE_SPARSE_INDEX_NAME` if the sparse index is not `{dense}-sparse`.
 
@@ -68,12 +67,11 @@ npx tsx examples/quickstart/mcp-demo.ts
 
 ## 5. Optional: CLI (stdio MCP)
 
-After seeding, you can run the published binary with the same env (still disable the suggest-flow gate for ad-hoc `query` without Alliance tools):
+After seeding, you can run the published **Alliance** CLI with the same index (suggest-flow gate on by default; use `suggest_query_params` or `guided_query`):
 
 ```bash
 export PINECONE_API_KEY=...
 export PINECONE_INDEX_NAME=my-mcp-demo
-export PINECONE_DISABLE_SUGGEST_FLOW=true
 npx @will-cppa/pinecone-read-only-mcp
 ```
 
@@ -83,7 +81,7 @@ For the **full** Alliance tool surface (`suggest_query_params`, `guided_query`, 
 
 | Symptom | Check |
 | ------- | ----- |
-| `FLOW_GATE` on `query` / `count` | Set `PINECONE_DISABLE_SUGGEST_FLOW=true` or use Alliance server + `suggest_query_params` |
+| `FLOW_GATE` on `query` / `count` | Core: gate is off by default via `resolveConfig`. If you set `PINECONE_DISABLE_SUGGEST_FLOW=false`, call `suggest_query_params` first or use Alliance server + `guided_query` |
 | Empty `list_namespaces` | Run `seed-data.ts`; confirm namespace `quickstart` and index names in `.env` |
 | Upsert / search errors | Indexes must support integrated embedding and `chunk_text` as the text field |
 | Hybrid partial results | Both dense and sparse indexes must contain the same record IDs in the same namespace |

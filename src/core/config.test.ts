@@ -64,4 +64,24 @@ describe('resolveConfig', () => {
     });
     expect(cfg.rerankModel).toBe('my-reranker');
   });
+
+  it('defaults disableSuggestFlow to true (suggest gate off for core embedders)', () => {
+    const cfg = resolveConfig(
+      { apiKey: 'sk-test', indexName: 'my-index' },
+      { PINECONE_API_KEY: 'sk-test', PINECONE_INDEX_NAME: 'my-index' }
+    );
+    expect(cfg.disableSuggestFlow).toBe(true);
+  });
+
+  it('sets disableSuggestFlow false when PINECONE_DISABLE_SUGGEST_FLOW=false', () => {
+    const cfg = resolveConfig(
+      { apiKey: 'sk-test', indexName: 'my-index' },
+      {
+        PINECONE_API_KEY: 'sk-test',
+        PINECONE_INDEX_NAME: 'my-index',
+        PINECONE_DISABLE_SUGGEST_FLOW: 'false',
+      }
+    );
+    expect(cfg.disableSuggestFlow).toBe(false);
+  });
 });

@@ -1,14 +1,23 @@
 # MCP tools reference
 
-The server registers **nine** tools. Unless noted, failures return MCP `isError: true` with JSON matching `ToolError` (see [MIGRATION.md](./MIGRATION.md) and [README error table](../README.md#error-responses)).
+Unless noted, failures return MCP `isError: true` with JSON matching `ToolError` (see [MIGRATION.md](./MIGRATION.md) and [README error table](../README.md#error-responses)).
+
+## Core vs Alliance tool surface
+
+| Setup | Tools | MCP instructions |
+| ----- | ----- | ------------------ |
+| `setupCoreServer` (package root) | **7:** `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls` | `CORE_SERVER_INSTRUCTIONS` — no `guided_query` or `suggest_query_params` |
+| `setupAllianceServer` / published CLI | **9:** core tools plus `suggest_query_params`, `guided_query` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes guided/suggest quickstart |
 
 ## Suggest-flow gate
 
-Tools **`query`**, **`count`**, and **`query_documents`** require a prior successful **`suggest_query_params`** call for the **same namespace string** within the cache TTL (see `PINECONE_CACHE_TTL_SECONDS`). The gate is in-process memory (`requireSuggested`).
+When **`disableSuggestFlow`** is **`false`** (Alliance default via `resolveAllianceConfig` / CLI), tools **`query`**, **`count`**, and **`query_documents`** require a prior successful **`suggest_query_params`** call for the **same namespace string** within the cache TTL (see `PINECONE_CACHE_TTL_SECONDS`). The gate is in-process memory (`requireSuggested`).
+
+When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), the gate is bypassed — suitable for `setupCoreServer` embedders that do not register `suggest_query_params`.
 
 **Namespace consistency:** use the **exact same** `namespace` value (including trimming — avoid leading/trailing spaces in one call and not the other) for `suggest_query_params` and downstream gated tools. Mismatches yield `FLOW_GATE` with a suggestion to call `suggest_query_params` first.
 
-**Bypass:** set `PINECONE_DISABLE_SUGGEST_FLOW=true` or CLI `--disable-suggest-flow` (not recommended for production).
+**Core:** gate off by default; set `PINECONE_DISABLE_SUGGEST_FLOW=false` or `disableSuggestFlow: false` to enable the gate. **Alliance:** gate on by default; set `PINECONE_DISABLE_SUGGEST_FLOW=true` or CLI `--disable-suggest-flow` to bypass (not recommended for production).
 
 ---
 

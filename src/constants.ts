@@ -32,9 +32,7 @@ export const QUERY_DOCUMENTS_MAX_CHUNKS = 500;
 export const SERVER_NAME = 'Pinecone Read-Only MCP';
 export { SERVER_VERSION } from './server-version.js';
 
-export const SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns a decision_trace you can show the user. For the **core** entrypoint (\`setupCoreServer\` / package-root \`resolveConfig\`), \`PINECONE_INDEX_NAME\` (or \`--index-name\`) is required in addition to \`PINECONE_API_KEY\`. The **Alliance** CLI and \`resolveAllianceConfig\` default the index to \`rag-hybrid\` (and rerank to \`bge-reranker-v2-m3\`) when those env vars are omitted. Misconfiguration surfaces at startup, not as tool errors. For manual flows, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate). Use \`query_documents\` for full-document reading, \`keyword_search\` for exact-keyword retrieval against the sparse index, and \`generate_urls\` when records need URLs synthesized from metadata.
-
-A semantic search server that provides hybrid search capabilities over Pinecone vector indexes with automatic namespace discovery.
+const SERVER_FEATURES_AND_NOTES = `A semantic search server that provides hybrid search capabilities over Pinecone vector indexes with automatic namespace discovery.
 
 Features:
 - Hybrid Search: Combines dense and sparse embeddings for superior recall
@@ -47,12 +45,36 @@ Features:
 - Document reassembly: Use query_documents to get whole documents (chunks grouped and merged by document_number/doc_id/url) for content analysis or summarization. query_documents reranks when a rerank model is configured.
 - Keyword search: Use keyword_search to query the sparse index for lexical/keyword-only retrieval without reranking.
 
-Usage:
-1. Use list_namespaces (cached) to discover available namespaces in the index. The response includes \`expires_at_iso\` so you know when to refresh.
-2. Optionally use namespace_router to choose candidate namespace(s) from user intent.
-3. Call suggest_query_params before query/count/query_documents tools (mandatory flow gate) to get suggested_fields and recommended_tool.
-4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, or query_documents for full-document content.
-
 Notes:
 - Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.
 - The server emits structured logs to stderr (text by default, set PINECONE_READ_ONLY_MCP_LOG_FORMAT=json for log aggregation).`;
+
+/** MCP instructions for {@link setupCoreServer} (seven core tools only). */
+export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed. For \`setupCoreServer\` / package-root \`resolveConfig\`, \`PINECONE_INDEX_NAME\` (or \`--index-name\`) is required in addition to \`PINECONE_API_KEY\`. Misconfiguration surfaces at startup, not as tool errors.
+
+${SERVER_FEATURES_AND_NOTES}
+
+Usage:
+1. Use list_namespaces (cached) to discover available namespaces in the index. The response includes \`expires_at_iso\` so you know when to refresh.
+2. Optionally use namespace_router to choose candidate namespace(s) from user intent.
+3. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, query_documents for full-document content, keyword_search for lexical retrieval, or generate_urls when records need synthesized URLs.`;
+
+/** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
+export const ALLIANCE_INSTRUCTIONS_APPENDIX = `
+
+Alliance quickstart: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns a decision_trace you can show the user. The Alliance CLI and \`resolveAllianceConfig\` default the index to \`rag-hybrid\` (and rerank to \`bge-reranker-v2-m3\`) when those env vars are omitted.
+
+For manual flows with the full tool surface, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate unless PINECONE_DISABLE_SUGGEST_FLOW is set).
+
+Alliance usage (after list_namespaces):
+3. Call suggest_query_params before query/count/query_documents tools (mandatory flow gate) to get suggested_fields and recommended_tool.
+4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, or query_documents for full-document content.`;
+
+/** MCP instructions for {@link setupAllianceServer} (core tools plus Alliance tools). */
+export const ALLIANCE_SERVER_INSTRUCTIONS =
+  CORE_SERVER_INSTRUCTIONS + ALLIANCE_INSTRUCTIONS_APPENDIX;
+
+/**
+ * @deprecated Use {@link ALLIANCE_SERVER_INSTRUCTIONS} or {@link CORE_SERVER_INSTRUCTIONS}.
+ */
+export const SERVER_INSTRUCTIONS = ALLIANCE_SERVER_INSTRUCTIONS;

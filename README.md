@@ -134,7 +134,7 @@ Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per 
 - **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
 - **Full Alliance surface (CLI parity):** `import { setupAllianceServer, resolveAllianceConfig } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer` + `resolveConfig` with required `indexName`). For the **full Alliance surface**, use `resolveAllianceConfig({ apiKey, ... })` (Alliance index/rerank defaults when omitted, same as the CLI) → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer` + `resolveConfig` with required `indexName`; suggest-flow gate **off** by default). For the **full Alliance surface**, use `resolveAllianceConfig({ apiKey, ... })` (Alliance index/rerank defaults when omitted, suggest-flow gate **on** by default, same as the CLI) → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 

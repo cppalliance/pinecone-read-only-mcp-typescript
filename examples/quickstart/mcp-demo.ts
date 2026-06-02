@@ -2,7 +2,7 @@
  * Generic quickstart: embed setupCoreServer and call core MCP tools in-process.
  *
  * Flow: list_namespaces → count → query (preset fast, no rerank).
- * Requires seeded data (seed-data.ts) and PINECONE_DISABLE_SUGGEST_FLOW=true.
+ * Requires seeded data (seed-data.ts). Core resolveConfig disables the suggest-flow gate by default.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -46,7 +46,6 @@ async function main(): Promise<void> {
   const config = resolveConfig({
     apiKey,
     indexName,
-    disableSuggestFlow: true,
   });
 
   setPineconeClient(

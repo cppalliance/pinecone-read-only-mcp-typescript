@@ -23,7 +23,7 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | `logFormat` | `logFormat` / `PINECONE_READ_ONLY_MCP_LOG_FORMAT` | `text` or `json` |
 | `cacheTtlMs` | `cacheTtlSeconds` / `PINECONE_CACHE_TTL_SECONDS` | `1800` seconds → ms |
 | `requestTimeoutMs` | `requestTimeoutMs` / `PINECONE_REQUEST_TIMEOUT_MS` | `15000` |
-| `disableSuggestFlow` | `disableSuggestFlow` / `PINECONE_DISABLE_SUGGEST_FLOW` | `false` (bool parsing: true/1/yes/on) |
+| `disableSuggestFlow` | `disableSuggestFlow` / `PINECONE_DISABLE_SUGGEST_FLOW` | **Core `resolveConfig`:** `true` (gate off). **Alliance `resolveAllianceConfig` / CLI:** `false` (gate on). Bool parsing: true/1/yes/on |
 | `checkIndexes` | `checkIndexes` / `PINECONE_CHECK_INDEXES` | `false` |
 
 **Throws** if `apiKey` or `indexName` is missing after trim.
@@ -32,10 +32,10 @@ For the full Alliance tool surface (including `suggest_query_params`, `guided_qu
 
 ### Core vs Alliance resolvers
 
-| Resolver | When to use | Index when unset | Rerank when unset |
-| -------- | ------------- | ---------------- | ----------------- |
-| `resolveConfig` | Package root, `setupCoreServer`, quickstart | **Throws** | Omitted (no rerank) |
-| `resolveAllianceConfig` | Published CLI, `setupAllianceServer` | `rag-hybrid` | `bge-reranker-v2-m3` |
+| Resolver | When to use | Index when unset | Rerank when unset | Suggest gate when unset |
+| -------- | ------------- | ---------------- | ----------------- | ----------------------- |
+| `resolveConfig` | Package root, `setupCoreServer`, quickstart | **Throws** | Omitted (no rerank) | Off (`disableSuggestFlow: true`) |
+| `resolveAllianceConfig` | Published CLI, `setupAllianceServer` | `rag-hybrid` | `bge-reranker-v2-m3` | On (`disableSuggestFlow: false`) |
 
 C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/alliance/.env.example). Constants: `ALLIANCE_DEFAULT_INDEX_NAME` / `ALLIANCE_DEFAULT_RERANK_MODEL` from `@will-cppa/pinecone-read-only-mcp/alliance`.
 

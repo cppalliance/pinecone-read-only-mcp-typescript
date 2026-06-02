@@ -66,7 +66,8 @@ function asPositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function asBool(value: string | undefined, fallback: boolean): boolean {
+/** Parse env/CLI boolean strings (`true`/`1`/`yes`/`on` and `false`/`0`/`no`/`off`). */
+export function asBool(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined) return fallback;
   const v = value.trim().toLowerCase();
   if (v === 'true' || v === '1' || v === 'yes' || v === 'on') return true;
@@ -142,7 +143,7 @@ export function resolveConfig(
     overrides.requestTimeoutMs ??
     asPositiveInt(env['PINECONE_REQUEST_TIMEOUT_MS'], DEFAULT_REQUEST_TIMEOUT_MS);
   const disableSuggestFlow =
-    overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], false);
+    overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], true);
   const checkIndexes = overrides.checkIndexes ?? asBool(env['PINECONE_CHECK_INDEXES'], false);
 
   return {

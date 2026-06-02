@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveConfig } from '../../config.js';
 import { getPineconeClient } from '../client-context.js';
+import { resetServerConfig, setServerConfig } from '../config-context.js';
 import * as suggestionFlow from '../suggestion-flow.js';
 import { registerCountTool } from './count-tool.js';
-import { assertToolErrorCode, createMockServer } from './test-helpers.js';
+import { assertToolErrorCode, createMockServer, parseToolJson } from './test-helpers.js';
 
 vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
@@ -94,5 +96,36 @@ describe('count tool handler', () => {
       query_text: 'x',
     });
     expect(assertToolErrorCode(raw, 'PINECONE_ERROR').code).toBe('PINECONE_ERROR');
+  });
+});
+
+describe('count tool with core resolveConfig default (gate off)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetServerConfig();
+  });
+
+  it('does not return FLOW_GATE without prior suggest_query_params', async () => {
+    setServerConfig(resolveConfig({ apiKey: 'sk-test', indexName: 'my-index' }));
+    expect(resolveConfig({ apiKey: 'sk-test', indexName: 'my-index' }).disableSuggestFlow).toBe(
+      true
+    );
+
+    mockedGetClient.mockReturnValue({
+      count: vi.fn().mockResolvedValue({ count: 2, truncated: false }),
+    } as never);
+
+    const server = createMockServer();
+    registerCountTool(server as never);
+    const raw = await server.getHandler('count')!({
+      namespace: 'wg21',
+      query_text: 'how many',
+    });
+
+    const envelope = raw as { isError?: boolean };
+    expect(envelope.isError).not.toBe(true);
+    const body = parseToolJson(raw);
+    expect(body['status']).toBe('success');
+    expect(mockedGetClient().count).toHaveBeenCalled();
   });
 });

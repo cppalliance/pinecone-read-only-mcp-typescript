@@ -9,6 +9,7 @@ import {
   PineconeClient,
   hasUrlGenerator,
 } from './index.js';
+import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
 
 describe('suggestQueryParams', () => {
@@ -142,7 +143,7 @@ describe('setupCoreServer lifecycle', () => {
   });
 
   it('alliance setup registers built-in URL generators after teardown', async () => {
-    const cfg = resolveConfig({ apiKey: 'lifecycle-test-key-3', indexName: 'test-index' });
+    const cfg = resolveAllianceConfig({ apiKey: 'lifecycle-test-key-3', indexName: 'test-index' });
     setPineconeClient(
       new PineconeClient({
         apiKey: cfg.apiKey,

@@ -3,6 +3,7 @@
  */
 
 import {
+  asBool,
   resolveConfig,
   trimOptional,
   type ConfigOverrides,
@@ -34,5 +35,8 @@ export function resolveAllianceConfig(
     trimOptional(overrides.rerankModel) ??
     trimOptional(env['PINECONE_RERANK_MODEL']) ??
     ALLIANCE_DEFAULT_RERANK_MODEL;
-  return resolveConfig({ ...overrides, indexName, rerankModel }, env);
+  const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env);
+  const disableSuggestFlow =
+    overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], false);
+  return { ...cfg, disableSuggestFlow };
 }

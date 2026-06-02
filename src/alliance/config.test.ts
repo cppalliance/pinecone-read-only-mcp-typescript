@@ -13,6 +13,11 @@ describe('resolveAllianceConfig', () => {
     expect(cfg.rerankModel).toBe(ALLIANCE_DEFAULT_RERANK_MODEL);
   });
 
+  it('defaults disableSuggestFlow to false (suggest gate on for Alliance)', () => {
+    const cfg = resolveAllianceConfig({ apiKey: 'sk-test' }, { PINECONE_API_KEY: 'sk-test' });
+    expect(cfg.disableSuggestFlow).toBe(false);
+  });
+
   it('applies Alliance rerank default when env and overrides omit rerankModel but index is set', () => {
     const cfg = resolveAllianceConfig(
       { apiKey: 'sk-test', indexName: 'my-index' },

@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
+import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
 import type { ServerConfig } from './config.js';
 import { clearPineconeClient } from './server/client-context.js';
 import { setServerConfig, resetServerConfig } from './server/config-context.js';
@@ -36,7 +36,15 @@ export function teardownServer(): void {
  * or built-in Boost/Slack URL generators. Use {@link setupAllianceServer} from
  * `@will-cppa/pinecone-read-only-mcp/alliance` for the full tool surface.
  */
-export async function setupCoreServer(config?: ServerConfig): Promise<McpServer> {
+export type SetupCoreServerOptions = {
+  /** MCP server instructions; defaults to {@link CORE_SERVER_INSTRUCTIONS}. */
+  instructions?: string;
+};
+
+export async function setupCoreServer(
+  config?: ServerConfig,
+  options?: SetupCoreServerOptions
+): Promise<McpServer> {
   if (mcpServerInitialized) {
     throw new Error(
       'setupCoreServer() already called in this process. The MCP server uses process-global state (suggest-flow, namespace cache, URL generators, config). Call teardownServer() first if you need to re-initialize.'
@@ -53,7 +61,7 @@ export async function setupCoreServer(config?: ServerConfig): Promise<McpServer>
       version: SERVER_VERSION,
     },
     {
-      instructions: SERVER_INSTRUCTIONS,
+      instructions: options?.instructions ?? CORE_SERVER_INSTRUCTIONS,
     }
   );
 
