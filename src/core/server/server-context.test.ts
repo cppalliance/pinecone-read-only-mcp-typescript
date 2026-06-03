@@ -47,6 +47,35 @@ describe('ServerContext', () => {
     expect(ctx.getConfig()).toEqual(config);
   });
 
+  it('requireSuggested bypasses gate when disableSuggestFlow comes from resolved config', () => {
+    const prevDisable = process.env['PINECONE_DISABLE_SUGGEST_FLOW'];
+    const prevKey = process.env['PINECONE_API_KEY'];
+    const prevIndex = process.env['PINECONE_INDEX_NAME'];
+    try {
+      process.env['PINECONE_DISABLE_SUGGEST_FLOW'] = 'true';
+      process.env['PINECONE_API_KEY'] = 'sk-test';
+      process.env['PINECONE_INDEX_NAME'] = 'test-index';
+      const ctx = new ServerContext();
+      expect(ctx.requireSuggested('wg21')).toMatchObject({ ok: true });
+    } finally {
+      if (prevDisable === undefined) {
+        delete process.env['PINECONE_DISABLE_SUGGEST_FLOW'];
+      } else {
+        process.env['PINECONE_DISABLE_SUGGEST_FLOW'] = prevDisable;
+      }
+      if (prevKey === undefined) {
+        delete process.env['PINECONE_API_KEY'];
+      } else {
+        process.env['PINECONE_API_KEY'] = prevKey;
+      }
+      if (prevIndex === undefined) {
+        delete process.env['PINECONE_INDEX_NAME'];
+      } else {
+        process.env['PINECONE_INDEX_NAME'] = prevIndex;
+      }
+    }
+  });
+
   it('teardown clears client, URL registry, suggest-flow, and namespaces cache', async () => {
     const config = testConfig();
     const listNamespaces = vi
@@ -74,10 +103,10 @@ describe('ServerContext', () => {
     ctx.teardown();
     expect(() => ctx.getClientIfSet()).toThrow(/not initialized/);
     expect(ctx.hasUrlGenerator('wg21')).toBe(false);
+    ctx.setConfig(testConfig());
     expect(ctx.requireSuggested('wg21').ok).toBe(false);
 
     ctx.setClient({ listNamespacesWithMetadata: listNamespaces } as never);
-    ctx.setConfig(testConfig());
     const afterTeardown = await ctx.getNamespacesWithCache();
     expect(afterTeardown.cache_hit).toBe(false);
     expect(listNamespaces).toHaveBeenCalledTimes(2);

@@ -182,7 +182,7 @@ export class ServerContext {
       };
     }
 
-    if (this.configValue?.disableSuggestFlow) {
+    if (this.getConfig().disableSuggestFlow) {
       return {
         ok: true,
         flow: {
