@@ -66,13 +66,13 @@ Security fixes may break behavior when required; document impact in CHANGELOG an
 
 ## Future instance APIs (`ServerContext`)
 
-A planned refactor introduces **`ServerContext`** and **`createServer(config)`** while keeping legacy module-level getters during a transition. That work will:
+Phase 1 of the **`ServerContext`** / **`createServer(config)`** refactor is available while legacy module-level getters remain supported. See [MIGRATION.md § ServerContext instance APIs](./MIGRATION.md#unreleased-servercontext-instance-apis-phase-1) for upgrade steps.
+
+That work will:
 
 - Add new instance APIs without removing legacy getters in the same release.
 - Document legacy getters under `### Deprecated` with a named removal target per this policy.
 - Link migration steps from [MIGRATION.md](./MIGRATION.md) to this document.
-
-Until that migration guide is published, treat this section as the policy constraint for that refactor.
 
 ## CHANGELOG format for breaking changes
 

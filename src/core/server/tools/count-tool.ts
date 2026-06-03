@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
+import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -21,8 +22,58 @@ type CountResponse = {
   metadata_filter?: Record<string, unknown>;
 };
 
+type CountExecParams = {
+  namespace: string;
+  query_text: string;
+  metadata_filter?: Record<string, unknown>;
+};
+
+async function executeCount(params: CountExecParams, ctx?: ServerContext) {
+  try {
+    const { namespace, query_text, metadata_filter } = params;
+    const nsNorm = normalizeNamespace(namespace);
+    if (!nsNorm) {
+      return jsonErrorResponse(
+        validationToolError('namespace cannot be empty', 'namespace', {
+          suggestion: 'Use a namespace name from list_namespaces (trimmed).',
+        })
+      );
+    }
+    if (!query_text.trim()) {
+      return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
+    }
+    if (metadata_filter) {
+      const err = validateMetadataFilterDetailed(metadata_filter);
+      if (err) {
+        return jsonErrorResponse(validationToolError(err.message, err.field));
+      }
+    }
+    const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
+    if (!flowCheck.ok) {
+      return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
+    }
+    const client = ctx ? ctx.getClient() : getPineconeClient();
+    const { count, truncated } = await client.count({
+      query: query_text.trim(),
+      namespace: nsNorm,
+      metadataFilter: metadata_filter,
+    });
+    const response: CountResponse = {
+      status: COUNT_RESPONSE_STATUS,
+      count,
+      truncated,
+      namespace: nsNorm,
+      metadata_filter,
+    };
+    return jsonResponse(response);
+  } catch (error) {
+    logToolError('count', error);
+    return jsonErrorResponse(classifyToolCatchError(error, 'Failed to get count'));
+  }
+}
+
 /** Register the count tool on the MCP server. */
-export function registerCountTool(server: McpServer): void {
+export function registerCountTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'count',
     {
@@ -51,48 +102,6 @@ export function registerCountTool(server: McpServer): void {
           ),
       },
     },
-    async (params) => {
-      try {
-        const { namespace, query_text, metadata_filter } = params;
-        const nsNorm = normalizeNamespace(namespace);
-        if (!nsNorm) {
-          return jsonErrorResponse(
-            validationToolError('namespace cannot be empty', 'namespace', {
-              suggestion: 'Use a namespace name from list_namespaces (trimmed).',
-            })
-          );
-        }
-        if (!query_text.trim()) {
-          return jsonErrorResponse(validationToolError('query_text cannot be empty', 'query_text'));
-        }
-        if (metadata_filter) {
-          const err = validateMetadataFilterDetailed(metadata_filter);
-          if (err) {
-            return jsonErrorResponse(validationToolError(err.message, err.field));
-          }
-        }
-        const flowCheck = requireSuggested(nsNorm);
-        if (!flowCheck.ok) {
-          return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
-        }
-        const client = getPineconeClient();
-        const { count, truncated } = await client.count({
-          query: query_text.trim(),
-          namespace: nsNorm,
-          metadataFilter: metadata_filter,
-        });
-        const response: CountResponse = {
-          status: COUNT_RESPONSE_STATUS,
-          count,
-          truncated,
-          namespace: nsNorm,
-          metadata_filter,
-        };
-        return jsonResponse(response);
-      } catch (error) {
-        logToolError('count', error);
-        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to get count'));
-      }
-    }
+    async (params) => executeCount(params, ctx)
   );
 }

@@ -1,4 +1,8 @@
 import type { HybridQueryResult, SearchResult } from '../../../types.js';
+import { resolveConfig } from '../../config.js';
+import type { PineconeClient } from '../../pinecone-client.js';
+import type { ServerConfig } from '../../config.js';
+import { ServerContext } from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
@@ -104,4 +108,20 @@ export function makeNamespaceCacheEntry(
   recordCount = 42
 ): { namespace: string; recordCount: number; metadata: Record<string, string> } {
   return { namespace, recordCount, metadata };
+}
+
+/** Build an isolated {@link ServerContext} for instance-path tool tests. */
+export function createTestServerContext(options?: {
+  config?: Partial<ServerConfig>;
+  client?: PineconeClient;
+}): ServerContext {
+  const config = resolveConfig({
+    apiKey: 'sk-test',
+    indexName: 'test-index',
+    ...options?.config,
+  });
+  if (options?.client) {
+    return ServerContext.fromClient(config, options.client);
+  }
+  return new ServerContext(config);
 }

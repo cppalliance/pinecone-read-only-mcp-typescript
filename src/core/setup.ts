@@ -1,11 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
 import type { ServerConfig } from './config.js';
-import { clearPineconeClient } from './server/client-context.js';
-import { setServerConfig, resetServerConfig } from './server/config-context.js';
-import { invalidateNamespacesCache } from './server/namespaces-cache.js';
-import { resetSuggestionFlow } from './server/suggestion-flow.js';
-import { resetUrlGenerationRegistry } from './server/url-registry.js';
+import { PineconeClient } from './pinecone-client.js';
+import {
+  createServer,
+  getDefaultServerContext,
+  teardownDefaultServerContext,
+  type ServerContext,
+} from './server/server-context.js';
 import { registerCountTool } from './server/tools/count-tool.js';
 import { registerGenerateUrlsTool } from './server/tools/generate-urls-tool.js';
 import { registerKeywordSearchTool } from './server/tools/keyword-search-tool.js';
@@ -21,11 +23,7 @@ let mcpServerInitialized = false;
  * Pinecone client handle, URL generator registry). Call before a second {@link setupCoreServer}.
  */
 export function teardownServer(): void {
-  resetSuggestionFlow();
-  invalidateNamespacesCache();
-  resetServerConfig();
-  clearPineconeClient();
-  resetUrlGenerationRegistry();
+  teardownDefaultServerContext();
   mcpServerInitialized = false;
 }
 
@@ -43,8 +41,20 @@ export async function setupCoreServer(config?: ServerConfig): Promise<McpServer>
     );
   }
 
+  let ctx: ServerContext;
   if (config) {
-    setServerConfig(config);
+    let existingClient: PineconeClient | undefined;
+    try {
+      existingClient = getDefaultServerContext().getClientIfSet();
+    } catch {
+      existingClient = undefined;
+    }
+    ctx = createServer(config);
+    if (existingClient) {
+      ctx.setClient(existingClient);
+    }
+  } else {
+    ctx = getDefaultServerContext();
   }
 
   const server = new McpServer(
@@ -57,10 +67,10 @@ export async function setupCoreServer(config?: ServerConfig): Promise<McpServer>
     }
   );
 
-  registerListNamespacesTool(server);
+  registerListNamespacesTool(server, ctx);
   registerNamespaceRouterTool(server);
-  registerCountTool(server);
-  registerQueryTool(server);
+  registerCountTool(server, ctx);
+  registerQueryTool(server, ctx);
   registerKeywordSearchTool(server);
   registerQueryDocumentsTool(server);
   registerGenerateUrlsTool(server);

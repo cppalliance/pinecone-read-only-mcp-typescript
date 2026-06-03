@@ -6,6 +6,7 @@ import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
+import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -28,7 +29,7 @@ type QueryExecParams = {
 };
 
 /** Run the query tool: validate flow, call Pinecone, format and return results. */
-async function executeQuery(params: QueryExecParams) {
+async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
   const { query_text, namespace, top_k, use_reranking, metadata_filter, fields, mode } = params;
   try {
     if (!query_text.trim()) {
@@ -53,12 +54,12 @@ async function executeQuery(params: QueryExecParams) {
       );
     }
 
-    const flowCheck = requireSuggested(nsNorm);
+    const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
     if (!flowCheck.ok) {
       return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
     }
 
-    const client = getPineconeClient();
+    const client = ctx ? ctx.getClient() : getPineconeClient();
     const queryOutcome = await client.query({
       query: query_text.trim(),
       topK: top_k,
@@ -126,7 +127,7 @@ const baseSchema = {
  * Registers semantic chunk query via one preset-driven `query` tool.
  * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
-export function registerQueryTool(server: McpServer): void {
+export function registerQueryTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'query',
     {
@@ -169,15 +170,18 @@ export function registerQueryTool(server: McpServer): void {
         mode = 'query';
       }
 
-      return executeQuery({
-        query_text: params.query_text,
-        namespace: params.namespace,
-        top_k: params.top_k,
-        use_reranking,
-        metadata_filter: params.metadata_filter,
-        fields,
-        mode,
-      });
+      return executeQuery(
+        {
+          query_text: params.query_text,
+          namespace: params.namespace,
+          top_k: params.top_k,
+          use_reranking,
+          metadata_filter: params.metadata_filter,
+          fields,
+          mode,
+        },
+        ctx
+      );
     }
   );
 }

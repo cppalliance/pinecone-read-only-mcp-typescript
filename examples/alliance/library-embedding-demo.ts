@@ -3,7 +3,7 @@
  *
  * Pattern (mirrors `src/index.ts`):
  *   1. `resolveAllianceConfig({ apiKey, indexName, ... })` — Alliance index/rerank defaults when unset.
- *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)`.
+ *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)` (legacy), or `createServer(config)` + `ctx.setClient(...)`.
  *   3. `await setupAllianceServer(config)` then `server.connect(transport)`.
  *
  * **Single process:** `setupAllianceServer` registers tools against process-global

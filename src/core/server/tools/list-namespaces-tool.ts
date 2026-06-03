@@ -1,10 +1,41 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
+import type { ServerContext } from '../server-context.js';
 import { classifyToolCatchError, logToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
+async function executeListNamespaces(ctx?: ServerContext) {
+  try {
+    const {
+      data: namespacesInfo,
+      cache_hit,
+      expires_at,
+    } = ctx ? await ctx.getNamespacesWithCache() : await getNamespacesWithCache();
+    const now = Date.now();
+    const ttlSeconds = Math.max(0, Math.floor((expires_at - now) / 1000));
+
+    const response = {
+      status: 'success',
+      cache_hit,
+      cache_ttl_seconds: ttlSeconds,
+      expires_at_iso: new Date(expires_at).toISOString(),
+      count: namespacesInfo.length,
+      namespaces: namespacesInfo.map((ns) => ({
+        name: ns.namespace,
+        record_count: ns.recordCount,
+        metadata_fields: ns.metadata,
+      })),
+    };
+
+    return jsonResponse(response);
+  } catch (error) {
+    logToolError('list_namespaces', error);
+    return jsonErrorResponse(classifyToolCatchError(error, 'Failed to list namespaces'));
+  }
+}
+
 /** Register the list_namespaces tool on the MCP server. */
-export function registerListNamespacesTool(server: McpServer): void {
+export function registerListNamespacesTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'list_namespaces',
     {
@@ -15,30 +46,6 @@ export function registerListNamespacesTool(server: McpServer): void {
         'Results are cached in-memory for 30 minutes for better performance.',
       inputSchema: {},
     },
-    async () => {
-      try {
-        const { data: namespacesInfo, cache_hit, expires_at } = await getNamespacesWithCache();
-        const now = Date.now();
-        const ttlSeconds = Math.max(0, Math.floor((expires_at - now) / 1000));
-
-        const response = {
-          status: 'success',
-          cache_hit,
-          cache_ttl_seconds: ttlSeconds,
-          expires_at_iso: new Date(expires_at).toISOString(),
-          count: namespacesInfo.length,
-          namespaces: namespacesInfo.map((ns) => ({
-            name: ns.namespace,
-            record_count: ns.recordCount,
-            metadata_fields: ns.metadata,
-          })),
-        };
-
-        return jsonResponse(response);
-      } catch (error) {
-        logToolError('list_namespaces', error);
-        return jsonErrorResponse(classifyToolCatchError(error, 'Failed to list namespaces'));
-      }
-    }
+    async () => executeListNamespaces(ctx)
   );
 }
