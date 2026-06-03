@@ -67,8 +67,8 @@ Alliance quickstart: for most user questions, call \`guided_query\` with the use
 For manual flows with the full tool surface, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate unless \`PINECONE_DISABLE_SUGGEST_FLOW=true\`).
 
 Alliance usage (after list_namespaces):
-3. Call suggest_query_params before query/count/query_documents tools (mandatory flow gate) to get suggested_fields and recommended_tool.
-4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, or query_documents for full-document content.`;
+4. Call suggest_query_params before query/count/query_documents tools (mandatory flow gate) to get suggested_fields and recommended_tool.
+5. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, or query_documents for full-document content.`;
 
 /** MCP instructions for {@link setupAllianceServer} (core tools plus Alliance tools). */
 export const ALLIANCE_SERVER_INSTRUCTIONS =
