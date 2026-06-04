@@ -12,6 +12,7 @@ import {
 import { rankNamespacesByQuery } from '../../core/server/namespace-router.js';
 import { getNamespacesWithCache } from '../../core/server/namespaces-cache.js';
 import { normalizeNamespace } from '../../core/server/namespace-utils.js';
+import type { ServerContext } from '../../core/server/server-context.js';
 import { suggestQueryParams } from '../../core/server/query-suggestion.js';
 import { markSuggested } from '../../core/server/suggestion-flow.js';
 import {
@@ -39,7 +40,7 @@ function resolveGuidedToolName(
  * Registers `guided_query` (routing + suggestion + execution in one call).
  * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
-export function registerGuidedQueryTool(server: McpServer): void {
+export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'guided_query',
     {
@@ -102,7 +103,9 @@ export function registerGuidedQueryTool(server: McpServer): void {
         }
 
         const queryText = user_query.trim();
-        const { data: namespaces, cache_hit } = await getNamespacesWithCache();
+        const { data: namespaces, cache_hit } = ctx
+          ? await ctx.getNamespacesWithCache()
+          : await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(queryText, namespaces, 3);
 
         let namespace: string | null = null;
@@ -150,13 +153,21 @@ export function registerGuidedQueryTool(server: McpServer): void {
         }
 
         const selectedTool: GuidedToolName = resolveGuidedToolName(preferred_tool, suggestion);
-        markSuggested(namespace, {
-          recommended_tool: selectedTool,
-          suggested_fields: suggestion.suggested_fields,
-          user_query: queryText,
-        });
+        if (ctx) {
+          ctx.markSuggested(namespace, {
+            recommended_tool: selectedTool,
+            suggested_fields: suggestion.suggested_fields,
+            user_query: queryText,
+          });
+        } else {
+          markSuggested(namespace, {
+            recommended_tool: selectedTool,
+            suggested_fields: suggestion.suggested_fields,
+            user_query: queryText,
+          });
+        }
 
-        const client = getPineconeClient();
+        const client = ctx ? ctx.getClient() : getPineconeClient();
         const baseTrace = {
           cache_hit,
           input_namespace: inputNamespace ?? null,

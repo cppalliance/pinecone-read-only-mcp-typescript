@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { MAX_TOP_K, MIN_TOP_K } from '../../../constants.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
+import type { ServerContext } from '../server-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import type { ToolError } from '../tool-error.js';
 import { classifyToolCatchError, logToolError, validationToolError } from '../tool-error.js';
@@ -36,13 +37,16 @@ type KeywordSearchExecResult =
   | { ok: true; body: KeywordSearchResponse }
   | { ok: false; error: ToolError };
 
-async function executeKeywordSearch(params: {
-  query_text: string;
-  namespace: string;
-  top_k: number;
-  metadata_filter?: Record<string, unknown>;
-  fields?: string[];
-}): Promise<KeywordSearchExecResult> {
+async function executeKeywordSearch(
+  params: {
+    query_text: string;
+    namespace: string;
+    top_k: number;
+    metadata_filter?: Record<string, unknown>;
+    fields?: string[];
+  },
+  ctx?: ServerContext
+): Promise<KeywordSearchExecResult> {
   const { query_text, namespace, top_k, metadata_filter, fields } = params;
 
   const normalizedQuery = query_text.trim();
@@ -72,7 +76,7 @@ async function executeKeywordSearch(params: {
     }
   }
 
-  const client = getPineconeClient();
+  const client = ctx ? ctx.getClient() : getPineconeClient();
   const results = await client.keywordSearch({
     query: normalizedQuery,
     namespace: normalizedNamespace,
@@ -104,7 +108,7 @@ async function executeKeywordSearch(params: {
  * Registers `keyword_search` (lexical/sparse-only retrieval).
  * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
-export function registerKeywordSearchTool(server: McpServer): void {
+export function registerKeywordSearchTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'keyword_search',
     {
@@ -137,13 +141,16 @@ export function registerKeywordSearchTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const result = await executeKeywordSearch({
-          query_text: params.query_text,
-          namespace: params.namespace,
-          top_k: params.top_k,
-          metadata_filter: params.metadata_filter,
-          fields: params.fields,
-        });
+        const result = await executeKeywordSearch(
+          {
+            query_text: params.query_text,
+            namespace: params.namespace,
+            top_k: params.top_k,
+            metadata_filter: params.metadata_filter,
+            fields: params.fields,
+          },
+          ctx
+        );
         if (!result.ok) {
           return jsonErrorResponse(result.error);
         }

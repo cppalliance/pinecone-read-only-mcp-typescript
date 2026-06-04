@@ -9,6 +9,7 @@ import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
+import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -31,7 +32,7 @@ const CHUNKS_PER_DOCUMENT = 50;
  * Registers `query_documents` (reassemble chunks into full documents).
  * See "Retrieval tool decision matrix" in README.md for tool-selection guidance.
  */
-export function registerQueryDocumentsTool(server: McpServer): void {
+export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'query_documents',
     {
@@ -101,13 +102,13 @@ export function registerQueryDocumentsTool(server: McpServer): void {
           );
         }
 
-        const flowCheck = requireSuggested(nsNorm);
+        const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
         if (!flowCheck.ok) {
           return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
         }
 
         const chunkLimit = Math.min(QUERY_DOCUMENTS_MAX_CHUNKS, top_k * CHUNKS_PER_DOCUMENT);
-        const client = getPineconeClient();
+        const client = ctx ? ctx.getClient() : getPineconeClient();
         const queryOutcome = await client.query({
           query: query_text.trim(),
           topK: chunkLimit,

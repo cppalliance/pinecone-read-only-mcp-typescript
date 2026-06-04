@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { normalizeNamespace } from '../../core/server/namespace-utils.js';
 import { getNamespacesWithCache } from '../../core/server/namespaces-cache.js';
 import { suggestQueryParams } from '../../core/server/query-suggestion.js';
+import type { ServerContext } from '../../core/server/server-context.js';
 import { markSuggested } from '../../core/server/suggestion-flow.js';
 import {
   classifyToolCatchError,
@@ -12,7 +13,7 @@ import {
 import { jsonErrorResponse, jsonResponse } from '../../core/server/tool-response.js';
 
 /** Register the suggest_query_params tool on the MCP server. */
-export function registerSuggestQueryParamsTool(server: McpServer): void {
+export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'suggest_query_params',
     {
@@ -48,18 +49,28 @@ export function registerSuggestQueryParamsTool(server: McpServer): void {
             })
           );
         }
-        const { data: namespacesInfo, cache_hit } = await getNamespacesWithCache();
+        const { data: namespacesInfo, cache_hit } = ctx
+          ? await ctx.getNamespacesWithCache()
+          : await getNamespacesWithCache();
         const ns = namespacesInfo.find(
           (n) => n.namespace === nsNorm || normalizeNamespace(n.namespace) === nsNorm
         );
         const metadataFields = ns?.metadata ?? null;
         const result = suggestQueryParams(metadataFields, user_query.trim());
         if (result.namespace_found) {
-          markSuggested(nsNorm, {
-            recommended_tool: result.recommended_tool,
-            suggested_fields: result.suggested_fields,
-            user_query: user_query.trim(),
-          });
+          if (ctx) {
+            ctx.markSuggested(nsNorm, {
+              recommended_tool: result.recommended_tool,
+              suggested_fields: result.suggested_fields,
+              user_query: user_query.trim(),
+            });
+          } else {
+            markSuggested(nsNorm, {
+              recommended_tool: result.recommended_tool,
+              suggested_fields: result.suggested_fields,
+              user_query: user_query.trim(),
+            });
+          }
         }
         const response = {
           ...result,

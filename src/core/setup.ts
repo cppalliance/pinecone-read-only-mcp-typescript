@@ -76,12 +76,12 @@ export async function setupCoreServer(
   );
 
   registerListNamespacesTool(server, ctx);
-  registerNamespaceRouterTool(server);
+  registerNamespaceRouterTool(server, ctx);
   registerCountTool(server, ctx);
   registerQueryTool(server, ctx);
-  registerKeywordSearchTool(server);
-  registerQueryDocumentsTool(server);
-  registerGenerateUrlsTool(server);
+  registerKeywordSearchTool(server, ctx);
+  registerQueryDocumentsTool(server, ctx);
+  registerGenerateUrlsTool(server, ctx);
 
   mcpServerInitialized = true;
   return server;

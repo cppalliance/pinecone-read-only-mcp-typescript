@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
 import type { ServerConfig } from '../core/config.js';
+import { getDefaultServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServer } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
@@ -17,8 +18,9 @@ export async function setupAllianceServer(config?: ServerConfig): Promise<McpSer
   const server = await setupCoreServer(config ?? resolveAllianceConfig({}), {
     instructions: ALLIANCE_SERVER_INSTRUCTIONS,
   });
+  const ctx = getDefaultServerContext();
   registerBuiltinUrlGenerators();
-  registerSuggestQueryParamsTool(server);
-  registerGuidedQueryTool(server);
+  registerSuggestQueryParamsTool(server, ctx);
+  registerGuidedQueryTool(server, ctx);
   return server;
 }

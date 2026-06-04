@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { generateUrlForNamespace } from '../url-registry.js';
 import { normalizeNamespace } from '../namespace-utils.js';
+import type { ServerContext } from '../server-context.js';
+import { generateUrlForNamespace } from '../url-registry.js';
 import { classifyToolCatchError, logToolError, validationToolError } from '../tool-error.js';
 import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
 
@@ -15,7 +16,7 @@ function extractMetadata(record: Record<string, unknown>): Record<string, unknow
 }
 
 /** Register the generate_urls tool on the MCP server. */
-export function registerGenerateUrlsTool(server: McpServer): void {
+export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext): void {
   server.registerTool(
     'generate_urls',
     {
@@ -49,7 +50,9 @@ export function registerGenerateUrlsTool(server: McpServer): void {
         }
         const results = records.map((record, index) => {
           const metadata = extractMetadata(record);
-          const generated = generateUrlForNamespace(nsNorm, metadata);
+          const generated = ctx
+            ? ctx.generateUrlForNamespace(nsNorm, metadata)
+            : generateUrlForNamespace(nsNorm, metadata);
           return {
             index,
             url: generated.url,
