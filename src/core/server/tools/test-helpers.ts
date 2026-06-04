@@ -1,4 +1,8 @@
 import type { HybridQueryResult, SearchResult } from '../../../types.js';
+import { resolveConfig } from '../../config.js';
+import type { PineconeClient } from '../../pinecone-client.js';
+import type { ConfigOverrides, ServerConfig } from '../../config.js';
+import { ServerContext } from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
@@ -104,4 +108,33 @@ export function makeNamespaceCacheEntry(
   recordCount = 42
 ): { namespace: string; recordCount: number; metadata: Record<string, string> } {
   return { namespace, recordCount, metadata };
+}
+
+/**
+ * Resolved config for tests: explicit credentials and suggest-flow **enabled**
+ * so `PINECONE_DISABLE_SUGGEST_FLOW` in CI/env cannot bypass the gate.
+ */
+/** Stable TTL (seconds) for tests — overrides env `PINECONE_CACHE_TTL_SECONDS`. */
+const TEST_CACHE_TTL_SECONDS = 3600;
+
+export function resolveTestConfig(overrides: ConfigOverrides = {}): ServerConfig {
+  return resolveConfig({
+    apiKey: 'sk-test',
+    indexName: 'test-index',
+    disableSuggestFlow: false,
+    cacheTtlSeconds: TEST_CACHE_TTL_SECONDS,
+    ...overrides,
+  });
+}
+
+/** Build an isolated {@link ServerContext} for instance-path tool tests. */
+export function createTestServerContext(options?: {
+  config?: ConfigOverrides;
+  client?: PineconeClient;
+}): ServerContext {
+  const config = resolveTestConfig(options?.config);
+  if (options?.client) {
+    return ServerContext.fromClient(config, options.client);
+  }
+  return new ServerContext(config);
 }

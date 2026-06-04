@@ -5,6 +5,8 @@
  * Library consumers can plug in their own with `registerUrlGenerator(namespace, generator)`.
  */
 
+import { getDefaultServerContext } from './server-context.js';
+
 /** Outcome of a URL-generation attempt. */
 export type UrlGenerationResult = {
   url: string | null;
@@ -33,20 +35,12 @@ export type UrlGenerator = (metadata: Record<string, unknown>) => UrlGenerationR
  */
 export type UrlGeneratorFn = UrlGenerator;
 
-/** Registry of namespace -> URL generator. */
-const urlGenerators = new Map<string, UrlGeneratorFn>();
-
-/** Return a trimmed non-empty string or null for empty/missing values. */
-function asString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
 /**
  * Clear all URL generators.
  * Used by {@link teardownServer} so a subsequent setup can reinstall generators.
  */
 export function resetUrlGenerationRegistry(): void {
-  urlGenerators.clear();
+  getDefaultServerContext().resetUrlGenerators();
 }
 
 /**
@@ -56,24 +50,17 @@ export function resetUrlGenerationRegistry(): void {
  * @param generator function that turns a record's metadata into a URL ({@link UrlGeneratorFn}).
  */
 export function registerUrlGenerator(namespace: string, generator: UrlGeneratorFn): void {
-  const normalizedNamespace = namespace.trim();
-  if (normalizedNamespace.length === 0) {
-    throw new TypeError('namespace must be a non-empty string');
-  }
-  if (typeof generator !== 'function') {
-    throw new TypeError('generator must be a function');
-  }
-  urlGenerators.set(normalizedNamespace, generator);
+  getDefaultServerContext().registerUrlGenerator(namespace, generator);
 }
 
 /** Remove a namespace's URL generator. Returns true if a generator was removed. */
 export function unregisterUrlGenerator(namespace: string): boolean {
-  return urlGenerators.delete(namespace.trim());
+  return getDefaultServerContext().unregisterUrlGenerator(namespace);
 }
 
 /** True when the namespace has a registered URL generator (does not consider `metadata.url`). */
 export function hasUrlGenerator(namespace: string): boolean {
-  return urlGenerators.has(namespace.trim());
+  return getDefaultServerContext().hasUrlGenerator(namespace);
 }
 
 /**
@@ -84,19 +71,5 @@ export function generateUrlForNamespace(
   namespace: string,
   metadata: Record<string, unknown>
 ): UrlGenerationResult {
-  const existingUrl = asString(metadata['url']);
-  if (existingUrl) {
-    return { url: existingUrl, method: 'metadata.url' };
-  }
-
-  const generator = urlGenerators.get(namespace.trim());
-  if (generator) {
-    return generator(metadata);
-  }
-
-  return {
-    url: null,
-    method: 'unavailable',
-    reason: `URL generation is not supported for namespace "${namespace}"`,
-  };
+  return getDefaultServerContext().generateUrlForNamespace(namespace, metadata);
 }

@@ -1,16 +1,18 @@
 import type { ServerConfig } from '../config.js';
-import { resolveConfig } from '../config.js';
-
-let activeConfig: ServerConfig | null = null;
+import {
+  getDefaultServerContext,
+  setDefaultServerContext,
+  setPendingServerConfig,
+} from './server-context.js';
 
 /** Replace the process-global server config (called from setup with CLI/env-derived config). */
 export function setServerConfig(config: ServerConfig): void {
-  activeConfig = config;
+  setPendingServerConfig(config);
 }
 
 /** Clear active config so the next `getServerConfig()` resolves again (used by {@link teardownServer}). */
 export function resetServerConfig(): void {
-  activeConfig = null;
+  setDefaultServerContext(null);
 }
 
 /**
@@ -22,8 +24,5 @@ export function resetServerConfig(): void {
  * pass config from `resolveAllianceConfig()` into `setupAllianceServer(config)`.
  */
 export function getServerConfig(): ServerConfig {
-  if (!activeConfig) {
-    activeConfig = resolveConfig({});
-  }
-  return activeConfig;
+  return getDefaultServerContext().getConfig();
 }

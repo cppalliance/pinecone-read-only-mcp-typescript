@@ -6,6 +6,67 @@ This guide is for **library and MCP client authors** upgrading from earlier **0.
 
 Under [semver 0.y.z](https://semver.org/spec/v2.0.0.html#spec-item-4), **0.1.x → 0.2.0 is a breaking minor** — pin `@0.2.0` only after reading this guide.
 
+## Unreleased: `ServerContext` instance APIs (phase 1)
+
+**Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. Phase 1 introduces an opt-in **`ServerContext`** without removing legacy getters.
+
+**Now (0.2.x — unchanged for existing embedders):**
+
+```ts
+import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
+import {
+  resolveAllianceConfig,
+  setupAllianceServer,
+} from '@will-cppa/pinecone-read-only-mcp/alliance';
+
+const config = resolveAllianceConfig({ apiKey: process.env.PINECONE_API_KEY! });
+setPineconeClient(
+  new PineconeClient({
+    /* ... */
+  })
+);
+const server = await setupAllianceServer(config);
+```
+
+Module-level helpers (`getPineconeClient`, `registerUrlGenerator`, `requireSuggested`, etc.) continue to work; they delegate to a process-default context.
+
+**New (opt-in instance path):**
+
+```ts
+import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
+import {
+  resolveAllianceConfig,
+  setupAllianceServer,
+} from '@will-cppa/pinecone-read-only-mcp/alliance';
+
+const config = resolveAllianceConfig({ apiKey: process.env.PINECONE_API_KEY! });
+const ctx = createServer(config); // installs process-default + returns instance
+ctx.setClient(
+  new PineconeClient({
+    apiKey: config.apiKey,
+    indexName: config.indexName,
+    sparseIndexName: config.sparseIndexName,
+    rerankModel: config.rerankModel,
+    defaultTopK: config.defaultTopK,
+    requestTimeoutMs: config.requestTimeoutMs,
+  })
+);
+const server = await setupAllianceServer(config); // uses process-default ctx for migrated tools
+```
+
+For custom tool wiring, pass `ctx` to migrated registrars:
+
+```ts
+import { registerQueryTool, registerCountTool, registerListNamespacesTool } from '…'; // internal today
+registerQueryTool(server, ctx);
+```
+
+**Later (future minors/major):** Legacy module getters will be marked `### Deprecated` per [deprecation-policy.md](./deprecation-policy.md). Multi-tenant HTTP embedders should use one `ServerContext` per session rather than sharing process-global state.
+
+See also [deprecation-policy.md § Future instance APIs](./deprecation-policy.md#future-instance-apis-servercontext).
+
+---
+
 ## Unreleased: core vs Alliance config defaults
 
 **Rationale:** Generic npm consumers must not silently connect to Alliance infrastructure or inherit Alliance rerank settings when using `resolveConfig` from the package root.
@@ -70,12 +131,12 @@ const ns = userInput.trim();
 
 **`code` values (discriminated union):**
 
-| `code` | `recoverable` | Notes |
-| ------ | --------------- | ----- |
-| `FLOW_GATE` | `true` | Suggestion: call `suggest_query_params` for the namespace first |
-| `VALIDATION` | `true` | **`field` required** — input or `metadata_filter` dot-path |
-| `PINECONE_ERROR` | `true` or `false` | Upstream / network / Pinecone failures |
-| `TIMEOUT` | `true` | Outbound deadline exceeded |
+| `code`           | `recoverable`     | Notes                                                           |
+| ---------------- | ----------------- | --------------------------------------------------------------- |
+| `FLOW_GATE`      | `true`            | Suggestion: call `suggest_query_params` for the namespace first |
+| `VALIDATION`     | `true`            | **`field` required** — input or `metadata_filter` dot-path      |
+| `PINECONE_ERROR` | `true` or `false` | Upstream / network / Pinecone failures                          |
+| `TIMEOUT`        | `true`            | Outbound deadline exceeded                                      |
 
 **Migration steps:**
 
@@ -104,12 +165,12 @@ const ns = userInput.trim();
 
 **Rationale:** Align routing hints with the unified `query` tool vocabulary.
 
-| Old (legacy) | New |
-| ------------ | --- |
-| `query_fast` | `fast` |
-| `query_detailed` | `detailed` |
-| `count` | `count` (unchanged) |
-| _(n/a)_ | `full` (explicit preset) |
+| Old (legacy)     | New                      |
+| ---------------- | ------------------------ |
+| `query_fast`     | `fast`                   |
+| `query_detailed` | `detailed`               |
+| `count`          | `count` (unchanged)      |
+| _(n/a)_          | `full` (explicit preset) |
 
 **Migration steps:**
 
@@ -122,10 +183,10 @@ const ns = userInput.trim();
 
 **Rationale:** One hybrid tool with a `preset` knob instead of duplicate registrations.
 
-| Legacy tool call | New `query` call |
-| ---------------- | ---------------- |
-| `query_fast({ ...params })` | `query({ ...params, preset: 'fast' })` |
-| `query_detailed({ ...params })` | `query({ ...params, preset: 'detailed' })` |
+| Legacy tool call                | New `query` call                                                |
+| ------------------------------- | --------------------------------------------------------------- |
+| `query_fast({ ...params })`     | `query({ ...params, preset: 'fast' })`                          |
+| `query_detailed({ ...params })` | `query({ ...params, preset: 'detailed' })`                      |
 | Custom / explicit rerank+fields | `query({ ...params, preset: 'full', use_reranking?, fields? })` |
 
 **Example:**
