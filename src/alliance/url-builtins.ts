@@ -85,7 +85,8 @@ function isServerContext(value: unknown): value is ServerContext {
     typeof value === 'object' &&
     value !== null &&
     typeof (value as ServerContext).getConfig === 'function' &&
-    typeof (value as ServerContext).generateUrlForNamespace === 'function'
+    typeof (value as ServerContext).generateUrlForNamespace === 'function' &&
+    typeof (value as ServerContext).registerUrlGenerator === 'function'
   );
 }
 

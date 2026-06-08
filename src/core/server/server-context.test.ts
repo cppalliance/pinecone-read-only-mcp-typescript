@@ -12,6 +12,7 @@ import {
 describe('ServerContext', () => {
   afterEach(() => {
     teardownDefaultServerContext();
+    vi.useRealTimers();
   });
 
   const testConfig = () => resolveTestConfig();
@@ -162,6 +163,5 @@ describe('ServerContext', () => {
     if (!expired.ok) {
       expect(expired.message).toMatch(/expired/);
     }
-    vi.useRealTimers();
   });
 });
