@@ -18,9 +18,9 @@ const namespaceMetadata = {
 
 function mockNamespacesClient() {
   return {
-    listNamespacesWithMetadata: vi.fn().mockResolvedValue([
-      { namespace: 'wg21', recordCount: 42, metadata: namespaceMetadata },
-    ]),
+    listNamespacesWithMetadata: vi
+      .fn()
+      .mockResolvedValue([{ namespace: 'wg21', recordCount: 42, metadata: namespaceMetadata }]),
   };
 }
 

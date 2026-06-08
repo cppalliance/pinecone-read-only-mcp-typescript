@@ -103,9 +103,7 @@ function registerBuiltinsOnDefaultContext(options?: RegisterBuiltinUrlGenerators
 }
 
 /** Register built-in Alliance generators on the process-default context (legacy). */
-export function registerBuiltinUrlGenerators(
-  options?: RegisterBuiltinUrlGeneratorsOptions
-): void;
+export function registerBuiltinUrlGenerators(options?: RegisterBuiltinUrlGeneratorsOptions): void;
 /** Register built-in Alliance generators on the given {@link ServerContext}. */
 export function registerBuiltinUrlGenerators(
   ctx: ServerContext,

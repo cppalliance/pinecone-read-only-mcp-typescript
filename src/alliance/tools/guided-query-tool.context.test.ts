@@ -22,9 +22,9 @@ const namespaceMetadata = {
 
 function papersNamespaceClient(overrides?: { query?: ReturnType<typeof vi.fn> }) {
   return {
-    listNamespacesWithMetadata: vi.fn().mockResolvedValue([
-      { namespace: 'papers', recordCount: 42, metadata: namespaceMetadata },
-    ]),
+    listNamespacesWithMetadata: vi
+      .fn()
+      .mockResolvedValue([{ namespace: 'papers', recordCount: 42, metadata: namespaceMetadata }]),
     query: overrides?.query ?? vi.fn().mockResolvedValue(makeHybridQueryResult()),
     count: vi.fn().mockResolvedValue({ count: 7, truncated: false }),
   };
@@ -105,8 +105,7 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
   });
 
   it('enriches urls via ctx builtins when enrich_urls is true', async () => {
-    const mailingDocId =
-      'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
+    const mailingDocId = 'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
     const query = vi.fn().mockResolvedValue(
       makeHybridQueryResult({
         results: [
@@ -156,9 +155,9 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
   });
 
   it('returns TIMEOUT when orchestrator client throws timeout error', async () => {
-    const query = vi.fn().mockRejectedValue(
-      new Error('Timeout after 5000ms while waiting for query')
-    );
+    const query = vi
+      .fn()
+      .mockRejectedValue(new Error('Timeout after 5000ms while waiting for query'));
     const ctx = createTestServerContext({
       client: papersNamespaceClient({ query }) as never,
     });

@@ -113,9 +113,7 @@ describe('query tool handler (ServerContext instance path)', () => {
     registerQueryTool(server as never, ctx);
     const handler = server.getHandler('query')!;
 
-    query.mockResolvedValue(
-      makeHybridQueryResult({ hybrid_leg_failed: 'dense', degraded: false })
-    );
+    query.mockResolvedValue(makeHybridQueryResult({ hybrid_leg_failed: 'dense', degraded: false }));
     const denseBody = parseToolJson(
       await handler({ query_text: 'a', namespace: 'wg21', preset: 'fast' })
     );
@@ -131,9 +129,9 @@ describe('query tool handler (ServerContext instance path)', () => {
   });
 
   it('returns TIMEOUT when client throws timeout error', async () => {
-    const query = vi.fn().mockRejectedValue(
-      new Error('Timeout after 5000ms while waiting for query')
-    );
+    const query = vi
+      .fn()
+      .mockRejectedValue(new Error('Timeout after 5000ms while waiting for query'));
     const ctx = createTestServerContext({
       client: { query } as never,
     });

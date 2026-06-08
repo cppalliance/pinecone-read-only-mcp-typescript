@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
 import { createTestServerContext } from '../core/server/tools/test-helpers.js';
 
-const MAILING_DOC_ID =
-  'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
+const MAILING_DOC_ID = 'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
 
 describe('registerBuiltinUrlGenerators (ServerContext instance path)', () => {
   it('registers builtins only on the target context', () => {

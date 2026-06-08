@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  markSuggested,
-  requireSuggested,
-  resetSuggestionFlow,
-} from './suggestion-flow.js';
+import { markSuggested, requireSuggested, resetSuggestionFlow } from './suggestion-flow.js';
 import { createServer, teardownDefaultServerContext } from './server-context.js';
 import { resolveTestConfig } from './tools/test-helpers.js';
 

@@ -9,10 +9,12 @@ import {
   makeSearchResult,
   parseToolJson,
 } from '../../core/server/tools/test-helpers.js';
-import { getDefaultServerContext, teardownDefaultServerContext } from '../../core/server/server-context.js';
+import {
+  getDefaultServerContext,
+  teardownDefaultServerContext,
+} from '../../core/server/server-context.js';
 
-const MAILING_DOC_ID =
-  'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
+const MAILING_DOC_ID = 'boost-announce@lists.boost.org/message/O5VYCDZADVDHK5Z5LAYJBHMDOAFQL7P6';
 const EXPECTED_MAILING_URL = `https://lists.boost.org/archives/list/${MAILING_DOC_ID}/`;
 
 describe('isolated ServerContext with zero default context', () => {
