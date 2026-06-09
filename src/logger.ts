@@ -59,13 +59,14 @@ export function redactApiKey(s: string): string {
     /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g,
     '***'
   );
+  out = out.replace(/\bpcsk_[A-Za-z0-9_-]+\b/g, '***');
   out = out.replace(/(api[_-]?key["':\s=]+)([^\s"',}]+)/gi, '$1***');
   out = out.replace(/(Authorization:\s*Bearer\s+)([^\s"',}]+)/gi, '$1***');
   return out;
 }
 
 /** Recursively redact API keys from a serializable value. Returns a deep copy. */
-function redactValue(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
+export function redactValue(value: unknown, seen: WeakSet<object> = new WeakSet()): unknown {
   if (typeof value === 'string') return redactApiKey(value);
   if (value === null || value === undefined) return value;
   if (typeof value === 'object') {

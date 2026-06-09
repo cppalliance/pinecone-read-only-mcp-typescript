@@ -1,5 +1,6 @@
 import type { ToolError } from './tool-error.js';
 import { toolErrorSchema } from './tool-error.js';
+import { redactValue } from '../../logger.js';
 
 export type TextPayload = {
   content: Array<{ type: 'text'; text: string }>;
@@ -12,7 +13,7 @@ export function jsonResponse(payload: unknown): TextPayload {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(payload, null, 2),
+        text: JSON.stringify(redactValue(payload), null, 2),
       },
     ],
   };
@@ -20,7 +21,7 @@ export function jsonResponse(payload: unknown): TextPayload {
 
 /** Build an MCP tool error payload with JSON-stringified {@link ToolError} and isError: true. */
 export function jsonErrorResponse(err: ToolError): TextPayload {
-  const validated = toolErrorSchema.parse(err);
+  const validated = toolErrorSchema.parse(redactValue(err));
   return {
     isError: true,
     content: [

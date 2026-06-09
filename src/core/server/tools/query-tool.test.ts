@@ -245,6 +245,33 @@ describe('query tool handler (preset-driven)', () => {
     expect(body.degradation_reason).toMatch(/rerank_skipped_no_model/);
   });
 
+  it('query: redacts API keys from degradation reasons before returning content', async () => {
+    const apiKey = 'pcsk_query_secret_1234567890abcdef';
+    mockedGetClient.mockReturnValue({
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          degraded: true,
+          degradation_reason: `rerank_failed: ${apiKey}`,
+        })
+      ),
+      count: vi.fn(),
+    } as never);
+
+    const server = createMockServer();
+    registerQueryTool(server as never);
+
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: 'wg21',
+      top_k: 3,
+      preset: 'detailed',
+    });
+    const body = parseToolJson(raw);
+
+    expect(JSON.stringify(raw)).not.toContain(apiKey);
+    expect(body.degradation_reason).toBe('rerank_failed: ***');
+  });
+
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
     mockedGetClient.mockReturnValue({
       query: vi.fn().mockResolvedValue(

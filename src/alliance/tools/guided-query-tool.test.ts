@@ -107,6 +107,36 @@ describe('guided_query tool handler', () => {
     expect(trace.rerank_status).toBe('skipped_no_model');
   });
 
+  it('guided_query: redacts API keys from returned MCP content', async () => {
+    const apiKey = 'pcsk_guided_secret_1234567890abcdef';
+    mockedGetClient.mockReturnValue({
+      query: vi.fn().mockResolvedValue(
+        makeHybridQueryResult({
+          degraded: true,
+          degradation_reason: `rerank_failed: ${apiKey}`,
+          results: [makeSearchResult({ reranked: false })],
+        })
+      ),
+      count: vi.fn().mockResolvedValue({ count: 7, truncated: false }),
+    } as never);
+
+    const server = createMockServer();
+    registerGuidedQueryTool(server as never);
+
+    const raw = await server.getHandler('guided_query')!({
+      user_query: 'What does the paper say about contracts?',
+      namespace: 'papers',
+      top_k: 8,
+      preferred_tool: 'auto',
+      enrich_urls: false,
+    });
+    const body = parseToolJson(raw);
+    const result = body.result as Record<string, unknown>;
+
+    expect(JSON.stringify(raw)).not.toContain(apiKey);
+    expect(result.degradation_reason).toBe('rerank_failed: ***');
+  });
+
   it('runs query_detailed path on auto when user asks for content', async () => {
     const server = createMockServer();
     registerGuidedQueryTool(server as never);
