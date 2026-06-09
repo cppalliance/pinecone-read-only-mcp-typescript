@@ -2,11 +2,7 @@ import type { HybridQueryResult, SearchResult } from '../../../types.js';
 import { resolveConfig } from '../../config.js';
 import type { PineconeClient } from '../../pinecone-client.js';
 import type { ConfigOverrides, ServerConfig } from '../../config.js';
-import {
-  ServerContext,
-  setDefaultServerContext,
-  teardownDefaultServerContext,
-} from '../server-context.js';
+import { ServerContext, teardownDefaultServerContext } from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
@@ -134,7 +130,6 @@ export function resolveTestConfig(overrides: ConfigOverrides = {}): ServerConfig
 /** Clear process-default context so tests exercise an isolated instance only. */
 export function isolateFromDefaultContext(): void {
   teardownDefaultServerContext();
-  setDefaultServerContext(null);
 }
 
 /** Build an isolated {@link ServerContext} for instance-path tool tests. */

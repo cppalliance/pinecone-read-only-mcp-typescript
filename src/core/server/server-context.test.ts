@@ -5,7 +5,6 @@ import {
   ServerContext,
   createServer,
   getDefaultServerContext,
-  setDefaultServerContext,
   teardownDefaultServerContext,
 } from './server-context.js';
 
@@ -143,7 +142,6 @@ describe('ServerContext', () => {
   it('teardownDefaultServerContext clears process default', () => {
     createServer(testConfig());
     teardownDefaultServerContext();
-    setDefaultServerContext(null);
     const fresh = getDefaultServerContext();
     expect(fresh).not.toBeNull();
   });
