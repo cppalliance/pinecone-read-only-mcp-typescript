@@ -88,8 +88,11 @@ export async function setupCoreServer(
 
   const handle = server as ServerHandle;
   handle[Symbol.asyncDispose] = async () => {
-    await ctx[Symbol.asyncDispose]();
-    mcpServerInitialized = false;
+    try {
+      await ctx[Symbol.asyncDispose]();
+    } finally {
+      mcpServerInitialized = false;
+    }
   };
   mcpServerInitialized = true;
   return handle;

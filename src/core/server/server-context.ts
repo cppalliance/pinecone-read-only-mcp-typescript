@@ -268,6 +268,10 @@ export class ServerContext implements AsyncDisposable {
 
   async [Symbol.asyncDispose](): Promise<void> {
     this.teardown();
+    if (defaultContext === this) {
+      defaultContext = null;
+      pendingConfig = null;
+    }
   }
 }
 
