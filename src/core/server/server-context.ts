@@ -45,6 +45,7 @@ function buildPineconeClient(config: ServerConfig): PineconeClient {
  */
 export class ServerContext implements AsyncDisposable {
   disposed = false;
+  private toolsRegistered = false;
   private client: PineconeClient | null = null;
   private configValue: ServerConfig | null = null;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
@@ -256,9 +257,32 @@ export class ServerContext implements AsyncDisposable {
     this.namespacesCache = null;
   }
 
+  /** Whether MCP tools have been registered on this context (setup guard). */
+  hasToolsRegistered(): boolean {
+    return this.toolsRegistered;
+  }
+
+  /** Throw if this context cannot accept another tool registration pass. */
+  assertCanRegisterTools(): void {
+    if (this.disposed) {
+      throw new Error('Cannot setup a disposed ServerContext. Create a new instance.');
+    }
+    if (this.toolsRegistered) {
+      throw new Error(
+        'MCP tools already registered on this ServerContext. Call teardown/dispose first.'
+      );
+    }
+  }
+
+  /** Mark that MCP tools have been registered on this context. */
+  markToolsRegistered(): void {
+    this.toolsRegistered = true;
+  }
+
   /** Clear all encapsulated state (client handle, caches, registries). */
   teardown(): void {
     this.disposed = true;
+    this.toolsRegistered = false;
     this.client = null;
     this.configValue = null;
     this.urlGenerators.clear();
@@ -277,6 +301,11 @@ export class ServerContext implements AsyncDisposable {
 
 let defaultContext: ServerContext | null = null;
 let pendingConfig: ServerConfig | null = null;
+
+/** Peek at the process-default context without materializing a new one. */
+export function peekDefaultServerContext(): ServerContext | null {
+  return defaultContext;
+}
 
 /** Process-default context used by legacy module facades. */
 export function getDefaultServerContext(): ServerContext {

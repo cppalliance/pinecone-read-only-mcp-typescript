@@ -1,18 +1,22 @@
 /**
  * Library embedding: build the MCP server from a Node script (not the CLI).
  *
- * Pattern (mirrors `src/index.ts`):
+ * Instance-first pattern (mirrors `src/index.ts`):
  *   1. `resolveAllianceConfig({ apiKey, indexName, ... })` — Alliance index/rerank defaults when unset.
- *   2. `new PineconeClient({ ... })` + `setPineconeClient(client)` (legacy), or `createServer(config)` + `ctx.setClient(...)`.
- *   3. `await setupAllianceServer(config)` then `server.connect(transport)`.
+ *   2. `createServer(config)` → `ctx.setClient(new PineconeClient({ ... }))`.
+ *   3. `await setupAllianceServer({ config, context: ctx })` then `server.connect(transport)`.
  *
- * **Single process:** `setupAllianceServer` registers tools against process-global
- * singletons (suggest-flow state, namespaces cache, URL registry, active config).
- * A second setup call throws — call `teardownServer()` first to re-initialize
- * (tests). For isolated tenants in production, prefer one server per Node process.
+ * **Multi-instance:** pass a distinct `ServerContext` per tenant/session. Each context
+ * owns its own suggest-flow state, namespaces cache, and URL registry. Use
+ * `await using server = await setupAllianceServer({ config, context: ctx })` for
+ * automatic teardown, or call `ctx.teardown()` when done.
+ *
+ * **Legacy (single process-default server):** `setPineconeClient(client)` then
+ * `await setupAllianceServer(config)` still works; call `teardownServer()` before
+ * re-initializing the default context.
  */
 
-import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
+import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
 import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
@@ -25,7 +29,8 @@ async function main(): Promise<void> {
   }
   const config = resolveAllianceConfig({ apiKey });
 
-  setPineconeClient(
+  const ctx = createServer(config);
+  ctx.setClient(
     new PineconeClient({
       apiKey: config.apiKey,
       indexName: config.indexName,
@@ -36,7 +41,7 @@ async function main(): Promise<void> {
     })
   );
 
-  const server = await setupAllianceServer(config);
+  const server = await setupAllianceServer({ config, context: ctx });
   // const transport = new StdioServerTransport();
   // await server.connect(transport);
   void server;

@@ -3,8 +3,8 @@
 /**
  * Pinecone Read-Only MCP CLI entry point.
  *
- * Thin composition root: parseCli() -> resolveAllianceConfig() -> setupAllianceServer(config)
- * -> connect to stdio transport.
+ * Thin composition root: parseCli() -> resolveAllianceConfig() -> createServer(config)
+ * -> ctx.setClient(...) -> setupAllianceServer({ config, context: ctx }) -> connect to stdio transport.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -13,7 +13,7 @@ import { parseCli, printHelp, printVersion } from './cli.js';
 import type { ServerConfig } from './core/config.js';
 import { resolveAllianceConfig } from './alliance/config.js';
 import { PineconeClient } from './core/pinecone-client.js';
-import { setPineconeClient } from './core/server/client-context.js';
+import { createServer } from './core/server/server-context.js';
 import { setupAllianceServer } from './alliance/setup.js';
 import { setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
 
@@ -64,7 +64,8 @@ async function main(): Promise<void> {
       defaultTopK: config.defaultTopK,
       requestTimeoutMs: config.requestTimeoutMs,
     });
-    setPineconeClient(client);
+    const ctx = createServer(config);
+    ctx.setClient(client);
 
     if (config.checkIndexes) {
       const result = await client.checkIndexes();
@@ -88,7 +89,7 @@ async function main(): Promise<void> {
     }
     process.stderr.write(`Log level: ${config.logLevel} (format: ${config.logFormat})\n`);
 
-    const server = await setupAllianceServer(config);
+    const server = await setupAllianceServer({ config, context: ctx });
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
