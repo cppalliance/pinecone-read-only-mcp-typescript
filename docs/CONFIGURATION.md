@@ -63,9 +63,11 @@ C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/all
 
 ## Library embedding
 
-1. Build `ServerConfig` with `resolveConfig({ apiKey: '...', indexName: '...', ... })` or pass explicit overrides.
-2. Construct `PineconeClient` and `setPineconeClient(client)` before `setupAllianceServer(config)` (mirrors `src/index.ts`).
-3. `await setupAllianceServer(config)` (or `setupCoreServer` for generic tools only) then connect an MCP transport.
+1. Build `ServerConfig` with `resolveConfig({ apiKey: '...', indexName: '...', ... })` or `resolveAllianceConfig(...)` for the full tool surface.
+2. `const ctx = createServer(config)` then `ctx.setClient(new PineconeClient({ ... }))` (mirrors `src/index.ts`).
+3. `await setupAllianceServer({ context: ctx })` (or `setupCoreServer({ context: ctx })` for generic tools only) then connect an MCP transport.
+
+Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
 
 See [README deployment model](../README.md#deployment-model), [examples/quickstart/README.md](../examples/quickstart/README.md) (generic), and [examples/alliance/library-embedding-demo.ts](../examples/alliance/library-embedding-demo.ts) (Alliance surface).
 

@@ -45,7 +45,9 @@ function buildPineconeClient(config: ServerConfig): PineconeClient {
  */
 export class ServerContext implements AsyncDisposable {
   disposed = false;
+  private toolsRegistered = false;
   private client: PineconeClient | null = null;
+  private clientExplicitlySet = false;
   private configValue: ServerConfig | null = null;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
@@ -57,6 +59,7 @@ export class ServerContext implements AsyncDisposable {
     }
     if (client) {
       this.client = client;
+      this.clientExplicitlySet = true;
     }
   }
 
@@ -80,21 +83,29 @@ export class ServerContext implements AsyncDisposable {
   /** Drop client, namespace cache, and suggest-flow tied to a previous config. */
   private invalidateConfigDerivedState(): void {
     this.client = null;
+    this.clientExplicitlySet = false;
     this.namespacesCache = null;
     this.suggestionFlow.clear();
   }
 
   setClient(client: PineconeClient): void {
     this.client = client;
+    this.clientExplicitlySet = true;
   }
 
   clearClient(): void {
     this.client = null;
+    this.clientExplicitlySet = false;
   }
 
-  /** Return the client only when explicitly set (legacy {@link getPineconeClient} path). */
+  /** Whether a Pinecone client was explicitly set via constructor, {@link setClient}, or {@link fromClient}. */
+  hasInjectedClient(): boolean {
+    return this.clientExplicitlySet;
+  }
+
+  /** Return the client only when explicitly injected (legacy {@link getPineconeClient} path). */
   getClientIfSet(): PineconeClient {
-    if (!this.client) {
+    if (!this.clientExplicitlySet || !this.client) {
       throw new Error('Pinecone client not initialized. Call setPineconeClient first.');
     }
     return this.client;
@@ -256,10 +267,34 @@ export class ServerContext implements AsyncDisposable {
     this.namespacesCache = null;
   }
 
+  /** Whether MCP tools have been registered on this context (setup guard). */
+  hasToolsRegistered(): boolean {
+    return this.toolsRegistered;
+  }
+
+  /** Throw if this context cannot accept another tool registration pass. */
+  assertCanRegisterTools(): void {
+    if (this.disposed) {
+      throw new Error('Cannot setup a disposed ServerContext. Create a new instance.');
+    }
+    if (this.toolsRegistered) {
+      throw new Error(
+        'MCP tools already registered on this ServerContext. Call teardown/dispose first.'
+      );
+    }
+  }
+
+  /** Mark that MCP tools have been registered on this context. */
+  markToolsRegistered(): void {
+    this.toolsRegistered = true;
+  }
+
   /** Clear all encapsulated state (client handle, caches, registries). */
   teardown(): void {
     this.disposed = true;
+    this.toolsRegistered = false;
     this.client = null;
+    this.clientExplicitlySet = false;
     this.configValue = null;
     this.urlGenerators.clear();
     this.suggestionFlow.clear();
@@ -277,6 +312,11 @@ export class ServerContext implements AsyncDisposable {
 
 let defaultContext: ServerContext | null = null;
 let pendingConfig: ServerConfig | null = null;
+
+/** Peek at the process-default context without materializing a new one. */
+export function peekDefaultServerContext(): ServerContext | null {
+  return defaultContext;
+}
 
 /** Process-default context used by legacy module facades. */
 export function getDefaultServerContext(): ServerContext {

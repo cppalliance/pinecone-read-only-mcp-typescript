@@ -125,16 +125,29 @@ Run `pinecone-read-only-mcp --help` for CLI equivalents (`--cache-ttl-seconds`, 
 
 ### Deployment model
 
-The server uses **process-global** memory for the suggest-flow gate (`suggest_query_params` context), namespaces cache, URL generator registry, and active configuration. **Stdio MCP (one client per Node process)** matches this model. If you embed `setupAllianceServer` behind a multi-tenant HTTP transport, isolate those structures per session yourself or treat the suggest-flow guard as best-effort only.
+Each **`ServerContext`** owns its own suggest-flow gate, namespaces cache, URL generator registry, and config. **Stdio MCP (one client per Node process)** typically uses one context. For **multi-tenant HTTP** embedding, create one `ServerContext` per session and pass it explicitly to `setupAllianceServer({ context: ctx })` or `setupCoreServer({ context: ctx })`.
+
+Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
+
+Legacy module getters (`setPineconeClient`, `registerUrlGenerator`, etc.) still delegate to a process-default context when you omit `context` at setup.
 
 ### Library embedding
 
-Treat **`setupCoreServer()` / `setupAllianceServer()` as one logical server per Node process**: they mutate shared module singletons (suggest-flow map, namespaces cache, URL registry, config context, shared `PineconeClient` slot). A **second** setup call in the same process **throws** unless you call **`teardownServer()`** first.
+**Recommended (instance-first):** create a `ServerContext`, inject the client, and pass it to setup:
 
-- **Generic bridge only:** `import { setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
+- **Generic bridge only:** `import { createServer, setupCoreServer, teardownServer, ... } from '@will-cppa/pinecone-read-only-mcp'`
 - **Full Alliance surface (CLI parity):** `import { setupAllianceServer, resolveAllianceConfig } from '@will-cppa/pinecone-read-only-mcp/alliance'`
 
-For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts) (`setupCoreServer` + `resolveConfig` with required `indexName`; suggest-flow gate **off** by default). For the **full Alliance surface**, use `resolveAllianceConfig({ apiKey, ... })` (Alliance index/rerank defaults when omitted, suggest-flow gate **on** by default, same as the CLI) → `setPineconeClient(new PineconeClient(...))` → `await setupAllianceServer(config)` → connect one MCP transport. See [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+```ts
+const config = resolveAllianceConfig({ apiKey: '...' });
+const ctx = createServer(config);
+ctx.setClient(new PineconeClient({ /* ... */ }));
+const server = await setupAllianceServer({ context: ctx });
+```
+
+Use **`await using server = await setupAllianceServer({ context: ctx })`** for automatic teardown, or call **`ctx.teardown()`** when done. For legacy single-server flows that rely on the process-default context, **`teardownServer()`** resets that default before re-initializing.
+
+For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts). For the **full Alliance surface**, see [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
 
 ### Custom URL generators
 
@@ -144,16 +157,17 @@ Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult`
 
 ```ts
 import {
+  createServer,
   PineconeClient,
   registerUrlGenerator,
-  setPineconeClient,
   type UrlGenerationResult,
   type UrlGeneratorFn,
 } from '@will-cppa/pinecone-read-only-mcp';
 import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 const config = resolveAllianceConfig({ apiKey: '...' }); // optional: indexName, rerankModel
-setPineconeClient(
+const ctx = createServer(config);
+ctx.setClient(
   new PineconeClient({
     apiKey: config.apiKey,
     indexName: config.indexName,
@@ -161,7 +175,7 @@ setPineconeClient(
     rerankModel: config.rerankModel,
   })
 );
-const server = await setupAllianceServer(config);
+const server = await setupAllianceServer({ context: ctx });
 
 const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
   const id = typeof metadata.doc_id === 'string' ? metadata.doc_id : null;
