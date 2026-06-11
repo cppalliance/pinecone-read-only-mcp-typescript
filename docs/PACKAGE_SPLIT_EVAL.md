@@ -1,19 +1,13 @@
 # Core / Alliance package split evaluation
 
-**Issue:** [#121](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/issues/121) (June week 2, item 4)  
-**Status:** Decision document — no implementation in this PR  
-**Evaluated at:** `@will-cppa/pinecone-read-only-mcp` v0.2.0, after ServerContext phases 1–4 (PRs #130, #132, and phase 3–4 follow-ups)
-
----
-
 ## Executive summary
 
-| Question | Answer |
-| -------- | ------ |
-| Can core and alliance be separate npm packages? | **Yes, technically feasible.** Production dependency is one-way (`alliance` → `core`); no circular imports. |
-| Which consumers use which layer? | **Alliance layer:** CLI, MCP client configs, Alliance examples, internal C++ Alliance deployments. **Core layer:** generic embedders, core-only setup, shared types/errors. No known external community consumers yet (pre-1.0). |
-| Recommended package structure | **npm workspace monorepo** in this repository (not separate git repos) if/when the split proceeds. |
-| **Decision** | **Split later** — after phase 5 legacy-getter deprecation completes and one deprecation window has elapsed. Keep the unified package until then. |
+| Question                                        | Answer                                                                                                                                                                                                                           |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Can core and alliance be separate npm packages? | **Yes, technically feasible.** Production dependency is one-way (`alliance` → `core`); no circular imports.                                                                                                                      |
+| Which consumers use which layer?                | **Alliance layer:** CLI, MCP client configs, Alliance examples, internal C++ Alliance deployments. **Core layer:** generic embedders, core-only setup, shared types/errors. No known external community consumers yet (pre-1.0). |
+| Recommended package structure                   | **npm workspace monorepo** in this repository (not separate git repos) if/when the split proceeds.                                                                                                                               |
+| **Decision**                                    | **Split later** — after phase 5 legacy-getter deprecation completes and one deprecation window has elapsed. Keep the unified package until then.                                                                                 |
 
 The source boundary (`src/core/` vs `src/alliance/`) is already clean enough to become a package boundary. The remaining blockers are public API surface (legacy module facades still exported from core), build/workspace tooling (not yet present), and low external adoption incentive while the project is still pre-1.0.
 
@@ -25,7 +19,7 @@ The eval describes generic MCP infrastructure and Alliance-specific URL generato
 
 Evaluating a package split determines whether the **core MCP bridge** (generic, stable) and the **Alliance app layer** (domain-specific, iterating) should decouple their release cadences so that Alliance-only changes stop forcing shared version bumps across the non-test source tree.
 
-Jonathan's Week 4 PR A introduced the core/alliance boundary in source. This document evaluates whether to make that boundary an **npm package** boundary.
+This document evaluates whether to make that boundary an **npm package** boundary.
 
 ---
 
@@ -35,20 +29,20 @@ Jonathan's Week 4 PR A introduced the core/alliance boundary in source. This doc
 
 Today one package publishes two entry points via `package.json` `exports`:
 
-| Export | Build output | Surface |
-| ------ | ------------ | ------- |
-| `"."` | `dist/core/index.js` | 7 core MCP tools, `ServerContext`, `setupCoreServer`, `resolveConfig`, URL registry API, shared types |
+| Export         | Build output             | Surface                                                                                                                                          |
+| -------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `"."`          | `dist/core/index.js`     | 7 core MCP tools, `ServerContext`, `setupCoreServer`, `resolveConfig`, URL registry API, shared types                                            |
 | `"./alliance"` | `dist/alliance/index.js` | Re-exports all of core **plus** `setupAllianceServer`, `resolveAllianceConfig`, `guided_query`, `suggest_query_params`, Boost/Slack URL builtins |
 
 The CLI binary (`pinecone-read-only-mcp` → `dist/index.js`) is a thin composition root that always wires the Alliance path: `resolveAllianceConfig` → `createServer` → `setupAllianceServer`.
 
 ### 2.2 Source layout
 
-| Layer | Location | Non-test `.ts` lines (approx.) | Role |
-| ----- | -------- | ------------------------------ | ---- |
-| Core | `src/core/` | ~3,250 | Generic MCP–Pinecone bridge: 7 tools, `ServerContext`, formatters, caches, suggestion engine, URL registry |
-| Alliance | `src/alliance/` | ~600 | Alliance config defaults, 2 extra tools, mailing/Slack URL builtins, `setupAllianceServer` |
-| Shared root | `src/constants.ts`, `types.ts`, `logger.ts`, `cli.ts`, `index.ts` | ~670 | Instructions constants, shared types, logging, CLI parsing |
+| Layer       | Location                                                          | Non-test `.ts` lines (approx.) | Role                                                                                                       |
+| ----------- | ----------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Core        | `src/core/`                                                       | ~3,250                         | Generic MCP–Pinecone bridge: 7 tools, `ServerContext`, formatters, caches, suggestion engine, URL registry |
+| Alliance    | `src/alliance/`                                                   | ~600                           | Alliance config defaults, 2 extra tools, mailing/Slack URL builtins, `setupAllianceServer`                 |
+| Shared root | `src/constants.ts`, `types.ts`, `logger.ts`, `cli.ts`, `index.ts` | ~670                           | Instructions constants, shared types, logging, CLI parsing                                                 |
 
 **Total non-test source:** ~4,500 lines (issue eval cited ~2,800; count has grown with ServerContext phases and tests are excluded here).
 
@@ -82,13 +76,13 @@ These are manageable in a split (move to an integration test package or add `@wi
 
 ### 2.4 Alliance-specific surface today
 
-| Artifact | Location | Alliance-specific content |
-| -------- | -------- | ------------------------- |
-| URL generators | `src/alliance/url-builtins.ts` | `mailing`, `slack-Cpplang` namespace patterns |
-| MCP tools | `src/alliance/tools/` | `guided_query`, `suggest_query_params` |
-| Config | `src/alliance/config.ts` | Defaults: index `rag-hybrid`, rerank `bge-reranker-v2-m3`, suggest-flow gate on |
-| Setup | `src/alliance/setup.ts` | Delegates to `setupCoreServer`, then registers builtins + Alliance tools |
-| Instructions | `src/constants.ts` | `ALLIANCE_SERVER_INSTRUCTIONS` = `CORE_SERVER_INSTRUCTIONS` + Alliance appendix; deprecated `SERVER_INSTRUCTIONS` alias |
+| Artifact       | Location                       | Alliance-specific content                                                                                               |
+| -------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| URL generators | `src/alliance/url-builtins.ts` | `mailing`, `slack-Cpplang` namespace patterns                                                                           |
+| MCP tools      | `src/alliance/tools/`          | `guided_query`, `suggest_query_params`                                                                                  |
+| Config         | `src/alliance/config.ts`       | Defaults: index `rag-hybrid`, rerank `bge-reranker-v2-m3`, suggest-flow gate on                                         |
+| Setup          | `src/alliance/setup.ts`        | Delegates to `setupCoreServer`, then registers builtins + Alliance tools                                                |
+| Instructions   | `src/constants.ts`             | `ALLIANCE_SERVER_INSTRUCTIONS` = `CORE_SERVER_INSTRUCTIONS` + Alliance appendix; deprecated `SERVER_INSTRUCTIONS` alias |
 
 Core setup uses `CORE_SERVER_INSTRUCTIONS` (7 tools). Alliance setup uses `ALLIANCE_SERVER_INSTRUCTIONS` (9 tools).
 
@@ -113,19 +107,19 @@ Separating core and alliance into distinct npm packages is **technically feasibl
 
 1. **Acyclic dependency graph** — Alliance depends on core; core never depends on Alliance in production code.
 2. **Clear ownership** — Core owns generic tools and infrastructure; Alliance owns domain config, builtins, and two orchestration tools.
-3. **Existing export split** — Consumers already import from `"."` vs `"./alliance"`; a package split mostly changes *where those paths resolve*, not embedder mental models.
+3. **Existing export split** — Consumers already import from `"."` vs `"./alliance"`; a package split mostly changes _where those paths resolve_, not embedder mental models.
 
 ### 3.2 Files that must move or be split
 
-| File / module | Current use | Recommended owner if split |
-| ------------- | ----------- | -------------------------- |
-| `src/core/**` | Core package body | `@will-cppa/pinecone-read-only-mcp` (keep name) |
-| `src/alliance/**` | Alliance package body | `@will-cppa/pinecone-read-only-mcp-alliance` (new name) |
-| `src/types.ts` | Shared response/query types | Core (Alliance imports from core) |
-| `src/logger.ts` | Structured logging, redaction | Core (Alliance imports from core) |
+| File / module      | Current use                                   | Recommended owner if split                                                                      |
+| ------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/core/**`      | Core package body                             | `@will-cppa/pinecone-read-only-mcp` (keep name)                                                 |
+| `src/alliance/**`  | Alliance package body                         | `@will-cppa/pinecone-read-only-mcp-alliance` (new name)                                         |
+| `src/types.ts`     | Shared response/query types                   | Core (Alliance imports from core)                                                               |
+| `src/logger.ts`    | Structured logging, redaction                 | Core (Alliance imports from core)                                                               |
 | `src/constants.ts` | Mixed: `CORE_*` and `ALLIANCE_*` instructions | Split: core constants in core package; Alliance appendix + deprecated alias in Alliance package |
-| `src/cli.ts` | CLI flag parsing | Alliance package (CLI is Alliance-default) or shared thin CLI package (not recommended) |
-| `src/index.ts` | CLI entry (`bin`) | Alliance package |
+| `src/cli.ts`       | CLI flag parsing                              | Alliance package (CLI is Alliance-default) or shared thin CLI package (not recommended)         |
+| `src/index.ts`     | CLI entry (`bin`)                             | Alliance package                                                                                |
 
 A third micro-package for logging or types alone is **not recommended** — it adds publish/CI overhead without meaningful decoupling benefit.
 
@@ -151,13 +145,13 @@ The repository is a **single-package** npm project today. No `pnpm-workspace.yam
 
 A split requires:
 
-| Work item | Effort |
-| --------- | ------ |
-| Root `package.json` workspaces (`"workspaces": ["packages/*"]`) | Low |
-| Per-package `package.json`, `tsconfig.json`, build scripts | Medium |
-| CI: lint, test, coverage, and publish per package (or orchestrated via root) | Medium |
-| `vitest` config spanning workspace packages | Low–medium |
-| npm publish: two packages, version coordination policy | Medium |
+| Work item                                                                    | Effort     |
+| ---------------------------------------------------------------------------- | ---------- |
+| Root `package.json` workspaces (`"workspaces": ["packages/*"]`)              | Low        |
+| Per-package `package.json`, `tsconfig.json`, build scripts                   | Medium     |
+| CI: lint, test, coverage, and publish per package (or orchestrated via root) | Medium     |
+| `vitest` config spanning workspace packages                                  | Low–medium |
+| npm publish: two packages, version coordination policy                       | Medium     |
 
 Estimated implementation effort for the split itself: **~3–5 days** (not including phase 5 API cleanup or consumer migration docs).
 
@@ -168,9 +162,9 @@ The core public API (`src/core/index.ts`) still exports **legacy module facades*
 - `setPineconeClient`
 - `registerUrlGenerator`, `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`
 
-These are Alliance-era singleton patterns. Publishing them as the stable surface of a standalone "generic core" package would cement the wrong contract. **Phase 5** ([issue #09 horizon](../data/issues/June_week_3/issue_09.md)) deprecates and eventually removes these exports, leaving `ServerContext` + setup APIs as the supported public contract.
+These are Alliance-era singleton patterns. Publishing them as the stable surface of a standalone "generic core" package would cement the wrong contract. **Phase 5** deprecates and eventually removes these exports, leaving `ServerContext` + setup APIs as the supported public contract.
 
-Until phase 5 completes, "core" is generic in *source layout* but not yet generic in *published API*.
+Until phase 5 completes, "core" is generic in _source layout_ but not yet generic in _published API_.
 
 ### 3.6 Extension surface (T23) and package split
 
@@ -190,16 +184,16 @@ Plugin/registry APIs for third-party URL generators and tools remain a separate 
 
 ### 4.1 Consumer matrix
 
-| Consumer | Layer used | Import / deploy path | Impact if split |
-| -------- | ---------- | -------------------- | --------------- |
-| **Alliance CLI** (default npm install, Docker) | Alliance | `bin: pinecone-read-only-mcp` → Alliance setup | Transparent if bin moves to Alliance package; MCP configs update package name only |
-| **MCP clients** (Cursor, Claude Desktop, etc.) | Alliance via CLI | `npx @will-cppa/pinecone-read-only-mcp@…` | Config changes to Alliance package name; behavior unchanged |
-| **Programmatic Alliance embedders** | Alliance (+ core re-export) | `@will-cppa/pinecone-read-only-mcp/alliance` | Can keep ergonomic re-export from Alliance package; must align Alliance ↔ core semver range |
-| **Core-only embedders** | Core only | `@will-cppa/pinecone-read-only-mcp` | **No breaking change** if core keeps the existing package name and `"."` export |
-| **Alliance examples** (`examples/alliance/`) | Alliance | `setupAllianceServer`, `resolveAllianceConfig` | Update imports to Alliance package; examples already document instance-first setup |
-| **Quickstart examples** (`examples/quickstart/`) | Core or Alliance depending on demo | Mixed | Per-example migration |
-| **Internal C++ Alliance deployments** | Alliance | Production MCP configs in README | Track Alliance package version; core bumps only when needed |
-| **Hypothetical external generic consumers** | Core only | Not observed yet | Primary beneficiaries of split — avoid Alliance defaults and builtins |
+| Consumer                                         | Layer used                         | Import / deploy path                           | Impact if split                                                                             |
+| ------------------------------------------------ | ---------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Alliance CLI** (default npm install, Docker)   | Alliance                           | `bin: pinecone-read-only-mcp` → Alliance setup | Transparent if bin moves to Alliance package; MCP configs update package name only          |
+| **MCP clients** (Cursor, Claude Desktop, etc.)   | Alliance via CLI                   | `npx @will-cppa/pinecone-read-only-mcp@…`      | Config changes to Alliance package name; behavior unchanged                                 |
+| **Programmatic Alliance embedders**              | Alliance (+ core re-export)        | `@will-cppa/pinecone-read-only-mcp/alliance`   | Can keep ergonomic re-export from Alliance package; must align Alliance ↔ core semver range |
+| **Core-only embedders**                          | Core only                          | `@will-cppa/pinecone-read-only-mcp`            | **No breaking change** if core keeps the existing package name and `"."` export             |
+| **Alliance examples** (`examples/alliance/`)     | Alliance                           | `setupAllianceServer`, `resolveAllianceConfig` | Update imports to Alliance package; examples already document instance-first setup          |
+| **Quickstart examples** (`examples/quickstart/`) | Core or Alliance depending on demo | Mixed                                          | Per-example migration                                                                       |
+| **Internal C++ Alliance deployments**            | Alliance                           | Production MCP configs in README               | Track Alliance package version; core bumps only when needed                                 |
+| **Hypothetical external generic consumers**      | Core only                          | Not observed yet                               | Primary beneficiaries of split — avoid Alliance defaults and builtins                       |
 
 ### 4.2 Adoption and risk window
 
@@ -295,7 +289,7 @@ Continue with `exports["."]` and `exports["./alliance"]` in one package.
 
 ### Recommended: **Split later** (not now)
 
-Defer the npm package split until **after phase 5 legacy-getter deprecation** has shipped and **one deprecation policy window** has elapsed (see [deprecation-policy.md](./deprecation-policy.md) and [issue #09 horizon](../data/issues/June_week_3/issue_09.md)).
+Defer the npm package split until **after phase 5 legacy-getter deprecation** has shipped and **one deprecation policy window** has elapsed (see [deprecation-policy.md](./deprecation-policy.md).
 
 Do **not** implement workspace packages in the current sprint. This PR delivers the evaluation only.
 
@@ -305,20 +299,18 @@ Do **not** implement workspace packages in the current sprint. This PR delivers 
 
 2. **Low external adoption incentive.** All current consumers are internal or documentation-driven. Shared version bumps are inconvenient but not blocking release velocity today.
 
-3. **Build tooling cost during active pre-1.0 development.** Workspace setup, dual publish, and CI changes distract from ServerContext completion, security hardening, and response contract work (June week 2 P0/P1 items).
+3. **Build tooling cost during active pre-1.0 development.** Workspace setup, dual publish, and CI changes distract from ServerContext completion, security hardening, and response contract work.
 
 4. **Subpath exports already deliver most consumer value.** Core-only embedders can `import from '@will-cppa/pinecone-read-only-mcp'` today without pulling Alliance tools at import time. The remaining coupling is versioning and npm install footprint (Alliance code still ships in the tarball).
 
-5. **Align with issue scope.** Issue #121 and week plan item 4 specify a **decision document**, not implementation. Scope creep into a full monorepo migration is explicitly out of scope.
-
 ### Alternatives considered
 
-| Option | When it makes sense | Why not now |
-| ------ | ------------------- | ----------- |
-| **Split now** | External core-only adopters blocked by Alliance cadence | Legacy facades still in core exports; tooling not ready |
-| **Split with phase 4 only** | Urgent multi-team release decoupling | Phase 5 still required for clean API; no urgent consumer pressure |
-| **Keep unified indefinitely** | Single consumer, stable 1.0 shipped | Loses future cadence decoupling; re-evaluate at 1.0 planning |
-| **Split at 1.0** | Clean semver major for both packages | **Preferred target window** — combine with phase 5 removal release |
+| Option                        | When it makes sense                                     | Why not now                                                        |
+| ----------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Split now**                 | External core-only adopters blocked by Alliance cadence | Legacy facades still in core exports; tooling not ready            |
+| **Split with phase 4 only**   | Urgent multi-team release decoupling                    | Phase 5 still required for clean API; no urgent consumer pressure  |
+| **Keep unified indefinitely** | Single consumer, stable 1.0 shipped                     | Loses future cadence decoupling; re-evaluate at 1.0 planning       |
+| **Split at 1.0**              | Clean semver major for both packages                    | **Preferred target window** — combine with phase 5 removal release |
 
 ---
 
@@ -345,7 +337,5 @@ Proceed with Option A (workspace monorepo) when **all** of the following are tru
 - [TOOLS.md](./TOOLS.md) — 7 core tools vs 9 Alliance tools
 - [CONFIGURATION.md](./CONFIGURATION.md) — `resolveConfig` vs `resolveAllianceConfig`
 - [deprecation-policy.md](./deprecation-policy.md) — deprecation windows before API removal
-- ServerContext roadmap — `data/issues/June_week_1/server_context_roadmap_after_issue_03.md`
-- Phase 5 horizon — `data/issues/June_week_3/issue_09.md`
 - Eval finding T23 — closed extension surface (source modification required for new tools/URL patterns)
 - Related source: `src/core/index.ts`, `src/alliance/index.ts`, `src/alliance/setup.ts`, `src/alliance/url-builtins.ts`, `src/constants.ts`
