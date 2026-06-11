@@ -21,6 +21,8 @@ describe('ServerContext', () => {
     const client = ctx.getClient();
     expect(client).toBeInstanceOf(PineconeClient);
     expect(ctx.getClient()).toBe(client);
+    expect(ctx.hasInjectedClient()).toBe(false);
+    expect(() => ctx.getClientIfSet()).toThrow(/not initialized/);
   });
 
   it('honors externally injected client via setClient and fromClient', () => {
@@ -31,9 +33,11 @@ describe('ServerContext', () => {
     viaSetter.setClient(injected);
     expect(viaSetter.getClient()).toBe(injected);
     expect(viaSetter.getClientIfSet()).toBe(injected);
+    expect(viaSetter.hasInjectedClient()).toBe(true);
 
     const viaFactory = ServerContext.fromClient(config, injected);
     expect(viaFactory.getClient()).toBe(injected);
+    expect(viaFactory.hasInjectedClient()).toBe(true);
   });
 
   it('createServer installs default context', () => {

@@ -30,7 +30,7 @@ const server = await setupAllianceServer(config);
 
 Module-level helpers (`getPineconeClient`, `registerUrlGenerator`, `requireSuggested`, etc.) continue to work; they delegate to a process-default context.
 
-**New (opt-in instance path):**
+**New (recommended — phase 4 explicit context at setup):**
 
 ```ts
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
@@ -40,7 +40,7 @@ import {
 } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 const config = resolveAllianceConfig({ apiKey: process.env.PINECONE_API_KEY! });
-const ctx = createServer(config); // installs process-default + returns instance
+const ctx = createServer(config);
 ctx.setClient(
   new PineconeClient({
     apiKey: config.apiKey,
@@ -51,8 +51,23 @@ ctx.setClient(
     requestTimeoutMs: config.requestTimeoutMs,
   })
 );
-const server = await setupAllianceServer(config); // uses process-default ctx for migrated tools
+const server = await setupAllianceServer({ context: ctx });
 ```
+
+Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
+
+**Core-only setup** (seven tools, no Alliance builtins):
+
+```ts
+import { createServer, PineconeClient, resolveConfig, setupCoreServer } from '@will-cppa/pinecone-read-only-mcp';
+
+const config = resolveConfig({ apiKey: '...', indexName: 'my-index' });
+const ctx = createServer(config);
+ctx.setClient(new PineconeClient({ /* ... */ }));
+const server = await setupCoreServer({ context: ctx });
+```
+
+**Multi-instance:** run multiple `ServerContext` instances in one process by passing a distinct `context` to each setup call. Use `await using` on the returned `ServerHandle` or `ctx.teardown()` per session. Legacy `teardownServer()` resets only the process-default context.
 
 For custom tool wiring, pass `ctx` to migrated registrars:
 
@@ -61,7 +76,7 @@ import { registerQueryTool, registerCountTool, registerListNamespacesTool } from
 registerQueryTool(server, ctx);
 ```
 
-**Later (future minors/major):** Legacy module getters will be marked `### Deprecated` per [deprecation-policy.md](./deprecation-policy.md). Multi-tenant HTTP embedders should use one `ServerContext` per session rather than sharing process-global state.
+**Later (future minors/major):** Legacy module getters will be marked `### Deprecated` per [deprecation-policy.md](./deprecation-policy.md).
 
 See also [deprecation-policy.md § Future instance APIs](./deprecation-policy.md#future-instance-apis-servercontext).
 

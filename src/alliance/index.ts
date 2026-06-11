@@ -10,7 +10,7 @@ export {
   DEFAULT_ALLIANCE_RERANK_MODEL,
   resolveAllianceConfig,
 } from './config.js';
-export { setupAllianceServer } from './setup.js';
+export { setupAllianceServer, type SetupAllianceServerOptions } from './setup.js';
 export {
   registerBuiltinUrlGenerators,
   generatorMailing,
