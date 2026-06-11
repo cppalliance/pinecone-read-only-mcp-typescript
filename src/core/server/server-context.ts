@@ -47,6 +47,7 @@ export class ServerContext implements AsyncDisposable {
   disposed = false;
   private toolsRegistered = false;
   private client: PineconeClient | null = null;
+  private clientExplicitlySet = false;
   private configValue: ServerConfig | null = null;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
@@ -58,6 +59,7 @@ export class ServerContext implements AsyncDisposable {
     }
     if (client) {
       this.client = client;
+      this.clientExplicitlySet = true;
     }
   }
 
@@ -81,26 +83,29 @@ export class ServerContext implements AsyncDisposable {
   /** Drop client, namespace cache, and suggest-flow tied to a previous config. */
   private invalidateConfigDerivedState(): void {
     this.client = null;
+    this.clientExplicitlySet = false;
     this.namespacesCache = null;
     this.suggestionFlow.clear();
   }
 
   setClient(client: PineconeClient): void {
     this.client = client;
+    this.clientExplicitlySet = true;
   }
 
   clearClient(): void {
     this.client = null;
+    this.clientExplicitlySet = false;
   }
 
-  /** Whether a Pinecone client was explicitly set (does not lazy-build from config). */
+  /** Whether a Pinecone client was explicitly set via constructor, {@link setClient}, or {@link fromClient}. */
   hasInjectedClient(): boolean {
-    return this.client !== null;
+    return this.clientExplicitlySet;
   }
 
-  /** Return the client only when explicitly set (legacy {@link getPineconeClient} path). */
+  /** Return the client only when explicitly injected (legacy {@link getPineconeClient} path). */
   getClientIfSet(): PineconeClient {
-    if (!this.client) {
+    if (!this.clientExplicitlySet || !this.client) {
       throw new Error('Pinecone client not initialized. Call setPineconeClient first.');
     }
     return this.client;
@@ -289,6 +294,7 @@ export class ServerContext implements AsyncDisposable {
     this.disposed = true;
     this.toolsRegistered = false;
     this.client = null;
+    this.clientExplicitlySet = false;
     this.configValue = null;
     this.urlGenerators.clear();
     this.suggestionFlow.clear();

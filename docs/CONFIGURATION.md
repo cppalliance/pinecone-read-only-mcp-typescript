@@ -28,7 +28,7 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 
 **Throws** if `apiKey` or `indexName` is missing after trim.
 
-For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and call `setupAllianceServer(config)`.
+For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and follow the [Library embedding](#library-embedding) flow: `resolveAllianceConfig` → `createServer` / `setClient` → `setupAllianceServer({ context: ctx })`.
 
 ### Core vs Alliance resolvers
 

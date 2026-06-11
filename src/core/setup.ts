@@ -102,12 +102,8 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
       );
     }
 
-    let existingClient: PineconeClient | undefined;
-    try {
-      existingClient = getDefaultServerContext().getClientIfSet();
-    } catch {
-      existingClient = undefined;
-    }
+    const defaultCtx = getDefaultServerContext();
+    const existingClient = defaultCtx.hasInjectedClient() ? defaultCtx.getClientIfSet() : undefined;
     const ctx = createServer(opts.config);
     if (existingClient) {
       ctx.setClient(existingClient);
