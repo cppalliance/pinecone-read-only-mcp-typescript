@@ -12,31 +12,14 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import {
+  keywordSearchSuccessResponseSchema,
+  type KeywordSearchResponse,
+} from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
-/** Success response shape for keyword_search (aligned with query tool fields). */
-export interface KeywordSearchResponse {
-  status: 'success';
-  query?: string;
-  namespace?: string;
-  index?: string;
-  metadata_filter?: Record<string, unknown>;
-  result_count?: number;
-  results?: Array<{
-    /** Canonical document identifier. */
-    document_id: string | null;
-    /** @deprecated Use `document_id`; removed in the next major release. */
-    paper_number: string | null;
-    title: string;
-    author: string;
-    url: string;
-    content: string;
-    score: number;
-    reranked: boolean;
-    metadata?: Record<string, unknown>;
-  }>;
-  fields?: string[];
-}
+/** @deprecated Import {@link KeywordSearchResponse} from `response-schemas` or package root. */
+export type { KeywordSearchResponse };
 
 type KeywordSearchExecResult =
   | { ok: true; body: KeywordSearchResponse }
@@ -163,7 +146,7 @@ export function registerKeywordSearchTool(server: McpServer, ctx?: ServerContext
         if (!result.ok) {
           return jsonErrorResponse(result.error);
         }
-        return jsonResponse(result.body);
+        return validatedJsonResponse(keywordSearchSuccessResponseSchema, result.body);
       } catch (error) {
         logToolError('keyword_search', error);
         return jsonErrorResponse(classifyToolCatchError(error, 'Keyword search failed'));

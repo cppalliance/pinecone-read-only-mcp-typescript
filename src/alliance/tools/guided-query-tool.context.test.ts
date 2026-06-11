@@ -3,10 +3,12 @@ import { registerBuiltinUrlGenerators } from '../url-builtins.js';
 import { registerQueryTool } from '../../core/server/tools/query-tool.js';
 import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
+import { guidedQueryResponseSchema } from '../../core/server/response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
   createTestServerContext,
+  expectMatchesResponseSchema,
   makeHybridQueryResult,
   makeSearchResult,
   parseToolJson,
@@ -64,10 +66,14 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
       enrich_urls: false,
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(guidedQueryResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
     });
-    const trace = body['decision_trace'] as Record<string, unknown>;
+    const trace = (body['experimental'] as Record<string, unknown>)['decision_trace'] as Record<
+      string,
+      unknown
+    >;
     expect(trace).toMatchObject({
       cache_hit: false,
       selected_namespace: 'papers',
@@ -99,9 +105,10 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
       })
     );
     const result = body['result'] as Record<string, unknown>;
-    expect(result['degraded']).toBe(true);
-    expect(result['hybrid_leg_failed']).toBe('sparse');
-    expect(result['degradation_reason']).toBe('sparse_leg_empty');
+    const resultExperimental = result['experimental'] as Record<string, unknown>;
+    expect(resultExperimental['degraded']).toBe(true);
+    expect(resultExperimental['hybrid_leg_failed']).toBe('sparse');
+    expect(resultExperimental['degradation_reason']).toBe('sparse_leg_empty');
   });
 
   it('enriches urls via ctx builtins when enrich_urls is true', async () => {

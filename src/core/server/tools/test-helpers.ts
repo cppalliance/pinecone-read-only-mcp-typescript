@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import type { HybridQueryResult, SearchResult } from '../../../types.js';
 import { resolveConfig } from '../../config.js';
 import type { PineconeClient } from '../../pinecone-client.js';
@@ -142,4 +143,9 @@ export function createTestServerContext(options?: {
     return ServerContext.fromClient(config, options.client);
   }
   return new ServerContext(config);
+}
+
+/** Assert tool success JSON matches the exported Zod response schema (schema-response alignment). */
+export function expectMatchesResponseSchema<T>(schema: z.ZodType<T>, body: unknown): T {
+  return schema.parse(body);
 }

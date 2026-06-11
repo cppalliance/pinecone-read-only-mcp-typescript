@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerCountTool } from './count-tool.js';
+import { countResponseSchema } from '../response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
   createTestServerContext,
+  expectMatchesResponseSchema,
   parseToolJson,
 } from './test-helpers.js';
 
@@ -26,6 +28,7 @@ describe('count tool handler (ServerContext instance path)', () => {
       query_text: 'papers',
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(countResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       count: 7,

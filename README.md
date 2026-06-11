@@ -104,7 +104,7 @@ To try the server on **your own** Pinecone project (free tier, no Alliance index
 The codebase is split into two layers:
 
 - **`src/core/`** — generic MCP–Pinecone bridge (`PineconeClient`, `resolveConfig`, core MCP tools). Import from `@will-cppa/pinecone-read-only-mcp` (package root).
-- **`src/alliance/`** — C++ Alliance app tools (`suggest_query_params`, `guided_query`, Boost/Slack URL builtins). Import from `@will-cppa/pinecone-read-only-mcp/alliance`; embed via `resolveAllianceConfig` → `createServer` / `setClient` → `setupAllianceServer({ context: ctx })` (see [Library embedding](#library-embedding)).
+- **`src/alliance/`** — C++ Alliance app tools (`suggest_query_params`, `guided_query`, Boost/Slack URL builtins). Import from `@will-cppa/pinecone-read-only-mcp/alliance` and use `createServer(config)` → `ctx.setClient(...)` → `setupAllianceServer({ context: ctx })` for the full tool surface (what the CLI uses); see [Library embedding](#library-embedding) below.
 
 ## Configuration
 
@@ -198,7 +198,7 @@ A fuller embedding sample lives in [examples/alliance/custom-url-generator.ts](e
 | File | Description |
 | ---- | ----------- |
 | [examples/alliance/suggest-flow-demo.ts](examples/alliance/suggest-flow-demo.ts) | Manual **suggest_query_params → query** flow |
-| [examples/alliance/guided-query-demo.ts](examples/alliance/guided-query-demo.ts) | **guided_query** and `decision_trace` |
+| [examples/alliance/guided-query-demo.ts](examples/alliance/guided-query-demo.ts) | **guided_query** and `experimental.decision_trace` |
 | [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) | **setupAllianceServer** without the CLI |
 | [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts) | Custom **URL generator** registration |
 
@@ -424,7 +424,7 @@ Single orchestrator tool that runs the full flow in one call:
 2. query param suggestion,
 3. execution via `count` or hybrid `query` (`fast` / `detailed` / `full` presets).
 
-It returns both the final result and a `decision_trace` for transparency.
+It returns both the final result and `experimental.decision_trace` for transparency.
 
 **Parameters:**
 
@@ -437,7 +437,7 @@ It returns both the final result and a `decision_trace` for transparency.
 | `preferred_tool`  | enum    | No       | `auto`  | One of `auto`, `count`, `fast`, `detailed`, `full`                                  |
 | `enrich_urls`     | boolean | No       | `true`  | Auto-generate URLs for `mailing` and `slack-Cpplang` when `metadata.url` is missing |
 
-**Returns:** JSON containing `decision_trace` and `result`.
+**Returns:** JSON containing `experimental.decision_trace` and `result`.
 
 ### `generate_urls`
 

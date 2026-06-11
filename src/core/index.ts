@@ -15,6 +15,36 @@ export {
 export type { MetadataFilterValidationError } from './server/metadata-filter.js';
 export { toolErrorSchema } from './server/tool-error.js';
 export type { ToolError, ToolErrorCode } from './server/tool-error.js';
+export {
+  buildGuidedQueryExperimental,
+  buildQueryExperimental,
+  countResponseSchema,
+  generateUrlsResponseSchema,
+  guidedQueryResponseSchema,
+  keywordSearchResponseSchema,
+  keywordSearchSuccessResponseSchema,
+  listNamespacesResponseSchema,
+  namespaceRouterResponseSchema,
+  queryDocumentsResponseSchema,
+  queryResponseSchema,
+  querySuccessResponseSchema,
+  queryResultRowSchema,
+  suggestQueryParamsResponseSchema,
+} from './server/response-schemas.js';
+export type {
+  CountResponse,
+  GenerateUrlsResponse,
+  GuidedQueryDecisionTrace,
+  GuidedQueryResponse,
+  KeywordSearchResponse,
+  KeywordSearchSuccessResponse,
+  ListNamespacesSuccessResponse,
+  NamespaceRouterResponse,
+  QueryDocumentsResponse,
+  QueryExperimental,
+  QuerySuccessResponse,
+  SuggestQueryParamsResponse,
+} from './server/response-schemas.js';
 export { suggestQueryParams } from './server/query-suggestion.js';
 export type { RecommendedTool, SuggestQueryParamsResult } from './server/query-suggestion.js';
 export {

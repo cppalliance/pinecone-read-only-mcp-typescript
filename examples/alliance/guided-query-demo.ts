@@ -6,7 +6,7 @@
  *   - internal `suggest_query_params` + `markSuggested`
  *   - execution of `count` or hybrid `query` with `fast` / `detailed` / `full`
  *
- * The success payload includes **`decision_trace`**: cache hit, routed vs
+ * The success payload includes **`experimental.decision_trace`**: cache hit, routed vs
  * selected namespace, suggested fields/tools, and the final `selected_tool`.
  * Use the trace in UIs or logs to explain why a path was chosen.
  *
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   if (!apiKey || !indexName) {
     console.log(
       '[guided-query-demo] Set PINECONE_API_KEY and PINECONE_INDEX_NAME to run live. ' +
-        'Call guided_query with user_query; read decision_trace + result in the JSON response.'
+        'Call guided_query with user_query; read experimental.decision_trace + result in the JSON response.'
     );
     return;
   }

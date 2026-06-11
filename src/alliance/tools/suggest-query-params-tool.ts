@@ -11,7 +11,11 @@ import {
   logToolError,
   validationToolError,
 } from '../../core/server/tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../../core/server/tool-response.js';
+import {
+  suggestQueryParamsResponseSchema,
+  type SuggestQueryParamsResponse,
+} from '../../core/server/response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../../core/server/tool-response.js';
 
 /** Register the suggest_query_params tool on the MCP server. */
 export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerContext): void {
@@ -76,12 +80,12 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
             });
           }
         }
-        const response = {
+        const response: SuggestQueryParamsResponse = {
           ...result,
-          status: 'success' as const,
+          status: 'success',
           cache_hit,
         };
-        return jsonResponse(response);
+        return validatedJsonResponse(suggestQueryParamsResponseSchema, response);
       } catch (error) {
         logToolError('suggest_query_params', error);
         return jsonErrorResponse(classifyToolCatchError(error, 'Failed to suggest query params'));

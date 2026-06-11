@@ -18,7 +18,12 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import {
+  buildQueryExperimental,
+  queryDocumentsResponseSchema,
+  type QueryDocumentsResponse,
+} from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 /**
  * Heuristic multiplier: chunks fetched = top_k × CHUNKS_PER_DOCUMENT, capped by
@@ -130,20 +135,13 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
           .sort((a, b) => b.best_score - a.best_score)
           .slice(0, top_k);
 
-        return jsonResponse({
+        const response: QueryDocumentsResponse = {
           status: 'success',
           query: query_text.trim(),
           namespace: nsNorm,
           metadata_filter,
           result_count: topDocuments.length,
-          degraded: queryOutcome.degraded,
-          ...(queryOutcome.degradation_reason !== undefined
-            ? { degradation_reason: queryOutcome.degradation_reason }
-            : {}),
-          hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
-          ...(queryOutcome.rerank_skipped_reason !== undefined
-            ? { rerank_skipped_reason: queryOutcome.rerank_skipped_reason }
-            : {}),
+          ...buildQueryExperimental(queryOutcome),
           documents: topDocuments.map((doc) => ({
             document_id: doc.document_id,
             merged_content: doc.merged_content,
@@ -151,7 +149,8 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
             chunk_count: doc.chunk_count,
             best_score: doc.best_score,
           })),
-        });
+        };
+        return validatedJsonResponse(queryDocumentsResponseSchema, response);
       } catch (error) {
         logToolError('query_documents', error);
         return jsonErrorResponse(

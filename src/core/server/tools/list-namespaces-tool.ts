@@ -2,7 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import type { ServerContext } from '../server-context.js';
 import { classifyToolCatchError, lifecycleToolError, logToolError } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import {
+  listNamespacesResponseSchema,
+  type ListNamespacesSuccessResponse,
+} from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 async function executeListNamespaces(ctx?: ServerContext) {
   try {
@@ -17,7 +21,7 @@ async function executeListNamespaces(ctx?: ServerContext) {
     const now = Date.now();
     const ttlSeconds = Math.max(0, Math.floor((expires_at - now) / 1000));
 
-    const response = {
+    const response: ListNamespacesSuccessResponse = {
       status: 'success',
       cache_hit,
       cache_ttl_seconds: ttlSeconds,
@@ -30,7 +34,7 @@ async function executeListNamespaces(ctx?: ServerContext) {
       })),
     };
 
-    return jsonResponse(response);
+    return validatedJsonResponse(listNamespacesResponseSchema, response);
   } catch (error) {
     logToolError('list_namespaces', error);
     return jsonErrorResponse(classifyToolCatchError(error, 'Failed to list namespaces'));

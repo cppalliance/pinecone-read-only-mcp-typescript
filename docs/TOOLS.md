@@ -2,6 +2,24 @@
 
 Unless noted, failures return MCP `isError: true` with JSON matching `ToolError` (see [MIGRATION.md](./MIGRATION.md) and [README error table](../README.md#error-responses)).
 
+## Response field stability
+
+Success payloads separate **stable** fields (safe across minor bumps after `1.0.0`) from **experimental** fields (may change before `1.0.0`). Experimental fields are nested under `experimental` when present; the key is omitted when empty.
+
+| Tool | Stable | Experimental |
+| ---- | ------ | ------------ |
+| `list_namespaces` | `status`, `cache_hit`, `cache_ttl_seconds`, `expires_at_iso`, `count`, `namespaces` | _(none)_ |
+| `namespace_router` | `status`, `cache_hit`, `user_query`, `suggestions`, `recommended_namespace` | _(none)_ |
+| `suggest_query_params` | `status`, `cache_hit`, `suggested_fields`, `recommended_tool`, `use_count_tool`, `explanation`, `namespace_found` | _(none)_ |
+| `count` | `status`, `count`, `truncated`, `namespace`, `metadata_filter` | _(none)_ |
+| `query` | `status`, `mode`, `query`, `namespace`, `metadata_filter`, `result_count`, `results`, `fields` | `experimental.degraded`, `experimental.degradation_reason`, `experimental.hybrid_leg_failed`, `experimental.rerank_skipped_reason` |
+| `keyword_search` | `status`, `query`, `namespace`, `index`, `metadata_filter`, `result_count`, `results`, `fields` | _(none)_ |
+| `query_documents` | `status`, `query`, `namespace`, `metadata_filter`, `result_count`, `documents` | Same experimental degradation fields as `query` |
+| `guided_query` | `status`, `result` (count or query-shaped stable fields) | `experimental.decision_trace`; query-path `result.experimental` degradation fields |
+| `generate_urls` | `status`, `namespace`, `count`, `results` | _(none)_ |
+
+Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
+
 ## Core vs Alliance tool surface
 
 | Setup | Tools | MCP instructions |
@@ -108,7 +126,7 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 | `metadata_filter` | object | no | Metadata filter |
 | `fields` | string[] | no | Pinecone fields to return |
 
-**Success (`QueryResponse`):** `{ status: 'success', mode?: 'query' \| 'query_fast' \| 'query_detailed', query, namespace, metadata_filter?, result_count, results[], fields?, degraded?, degradation_reason?, hybrid_leg_failed? }`.
+**Success (`QueryResponse`):** `{ status: 'success', mode?, query, namespace, metadata_filter?, result_count, results[], fields?, experimental?: { degraded?, degradation_reason?, hybrid_leg_failed?, rerank_skipped_reason? } }`.
 
 Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `url`, `content`, `score`, `reranked`, optional `metadata`.
 
@@ -125,17 +143,17 @@ Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `
 
 ### Rerank and hybrid degradation
 
-When reranking is requested but the rerank API fails, the server still returns **`status: 'success'`** with rows where `reranked: false`, plus envelope fields:
+When reranking is requested but the rerank API fails, the server still returns **`status: 'success'`** with rows where `reranked: false`, plus **experimental** envelope fields:
 
 | Field | When set | Meaning |
 | ----- | -------- | ------- |
-| `degraded` | `true` | Rerank was attempted and failed (or another degradation path fired) |
-| `degradation_reason` | string | Human-readable detail for MCP/LLM clients (e.g. `rerank_failed: timeout after 5000ms`) |
-| `hybrid_leg_failed` | `'dense'` \| `'sparse'` \| omitted / `null` | Exactly one hybrid search leg failed while the other returned hits |
+| `experimental.degraded` | `true` | Rerank was attempted and failed (or another degradation path fired) |
+| `experimental.degradation_reason` | string | Human-readable detail for MCP/LLM clients (e.g. `rerank_failed: timeout after 5000ms`) |
+| `experimental.hybrid_leg_failed` | `'dense'` \| `'sparse'` | Exactly one hybrid search leg failed while the other returned hits |
 
-Treat **`degraded: true`** as lower confidence even when `status` is `success`. Combine with per-row `reranked`, `preset`, and `use_reranking`. Structured stderr logs may include additional detail.
+Treat **`experimental.degraded: true`** as lower confidence even when `status` is `success`. Combine with per-row `reranked`, `preset`, and `use_reranking`. Structured stderr logs may include additional detail.
 
-`query_documents` propagates the same flags on its nested query payload when applicable.
+`query_documents` propagates the same experimental flags when applicable.
 
 ---
 
@@ -167,7 +185,7 @@ Treat **`degraded: true`** as lower confidence even when `status` is `success`. 
 | `metadata_filter` | object | no | Filter |
 | `max_chunks_per_document` | int | no | Cap merged chunks per doc (default 200, max 500) |
 
-**Success:** `{ status: 'success', query, namespace, metadata_filter?, result_count, documents: [{ document_id, merged_content, metadata, chunk_count, best_score }] }`.
+**Success:** `{ status: 'success', query, namespace, metadata_filter?, result_count, documents[], experimental?: { degraded?, degradation_reason?, hybrid_leg_failed?, rerank_skipped_reason? } }`.
 
 ---
 
@@ -184,11 +202,11 @@ Treat **`degraded: true`** as lower confidence even when `status` is `success`. 
 | `preferred_tool` | `auto` \| `count` \| `fast` \| `detailed` \| `full` | no | Override automated tool choice |
 | `enrich_urls` | boolean | no (default true) | Run URL generator when metadata lacks `url` |
 
-**Success:** `{ status: 'success', decision_trace, result }` where `result` is either a count payload or a `QueryResponse`-shaped query payload.
+**Success:** `{ status: 'success', experimental: { decision_trace }, result }` where `result` is either a count payload or a `QueryResponse`-shaped query payload.
 
-**`decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`, `rerank_status` (`success` \| `skipped` \| `failed`).
+**`experimental.decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`, `rerank_status` (`success` \| `skipped` \| `skipped_no_model` \| `failed`).
 
-When the inner query path runs, `result` includes the same `degraded`, `degradation_reason`, and `hybrid_leg_failed` fields as `query` (see [Rerank and hybrid degradation](#rerank-and-hybrid-degradation)).
+When the inner query path runs, `result.experimental` includes the same degradation fields as `query` (see [Rerank and hybrid degradation](#rerank-and-hybrid-degradation)).
 
 **Example:**
 
@@ -227,4 +245,4 @@ Single-shot:
   guided_query
 ```
 
-Canonical Zod schemas live beside each handler under `src/server/tools/*.ts`.
+Canonical Zod input schemas live beside each handler under `src/core/server/tools/*.ts` and `src/alliance/tools/*.ts`. Success response schemas are in `src/core/server/response-schemas.ts` and exported from the package root (e.g. `queryResponseSchema`, `guidedQueryResponseSchema`).

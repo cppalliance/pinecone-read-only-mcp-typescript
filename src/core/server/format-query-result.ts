@@ -3,8 +3,9 @@
  * Used by query tool and guided_query to avoid duplicated identifier/title/author/url logic.
  */
 
-import type { PineconeMetadataValue, SearchResult } from '../../types.js';
+import type { SearchResult } from '../../types.js';
 import { warn as logWarn } from '../../logger.js';
+import type { QueryResultRowShape } from './response-schemas.js';
 import type { ServerContext } from './server-context.js';
 import { generateUrlForNamespace } from './url-registry.js';
 
@@ -17,31 +18,8 @@ export type FormatQueryResultOptions = {
 
 const DEFAULT_CONTENT_MAX_LENGTH = 2000;
 
-/**
- * One formatted query-result row.
- *
- * `document_id` is the canonical identifier. `paper_number` is a deprecated
- * alias kept for one minor cycle for backwards compatibility — it will be
- * removed in the next major release.
- */
-export interface QueryResultRow {
-  /** Canonical document identifier. Prefer this in new code. */
-  document_id: string | null;
-  /**
-   * @deprecated Use `document_id`. Kept for one minor cycle and removed in
-   * the next major release. The first formatted query-result row in the
-   * process triggers a single `WARN` log per session so consumers see the
-   * deprecation deadline.
-   */
-  paper_number: string | null;
-  title: string;
-  author: string;
-  url: string;
-  content: string;
-  score: number;
-  reranked: boolean;
-  metadata?: Record<string, PineconeMetadataValue>;
-}
+/** Alias for {@link QueryResultRowShape}; single source of truth in `response-schemas.ts`. */
+export type QueryResultRow = QueryResultRowShape;
 
 let deprecationWarnedThisSession = false;
 
@@ -64,7 +42,7 @@ export function formatSearchResultAsRow(
   options?: FormatQueryResultOptions
 ): QueryResultRow {
   const contentMaxLength = options?.contentMaxLength ?? DEFAULT_CONTENT_MAX_LENGTH;
-  const metadata = { ...doc.metadata } as Record<string, PineconeMetadataValue>;
+  const metadata = { ...doc.metadata };
 
   if (options?.enrichUrls && options?.namespace) {
     const generated = options.ctx

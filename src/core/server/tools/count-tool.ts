@@ -12,16 +12,8 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
-
-const COUNT_RESPONSE_STATUS = 'success' as const;
-type CountResponse = {
-  status: 'success';
-  count: number;
-  truncated: boolean;
-  namespace: string;
-  metadata_filter?: Record<string, unknown>;
-};
+import { countResponseSchema, type CountResponse } from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 type CountExecParams = {
   namespace: string;
@@ -63,13 +55,13 @@ async function executeCount(params: CountExecParams, ctx?: ServerContext) {
       metadataFilter: metadata_filter,
     });
     const response: CountResponse = {
-      status: COUNT_RESPONSE_STATUS,
+      status: 'success',
       count,
       truncated,
       namespace: nsNorm,
       metadata_filter,
     };
-    return jsonResponse(response);
+    return validatedJsonResponse(countResponseSchema, response);
   } catch (error) {
     logToolError('count', error);
     return jsonErrorResponse(classifyToolCatchError(error, 'Failed to get count'));

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerListNamespacesTool } from './list-namespaces-tool.js';
-import { createMockServer, createTestServerContext, parseToolJson } from './test-helpers.js';
+import { listNamespacesResponseSchema } from '../response-schemas.js';
+import {
+  createMockServer,
+  createTestServerContext,
+  expectMatchesResponseSchema,
+  parseToolJson,
+} from './test-helpers.js';
 
 describe('list_namespaces tool handler (ServerContext instance path)', () => {
   it('returns namespaces from injected context cache miss', async () => {
@@ -19,6 +25,7 @@ describe('list_namespaces tool handler (ServerContext instance path)', () => {
     registerListNamespacesTool(server as never, ctx);
     const raw = await server.getHandler('list_namespaces')!({});
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(listNamespacesResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       cache_hit: false,

@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerQueryTool } from './query-tool.js';
+import { queryResponseSchema } from '../response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
   createTestServerContext,
+  expectMatchesResponseSchema,
   makeHybridQueryResult,
   parseToolJson,
 } from './test-helpers.js';
@@ -28,6 +30,7 @@ describe('query tool handler (ServerContext instance path)', () => {
       preset: 'fast',
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(queryResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       mode: 'query_fast',
@@ -95,8 +98,9 @@ describe('query tool handler (ServerContext instance path)', () => {
         preset: 'detailed',
       })
     );
-    expect(body['rerank_skipped_reason']).toBe('no_model');
-    expect(body['degradation_reason']).toMatch(/rerank_skipped_no_model/);
+    const experimental = body['experimental'] as Record<string, unknown>;
+    expect(experimental['rerank_skipped_reason']).toBe('no_model');
+    expect(experimental['degradation_reason']).toMatch(/rerank_skipped_no_model/);
   });
 
   it('forwards hybrid_leg_failed for dense and sparse partial hybrid', async () => {
@@ -117,7 +121,9 @@ describe('query tool handler (ServerContext instance path)', () => {
     const denseBody = parseToolJson(
       await handler({ query_text: 'a', namespace: 'wg21', preset: 'fast' })
     );
-    expect(denseBody['hybrid_leg_failed']).toBe('dense');
+    expect((denseBody['experimental'] as Record<string, unknown>)['hybrid_leg_failed']).toBe(
+      'dense'
+    );
 
     query.mockResolvedValue(
       makeHybridQueryResult({ hybrid_leg_failed: 'sparse', degraded: false })
@@ -125,7 +131,9 @@ describe('query tool handler (ServerContext instance path)', () => {
     const sparseBody = parseToolJson(
       await handler({ query_text: 'b', namespace: 'wg21', preset: 'fast' })
     );
-    expect(sparseBody['hybrid_leg_failed']).toBe('sparse');
+    expect((sparseBody['experimental'] as Record<string, unknown>)['hybrid_leg_failed']).toBe(
+      'sparse'
+    );
   });
 
   it('returns TIMEOUT when client throws timeout error', async () => {

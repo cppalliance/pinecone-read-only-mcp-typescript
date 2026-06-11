@@ -9,7 +9,11 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import {
+  namespaceRouterResponseSchema,
+  type NamespaceRouterResponse,
+} from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 /** Register the namespace_router tool on the MCP server. */
 export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerContext): void {
@@ -46,14 +50,14 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
           : await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(user_query.trim(), data, top_n);
 
-        const response = {
-          status: 'success' as const,
+        const response: NamespaceRouterResponse = {
+          status: 'success',
           cache_hit,
           user_query: user_query.trim(),
           suggestions: ranked,
           recommended_namespace: ranked[0]?.namespace ?? null,
         };
-        return jsonResponse(response);
+        return validatedJsonResponse(namespaceRouterResponseSchema, response);
       } catch (error) {
         logToolError('namespace_router', error);
         return jsonErrorResponse(classifyToolCatchError(error, 'Failed to route namespace'));

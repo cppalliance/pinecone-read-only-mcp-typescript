@@ -115,57 +115,16 @@ export interface ListNamespacesResponse {
   message?: string;
 }
 
-/**
- * One row in a query response.
- *
- * `document_id` is the canonical identifier going forward. `paper_number`
- * is kept as a deprecated alias for one minor cycle so existing clients
- * keep working — it is removed in the next major release.
- */
-export interface QueryResultRowShape {
-  /**
-   * Canonical document identifier (derived from `document_number` or
-   * `filename` metadata). Use this for new code.
-   */
-  document_id: string | null;
-  /**
-   * @deprecated Use `document_id`. Kept for one minor cycle and will be
-   * removed in the next major release.
-   */
-  paper_number: string | null;
-  title: string;
-  author: string;
-  url: string;
-  content: string;
-  score: number;
-  reranked: boolean;
-  metadata?: Record<string, PineconeMetadataValue>;
-}
-
 /** Outcome of listing namespaces on the sparse (keyword) index. */
 export type KeywordIndexNamespacesResult =
   | { ok: true; namespaces: Array<{ namespace: string; recordCount: number }> }
   | { ok: false; error: string };
 
-export interface QueryResponse {
-  status: 'success';
-  mode?: 'query' | 'query_fast' | 'query_detailed';
-  query?: string;
-  namespace?: string;
-  metadata_filter?: Record<string, unknown>;
-  result_count?: number;
-  /** Present when the query requested specific fields. */
-  fields?: string[];
-  results?: QueryResultRowShape[];
-  /** True when reranking was attempted but failed; see `degradation_reason`. */
-  degraded?: boolean;
-  /** Human-readable explanation when {@link degraded} is true. */
-  degradation_reason?: string;
-  /** Partial hybrid failure: one leg failed while the other returned hits. */
-  hybrid_leg_failed?: HybridLegFailed;
-  /** Present when reranking was requested but no rerank model is on the client. */
-  rerank_skipped_reason?: RerankSkippedReason;
-}
+export type {
+  QueryResultRowShape,
+  QueryResponse,
+  KeywordSearchResponse,
+} from './core/server/response-schemas.js';
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */
 export interface MergedHit {

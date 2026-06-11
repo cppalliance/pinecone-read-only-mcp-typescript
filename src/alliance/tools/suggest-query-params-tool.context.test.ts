@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerQueryTool } from '../../core/server/tools/query-tool.js';
 import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
+import { suggestQueryParamsResponseSchema } from '../../core/server/response-schemas.js';
 import {
   createMockServer,
   createTestServerContext,
+  expectMatchesResponseSchema,
   makeHybridQueryResult,
   parseToolJson,
 } from '../../core/server/tools/test-helpers.js';
@@ -54,6 +56,7 @@ describe('suggest_query_params tool handler (ServerContext instance path)', () =
       user_query: 'List papers with titles',
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(suggestQueryParamsResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       namespace_found: true,
