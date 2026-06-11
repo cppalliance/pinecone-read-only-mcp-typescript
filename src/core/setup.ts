@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
 import type { ServerConfig } from './config.js';
-import { PineconeClient } from './pinecone-client.js';
 import {
   createServer,
   getDefaultServerContext,
