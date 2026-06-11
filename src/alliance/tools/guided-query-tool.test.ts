@@ -74,11 +74,15 @@ describe('guided_query tool handler', () => {
       })
     );
 
-    const trace = body.decision_trace as Record<string, unknown>;
+    const trace = (body.experimental as Record<string, unknown>).decision_trace as Record<
+      string,
+      unknown
+    >;
     expect(trace.rerank_status).toBe('failed');
     const result = body.result as Record<string, unknown>;
-    expect(result.degraded).toBe(true);
-    expect(result.degradation_reason).toBe('rerank_failed: timeout');
+    const resultExperimental = result.experimental as Record<string, unknown>;
+    expect(resultExperimental.degraded).toBe(true);
+    expect(resultExperimental.degradation_reason).toBe('rerank_failed: timeout');
   });
 
   it('guided_query: reports skipped_no_model when rerank was requested but no model configured', async () => {
@@ -103,7 +107,10 @@ describe('guided_query tool handler', () => {
       })
     );
 
-    const trace = body.decision_trace as Record<string, unknown>;
+    const trace = (body.experimental as Record<string, unknown>).decision_trace as Record<
+      string,
+      unknown
+    >;
     expect(trace.rerank_status).toBe('skipped_no_model');
   });
 
@@ -123,7 +130,10 @@ describe('guided_query tool handler', () => {
     );
 
     expect(body.status).toBe('success');
-    const trace = body.decision_trace as Record<string, unknown>;
+    const trace = (body.experimental as Record<string, unknown>).decision_trace as Record<
+      string,
+      unknown
+    >;
     expect(trace.selected_namespace).toBe('papers');
     expect(trace.selected_tool).toBe('detailed');
     expect(trace.rerank_status).toBe('success');
@@ -160,7 +170,10 @@ describe('guided_query tool handler', () => {
     const result = body.result as Record<string, unknown>;
     expect(result.tool).toBe('count');
     expect(result.count).toBe(7);
-    const trace = body.decision_trace as Record<string, unknown>;
+    const trace = (body.experimental as Record<string, unknown>).decision_trace as Record<
+      string,
+      unknown
+    >;
     expect(trace.rerank_status).toBe('skipped');
   });
 

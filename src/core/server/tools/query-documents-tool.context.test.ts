@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerQueryDocumentsTool } from './query-documents-tool.js';
+import { queryDocumentsResponseSchema } from '../response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
   createTestServerContext,
+  expectMatchesResponseSchema,
   makeHybridQueryResult,
   parseToolJson,
 } from './test-helpers.js';
@@ -27,6 +29,7 @@ describe('query_documents tool handler (ServerContext instance path)', () => {
       namespace: 'wg21',
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(queryDocumentsResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       namespace: 'wg21',

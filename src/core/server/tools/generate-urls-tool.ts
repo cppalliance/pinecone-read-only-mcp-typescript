@@ -9,7 +9,8 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import { generateUrlsResponseSchema, type GenerateUrlsResponse } from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 /** Get metadata from a record (either record.metadata or the record itself). */
 function extractMetadata(record: Record<string, unknown>): Record<string, unknown> {
@@ -70,12 +71,13 @@ export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext)
           };
         });
 
-        return jsonResponse({
+        const response: GenerateUrlsResponse = {
           status: 'success',
           namespace: nsNorm,
           count: results.length,
           results,
-        });
+        };
+        return validatedJsonResponse(generateUrlsResponseSchema, response);
       } catch (error) {
         logToolError('generate_urls', error);
         return jsonErrorResponse(classifyToolCatchError(error, 'Failed to generate URLs'));

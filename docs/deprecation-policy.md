@@ -64,6 +64,33 @@ While **`0.y.z`**, a minor release **may** ship breaking changes without a prior
 
 Security fixes may break behavior when required; document impact in CHANGELOG and MIGRATION.
 
+## Stable vs experimental MCP response fields
+
+MCP tool **success** responses separate fields into two tiers:
+
+| Tier | Meaning | Location in JSON |
+| ---- | ------- | ---------------- |
+| **Stable** | Safe to depend on across minor version bumps after `1.0.0` | Top-level keys (`status`, `results`, `namespace`, `count`, etc.) |
+| **Experimental** | May change or be removed before `1.0.0` | Nested under `experimental` when present |
+
+Current experimental fields (see [TOOLS.md](./TOOLS.md) per tool):
+
+- `degraded`, `degradation_reason`, `hybrid_leg_failed`, `rerank_skipped_reason` — query-shaped tools (`query`, `query_documents`, and `guided_query.result` when applicable)
+- `decision_trace` — `guided_query` only
+
+The `experimental` key is **omitted** when no experimental fields are set.
+
+### Promoting experimental → stable
+
+To promote a field from experimental to stable:
+
+1. **CHANGELOG** — `### Changed` entry describing the promotion and target release.
+2. **TOOLS.md** — Move the field from the Experimental to Stable table for the affected tool(s).
+3. **Schema** — Move the field out of `experimental` in `response-schemas.ts` and update handler builders.
+4. **MIGRATION.md** — Document before/after for integrators.
+
+New response fields added before `1.0.0` default to `experimental` unless explicitly promoted through this process.
+
 ## Future instance APIs (`ServerContext`)
 
 Phase 1 of the **`ServerContext`** / **`createServer(config)`** refactor is available while legacy module-level getters remain supported. See [MIGRATION.md § ServerContext instance APIs](./MIGRATION.md#unreleased-servercontext-instance-apis-phase-1) for upgrade steps.

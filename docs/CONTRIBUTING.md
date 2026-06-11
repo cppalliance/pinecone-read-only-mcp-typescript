@@ -49,6 +49,14 @@ Follow [deprecation-policy.md](./deprecation-policy.md). In summary:
 - **Breaking** a release (especially while `0.y.z`): use labeled bullets — `**Breaking (MCP):**`, `**Breaking (types):**`, etc. — each with what changed, who is affected, and a link to a MIGRATION anchor.
 - **Removing** deprecated APIs: add `### Removed` only after the deprecation window; keep migration text in MIGRATION.md.
 
+## Response field stability
+
+When changing MCP tool **success** response shapes:
+
+- New fields default to the **`experimental`** nested object unless explicitly promoted (see [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields)).
+- Update Zod schemas in `src/core/server/response-schemas.ts` and export from `src/core/index.ts`.
+- Update [TOOLS.md](./TOOLS.md) stable/experimental tables for the affected tool(s).
+
 ## Documentation
 
 Authoritative reference lives under [`docs/`](./README.md). When adding tools or config knobs, update `docs/TOOLS.md` and `docs/CONFIGURATION.md` in the same PR when possible.

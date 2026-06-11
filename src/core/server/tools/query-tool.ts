@@ -15,7 +15,8 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../tool-response.js';
+import { buildQueryExperimental, queryResponseSchema } from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 type QueryMode = 'query' | 'query_fast' | 'query_detailed';
 
@@ -84,16 +85,9 @@ async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
       result_count: formattedResults.length,
       results: formattedResults,
       ...(fields?.length ? { fields } : {}),
-      degraded: queryOutcome.degraded,
-      ...(queryOutcome.degradation_reason !== undefined
-        ? { degradation_reason: queryOutcome.degradation_reason }
-        : {}),
-      hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
-      ...(queryOutcome.rerank_skipped_reason !== undefined
-        ? { rerank_skipped_reason: queryOutcome.rerank_skipped_reason }
-        : {}),
+      ...buildQueryExperimental(queryOutcome),
     };
-    return jsonResponse(response);
+    return validatedJsonResponse(queryResponseSchema, response);
   } catch (error) {
     logToolError(mode, error);
     return jsonErrorResponse(

@@ -6,6 +6,69 @@ This guide is for **library and MCP client authors** upgrading from earlier **0.
 
 Under [semver 0.y.z](https://semver.org/spec/v2.0.0.html#spec-item-4), **0.1.x → 0.2.0 is a breaking minor** — pin `@0.2.0` only after reading this guide.
 
+## Unreleased: Stable vs experimental response fields
+
+**Rationale:** Tool success payloads mixed stable contract fields with experimental diagnostics (`degraded`, `decision_trace`, etc.) at the top level. Experimental fields are now nested under `experimental` so consumers know which fields are safe across minor version bumps.
+
+**Who is affected:** MCP clients and integrators parsing `query`, `query_documents`, or `guided_query` success JSON.
+
+**Before (`query`):**
+
+```json
+{
+  "status": "success",
+  "results": [],
+  "degraded": true,
+  "degradation_reason": "rerank_failed: timeout",
+  "hybrid_leg_failed": "dense"
+}
+```
+
+**After (`query`):**
+
+```json
+{
+  "status": "success",
+  "results": [],
+  "experimental": {
+    "degraded": true,
+    "degradation_reason": "rerank_failed: timeout",
+    "hybrid_leg_failed": "dense"
+  }
+}
+```
+
+**Before (`guided_query`):**
+
+```json
+{
+  "status": "success",
+  "decision_trace": { "selected_namespace": "mailing" },
+  "result": { "status": "success", "results": [], "degraded": false }
+}
+```
+
+**After (`guided_query`):**
+
+```json
+{
+  "status": "success",
+  "experimental": {
+    "decision_trace": { "selected_namespace": "mailing", "rerank_status": "success" }
+  },
+  "result": {
+    "status": "success",
+    "results": []
+  }
+}
+```
+
+When no experimental fields apply, the `experimental` key is **omitted** (not an empty object).
+
+**Client-side validation:** Import Zod schemas from the package root, e.g. `import { queryResponseSchema } from '@will-cppa/pinecone-read-only-mcp'`.
+
+**Promotion:** Moving a field from `experimental` to stable requires CHANGELOG, TOOLS.md, and schema updates per [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
+
 ## Unreleased: `ServerContext` instance APIs (phase 1)
 
 **Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. Phase 1 introduces an opt-in **`ServerContext`** without removing legacy getters.

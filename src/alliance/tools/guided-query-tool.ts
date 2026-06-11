@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { guidedRerankStatus } from '../../core/rerank-trace.js';
 import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../constants.js';
-import type { QueryResponse } from '../../types.js';
 import { getPineconeClient } from '../../core/server/client-context.js';
 import { formatQueryResultRows } from '../../core/server/format-query-result.js';
 import {
@@ -22,7 +21,14 @@ import {
   pineconeToolError,
   validationToolError,
 } from '../../core/server/tool-error.js';
-import { jsonErrorResponse, jsonResponse } from '../../core/server/tool-response.js';
+import {
+  buildGuidedQueryExperimental,
+  buildQueryExperimental,
+  guidedQueryResponseSchema,
+  type GuidedQueryResponse,
+  type QueryResponse,
+} from '../../core/server/response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../../core/server/tool-response.js';
 
 type GuidedToolName = 'count' | 'fast' | 'detailed' | 'full';
 
@@ -48,7 +54,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
       description:
         'Combines namespace routing, suggestion, and query into a single call — no prerequisite tools needed. ' +
         'Single orchestrator: optional namespace_router logic -> executes count or hybrid query (fast / detailed / full presets). ' +
-        'Returns decision_trace so behavior stays transparent and debuggable.',
+        'Returns experimental.decision_trace so behavior stays transparent and debuggable.',
       inputSchema: {
         user_query: z.string().describe('User question or intent.'),
         namespace: z
@@ -172,6 +178,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
         }
 
         const client = ctx ? ctx.getClient() : getPineconeClient();
+        const enrichUrls = enrich_urls ?? true;
         const baseTrace = {
           cache_hit,
           input_namespace: inputNamespace ?? null,
@@ -182,7 +189,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           suggested_tool: suggestion.recommended_tool,
           selected_tool: selectedTool,
           explanation: suggestion.explanation,
-          enrich_urls,
+          enrich_urls: enrichUrls,
         };
 
         if (selectedTool === 'count') {
@@ -191,21 +198,22 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
             namespace,
             metadataFilter: metadata_filter,
           });
-          return jsonResponse({
+          const countResponse: GuidedQueryResponse = {
             status: 'success',
-            decision_trace: {
+            ...buildGuidedQueryExperimental({
               ...baseTrace,
               rerank_status: 'skipped' as const,
-            },
+            }),
             result: {
               tool: 'count',
               namespace,
               query: queryText,
-              metadata_filter,
+              ...(metadata_filter !== undefined ? { metadata_filter } : {}),
               count,
               truncated,
             },
-          });
+          };
+          return validatedJsonResponse(guidedQueryResponseSchema, countResponse);
         }
 
         const isFast = selectedTool === 'fast';
@@ -232,7 +240,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
         const rerank_status = guidedRerankStatus(!isFast, queryOutcome);
         const formattedResults = formatQueryResultRows(queryOutcome.results, {
           namespace,
-          enrichUrls: enrich_urls,
+          enrichUrls: enrichUrls,
           ctx,
         });
         const result: QueryResponse = {
@@ -244,20 +252,17 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           result_count: formattedResults.length,
           ...(fields?.length ? { fields } : {}),
           results: formattedResults,
-          degraded: queryOutcome.degraded,
-          ...(queryOutcome.degradation_reason !== undefined
-            ? { degradation_reason: queryOutcome.degradation_reason }
-            : {}),
-          hybrid_leg_failed: queryOutcome.hybrid_leg_failed,
+          ...buildQueryExperimental(queryOutcome),
         };
-        return jsonResponse({
+        const queryResponse: GuidedQueryResponse = {
           status: 'success',
-          decision_trace: {
+          ...buildGuidedQueryExperimental({
             ...baseTrace,
             rerank_status,
-          },
+          }),
           result,
-        });
+        };
+        return validatedJsonResponse(guidedQueryResponseSchema, queryResponse);
       } catch (error) {
         logToolError('guided_query', error);
         return jsonErrorResponse(classifyToolCatchError(error, 'Failed to execute guided query'));

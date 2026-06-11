@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerNamespaceRouterTool } from './namespace-router-tool.js';
-import { createMockServer, createTestServerContext, parseToolJson } from './test-helpers.js';
+import { namespaceRouterResponseSchema } from '../response-schemas.js';
+import {
+  createMockServer,
+  createTestServerContext,
+  expectMatchesResponseSchema,
+  parseToolJson,
+} from './test-helpers.js';
 
 describe('namespace_router tool handler (ServerContext instance path)', () => {
   it('returns ranked suggestions from injected context cache miss', async () => {
@@ -22,6 +28,7 @@ describe('namespace_router tool handler (ServerContext instance path)', () => {
       top_n: 3,
     });
     const body = parseToolJson(raw);
+    expectMatchesResponseSchema(namespaceRouterResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       cache_hit: false,

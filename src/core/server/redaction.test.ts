@@ -134,8 +134,9 @@ describe('MCP response redaction', () => {
       })
     );
 
-    expect(body.degradation_reason).not.toContain(PCSK_KEY);
-    expect(String(body.degradation_reason)).toContain('***');
+    const experimental = body.experimental as Record<string, unknown>;
+    expect(experimental.degradation_reason).not.toContain(PCSK_KEY);
+    expect(String(experimental.degradation_reason)).toContain('***');
   });
 
   it('preserves non-sensitive UUIDs in success payload metadata', async () => {
@@ -197,14 +198,15 @@ describe('MCP response redaction', () => {
     );
 
     const result = body.result as Record<string, unknown>;
-    expect(result.degradation_reason).not.toContain(PCSK_KEY);
-    expect(String(result.degradation_reason)).toContain('***');
+    const resultExperimental = result.experimental as Record<string, unknown>;
+    expect(resultExperimental.degradation_reason).not.toContain(PCSK_KEY);
+    expect(String(resultExperimental.degradation_reason)).toContain('***');
   });
 
   it('jsonResponse redacts nested degradation_reason without masking metadata UUIDs', () => {
     const payload = jsonResponse({
       status: 'success',
-      degradation_reason: `rerank_failed: ${PCSK_KEY}`,
+      experimental: { degradation_reason: `rerank_failed: ${PCSK_KEY}` },
       results: [{ metadata: { document_id: UUID_KEY } }],
     });
     const text = payload.content[0]!.text;

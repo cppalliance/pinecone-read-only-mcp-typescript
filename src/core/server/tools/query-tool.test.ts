@@ -241,8 +241,9 @@ describe('query tool handler (preset-driven)', () => {
     );
 
     expect(body.status).toBe('success');
-    expect(body.rerank_skipped_reason).toBe('no_model');
-    expect(body.degradation_reason).toMatch(/rerank_skipped_no_model/);
+    const experimental = body.experimental as Record<string, unknown>;
+    expect(experimental.rerank_skipped_reason).toBe('no_model');
+    expect(experimental.degradation_reason).toMatch(/rerank_skipped_no_model/);
   });
 
   it('query: surfaces unreranked hits when client returns reranked:false (rerank fallback shape)', async () => {
