@@ -11,7 +11,7 @@ export type NamespaceInfo = {
   metadata: Record<string, string>;
 };
 
-/** Public seed shape for namespace cache injection (not the internal {@link NamespaceInfo} type). */
+/** Public seed shape for namespace cache injection (not the internal {@link NamespaceInfo} type). {@link ServerContext} copies `data` at construction so callers may reuse or mutate seed buffers afterward. */
 export type NamespaceCacheSeed = {
   data: Array<{ namespace: string; recordCount: number; metadata: Record<string, string> }>;
   expiresAt: number;
@@ -89,9 +89,14 @@ export class ServerContext implements AsyncDisposable {
       }
     }
     if (composition?.namespaceCacheSeed) {
+      const { data, expiresAt } = composition.namespaceCacheSeed;
       this.namespacesCache = {
-        data: composition.namespaceCacheSeed.data,
-        expiresAt: composition.namespaceCacheSeed.expiresAt,
+        data: data.map((entry) => ({
+          namespace: entry.namespace,
+          recordCount: entry.recordCount,
+          metadata: { ...entry.metadata },
+        })),
+        expiresAt,
       };
     }
     if (composition?.suggestionFlowSeed) {
@@ -103,7 +108,7 @@ export class ServerContext implements AsyncDisposable {
         }
         this.suggestionFlow.set(key, {
           recommended_tool: entry.recommended_tool,
-          suggested_fields: entry.suggested_fields,
+          suggested_fields: [...entry.suggested_fields],
           user_query: entry.user_query,
           updatedAt: now,
         });

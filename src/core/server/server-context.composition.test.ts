@@ -203,4 +203,95 @@ describe('ServerContext composition API', () => {
     expect(ctx.getClient()).toBe(injected);
     expect(ctx.hasInjectedClient()).toBe(true);
   });
+
+  it('isolates namespace cache between two createIsolatedContext instances', async () => {
+    const listA = vi
+      .fn()
+      .mockResolvedValue([{ namespace: 'a', recordCount: 1, metadata: { source: 'a' } }]);
+    const listB = vi
+      .fn()
+      .mockResolvedValue([{ namespace: 'b', recordCount: 2, metadata: { source: 'b' } }]);
+    const cfgA = resolveTestConfig({ apiKey: 'iso-a' });
+    const cfgB = resolveTestConfig({ apiKey: 'iso-b' });
+    const seed = {
+      data: [{ namespace: 'seeded', recordCount: 10, metadata: { source: 'seed' } }],
+      expiresAt: Date.now() + 60_000,
+    };
+
+    const ctxA = createIsolatedContext(cfgA, {
+      client: { listNamespacesWithMetadata: listA } as never,
+      namespaceCacheSeed: seed,
+    });
+    const ctxB = createIsolatedContext(cfgB, {
+      client: { listNamespacesWithMetadata: listB } as never,
+    });
+
+    const resultA = await ctxA.getNamespacesWithCache();
+    expect(resultA.cache_hit).toBe(true);
+    expect(listA).not.toHaveBeenCalled();
+
+    const resultB = await ctxB.getNamespacesWithCache();
+    expect(resultB.cache_hit).toBe(false);
+    expect(listB).toHaveBeenCalledOnce();
+    expect(listA).not.toHaveBeenCalled();
+  });
+
+  it('does not alias namespaceCacheSeed.data after construction', async () => {
+    const cacheData = [{ namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } }];
+    const ctx = new ServerContext(testConfig(), {
+      client: { listNamespacesWithMetadata: vi.fn() } as never,
+      namespaceCacheSeed: { data: cacheData, expiresAt: Date.now() + 60_000 },
+    });
+
+    cacheData[0]!.namespace = 'mutated';
+    cacheData[0]!.metadata.title = 'changed';
+
+    const cached = await ctx.getNamespacesWithCache();
+    expect(cached.data[0]?.namespace).toBe('wg21');
+    expect(cached.data[0]?.metadata.title).toBe('string');
+  });
+
+  it('does not alias suggestionFlowSeed suggested_fields after construction', () => {
+    const flowSeed = [
+      {
+        namespace: 'wg21',
+        recommended_tool: 'fast' as const,
+        suggested_fields: ['title'],
+        user_query: 'contracts',
+      },
+    ];
+    const ctx = new ServerContext(resolveTestConfig({ disableSuggestFlow: false }), {
+      suggestionFlowSeed: flowSeed,
+    });
+
+    flowSeed[0]!.suggested_fields.push('mutated');
+
+    const result = ctx.requireSuggested('wg21');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.flow.suggested_fields).toEqual(['title']);
+    }
+  });
+
+  it('does not share mutable seed state between two contexts built from the same seed object', async () => {
+    const sharedSeed = {
+      data: [{ namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } }],
+      expiresAt: Date.now() + 60_000,
+    };
+    const ctxA = createIsolatedContext(testConfig({ apiKey: 'shared-a' }), {
+      namespaceCacheSeed: sharedSeed,
+      client: { listNamespacesWithMetadata: vi.fn() } as never,
+    });
+    const ctxB = createIsolatedContext(testConfig({ apiKey: 'shared-b' }), {
+      namespaceCacheSeed: sharedSeed,
+      client: { listNamespacesWithMetadata: vi.fn() } as never,
+    });
+
+    sharedSeed.data[0]!.namespace = 'mutated';
+
+    const fromA = await ctxA.getNamespacesWithCache();
+    const fromB = await ctxB.getNamespacesWithCache();
+    expect(fromA.data[0]?.namespace).toBe('wg21');
+    expect(fromB.data[0]?.namespace).toBe('wg21');
+  });
 });
