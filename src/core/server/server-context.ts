@@ -11,6 +11,28 @@ export type NamespaceInfo = {
   metadata: Record<string, string>;
 };
 
+/** Public seed shape for namespace cache injection (not the internal {@link NamespaceInfo} type). */
+export type NamespaceCacheSeed = {
+  data: Array<{ namespace: string; recordCount: number; metadata: Record<string, string> }>;
+  expiresAt: number;
+};
+
+/** Pre-warmed suggest-flow entry for a namespace. */
+export type SuggestionFlowSeedEntry = {
+  namespace: string;
+  recommended_tool: RecommendedTool;
+  suggested_fields: string[];
+  user_query: string;
+};
+
+/** Pre-built dependencies accepted by {@link ServerContext} and factory helpers. */
+export interface ServerContextComposition {
+  client?: PineconeClient;
+  urlGenerators?: Iterable<readonly [string, UrlGeneratorFn]>;
+  namespaceCacheSeed?: NamespaceCacheSeed;
+  suggestionFlowSeed?: SuggestionFlowSeedEntry[];
+}
+
 type FlowState = {
   updatedAt: number;
   recommended_tool: RecommendedTool;
@@ -53,19 +75,45 @@ export class ServerContext implements AsyncDisposable {
   private readonly suggestionFlow = new Map<string, FlowState>();
   private namespacesCache: CacheEntry | null = null;
 
-  constructor(config?: ServerConfig, client?: PineconeClient) {
+  constructor(config?: ServerConfig, composition?: ServerContextComposition) {
     if (config) {
       this.configValue = config;
     }
-    if (client) {
-      this.client = client;
+    if (composition?.client) {
+      this.client = composition.client;
       this.clientExplicitlySet = true;
+    }
+    if (composition?.urlGenerators) {
+      for (const [ns, gen] of composition.urlGenerators) {
+        this.registerUrlGenerator(ns, gen);
+      }
+    }
+    if (composition?.namespaceCacheSeed) {
+      this.namespacesCache = {
+        data: composition.namespaceCacheSeed.data,
+        expiresAt: composition.namespaceCacheSeed.expiresAt,
+      };
+    }
+    if (composition?.suggestionFlowSeed) {
+      const now = Date.now();
+      for (const entry of composition.suggestionFlowSeed) {
+        const key = normalizeNamespace(entry.namespace);
+        if (!key) {
+          throw new Error('suggestionFlowSeed: namespace must not be empty after trim');
+        }
+        this.suggestionFlow.set(key, {
+          recommended_tool: entry.recommended_tool,
+          suggested_fields: entry.suggested_fields,
+          user_query: entry.user_query,
+          updatedAt: now,
+        });
+      }
     }
   }
 
   /** Build a context with an externally-constructed Pinecone client. */
   static fromClient(config: ServerConfig, client: PineconeClient): ServerContext {
-    return new ServerContext(config, client);
+    return new ServerContext(config, { client });
   }
 
   getConfig(): ServerConfig {
@@ -306,12 +354,14 @@ export class ServerContext implements AsyncDisposable {
     if (defaultContext === this) {
       defaultContext = null;
       pendingConfig = null;
+      pendingComposition = null;
     }
   }
 }
 
 let defaultContext: ServerContext | null = null;
 let pendingConfig: ServerConfig | null = null;
+let pendingComposition: ServerContextComposition | null = null;
 
 /** Peek at the process-default context without materializing a new one. */
 export function peekDefaultServerContext(): ServerContext | null {
@@ -321,8 +371,11 @@ export function peekDefaultServerContext(): ServerContext | null {
 /** Process-default context used by legacy module facades. */
 export function getDefaultServerContext(): ServerContext {
   if (!defaultContext) {
-    defaultContext = pendingConfig ? new ServerContext(pendingConfig) : new ServerContext();
+    const cfg = pendingConfig ?? undefined;
+    const comp = pendingComposition ?? undefined;
+    defaultContext = new ServerContext(cfg, comp);
     pendingConfig = null;
+    pendingComposition = null;
   }
   return defaultContext;
 }
@@ -332,6 +385,7 @@ export function setDefaultServerContext(ctx: ServerContext | null): void {
   defaultContext = ctx;
   if (ctx === null) {
     pendingConfig = null;
+    pendingComposition = null;
   }
 }
 
@@ -350,12 +404,25 @@ export function teardownDefaultServerContext(): void {
     defaultContext = null;
   }
   pendingConfig = null;
+  pendingComposition = null;
+}
+
+/** Multi-tenant: no process-global side effects. */
+export function createIsolatedContext(
+  config: ServerConfig,
+  composition?: ServerContextComposition
+): ServerContext {
+  return new ServerContext(config, composition);
 }
 
 /** Create a configured context and install it as the process default. */
-export function createServer(config: ServerConfig): ServerContext {
-  const ctx = new ServerContext(config);
+export function createServer(
+  config: ServerConfig,
+  composition?: ServerContextComposition
+): ServerContext {
+  const ctx = new ServerContext(config, composition);
   defaultContext = ctx;
   pendingConfig = null;
+  pendingComposition = null;
   return ctx;
 }

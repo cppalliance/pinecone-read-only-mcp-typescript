@@ -8,21 +8,24 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
-### Changed
-
-- **Breaking (MCP):** Experimental tool response fields are nested under `experimental` on success payloads. Affected tools: `query`, `query_documents`, `guided_query`. Fields moved: `degraded`, `degradation_reason`, `hybrid_leg_failed`, `rerank_skipped_reason` (query-shaped tools); `decision_trace` (`guided_query`). Stable fields (`status`, `results`, `namespace`, etc.) are unchanged. See [MIGRATION.md](docs/MIGRATION.md#unreleased-stable-vs-experimental-response-fields).
-- **Breaking (core):** `resolveConfig` requires a Pinecone index name and no longer applies Alliance index/rerank defaults. Removed exported `DEFAULT_INDEX_NAME` and `DEFAULT_RERANK_MODEL` from the package root. Rerank is opt-in when `PINECONE_RERANK_MODEL` / `rerankModel` is unset.
-- **Breaking (core):** `setupCoreServer` MCP `instructions` use `CORE_SERVER_INSTRUCTIONS` (no `guided_query` / `suggest_query_params`). `resolveConfig` defaults `disableSuggestFlow` to `true` so `query` / `count` / `query_documents` work without Alliance tools. Alliance CLI / `resolveAllianceConfig` unchanged: gate on by default, `ALLIANCE_SERVER_INSTRUCTIONS`.
-- **Alliance CLI / `resolveAllianceConfig`:** When index or rerank env/CLI values are omitted, defaults remain `rag-hybrid` and `bge-reranker-v2-m3` (API-key-only MCP configs unchanged). See [examples/alliance/.env.example](examples/alliance/.env.example).
 ### Added
 
+- `ServerContextComposition` interface plus `NamespaceCacheSeed` and `SuggestionFlowSeedEntry` types for dependency injection into `ServerContext`.
+- `createIsolatedContext(config, composition?)` factory for multi-tenant embedders (no process-global side effects).
 - Zod schemas for all nine MCP tool success responses (`queryResponseSchema`, `guidedQueryResponseSchema`, etc.) exported from the package root for client-side validation. Success payloads are runtime-validated before return.
 - Stable vs experimental response field taxonomy documented in [docs/TOOLS.md](docs/TOOLS.md) and [docs/deprecation-policy.md](docs/deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 - Formal deprecation policy ([docs/deprecation-policy.md](docs/deprecation-policy.md)) and breaking-change release notes template ([docs/templates/breaking-change-release-notes.md](docs/templates/breaking-change-release-notes.md)).
 
-## [0.2.0] - 2026-05-29
-
 ### Changed
+
+- **Breaking (pre-1.0, core):** `ServerContext` constructor second positional argument is now `composition?: ServerContextComposition` (was `client?: PineconeClient`). Migration: use `ServerContext.fromClient(config, client)` or `new ServerContext(config, { client })`.
+- `createServer(config, composition?)` now accepts an optional composition object.
+- **Breaking (MCP):** Experimental tool response fields are nested under `experimental` on success payloads. Affected tools: `query`, `query_documents`, `guided_query`. Fields moved: `degraded`, `degradation_reason`, `hybrid_leg_failed`, `rerank_skipped_reason` (query-shaped tools); `decision_trace` (`guided_query`). Stable fields (`status`, `results`, `namespace`, etc.) are unchanged. See [MIGRATION.md](docs/MIGRATION.md#unreleased-stable-vs-experimental-response-fields).
+- **Breaking (core):** `resolveConfig` requires a Pinecone index name and no longer applies Alliance index/rerank defaults. Removed exported `DEFAULT_INDEX_NAME` and `DEFAULT_RERANK_MODEL` from the package root. Rerank is opt-in when `PINECONE_RERANK_MODEL` / `rerankModel` is unset.
+- **Breaking (core):** `setupCoreServer` MCP `instructions` use `CORE_SERVER_INSTRUCTIONS` (no `guided_query` / `suggest_query_params`). `resolveConfig` defaults `disableSuggestFlow` to `true` so `query` / `count` / `query_documents` work without Alliance tools. Alliance CLI / `resolveAllianceConfig` unchanged: gate on by default, `ALLIANCE_SERVER_INSTRUCTIONS`.
+- **Alliance CLI / `resolveAllianceConfig`:** When index or rerank env/CLI values are omitted, defaults remain `rag-hybrid` and `bge-reranker-v2-m3` (API-key-only MCP configs unchanged). See [examples/alliance/.env.example](examples/alliance/.env.example).
+
+## [0.2.0] - 2026-05-29
 
 - Package root export is the generic **core** layer (`setupCoreServer`); full CLI parity uses `@will-cppa/pinecone-read-only-mcp/alliance` (`setupAllianceServer`, built-in URL generators). `resolveConfig` uses env when set, else defaults: index **`rag-hybrid`**, rerank **`bge-reranker-v2-m3`** (constants `DEFAULT_INDEX_NAME` / `DEFAULT_RERANK_MODEL` in `src/core/config.ts`).
 - When reranking was requested but `PineconeClient` has no rerank model (manual library use): `query` / `query_documents` include `rerank_skipped_reason: no_model`; `guided_query` sets `decision_trace.rerank_status: skipped_no_model`.
