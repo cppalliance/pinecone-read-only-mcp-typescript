@@ -3,7 +3,11 @@ import type { HybridQueryResult, SearchResult } from '../../../types.js';
 import { resolveConfig } from '../../config.js';
 import type { PineconeClient } from '../../pinecone-client.js';
 import type { ConfigOverrides, ServerConfig } from '../../config.js';
-import { ServerContext, teardownDefaultServerContext } from '../server-context.js';
+import {
+  ServerContext,
+  teardownDefaultServerContext,
+  type ServerContextComposition,
+} from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
@@ -137,10 +141,20 @@ export function isolateFromDefaultContext(): void {
 export function createTestServerContext(options?: {
   config?: ConfigOverrides;
   client?: PineconeClient;
+  composition?: ServerContextComposition;
 }): ServerContext {
   const config = resolveTestConfig(options?.config);
-  if (options?.client) {
-    return ServerContext.fromClient(config, options.client);
+  const composition: ServerContextComposition = {
+    ...options?.composition,
+    ...(options?.client ? { client: options.client } : {}),
+  };
+  if (
+    composition.client ||
+    composition.urlGenerators ||
+    composition.namespaceCacheSeed ||
+    composition.suggestionFlowSeed
+  ) {
+    return new ServerContext(config, composition);
   }
   return new ServerContext(config);
 }
