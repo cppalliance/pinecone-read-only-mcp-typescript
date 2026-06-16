@@ -63,7 +63,7 @@ Usage:
 /** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
 export const ALLIANCE_INSTRUCTIONS_APPENDIX = `
 
-Alliance quickstart: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns \`experimental.decision_trace\` you can show the user. The Alliance CLI and \`resolveAllianceConfig\` default the index to \`rag-hybrid\` (and rerank to \`bge-reranker-v2-m3\`) when those env vars are omitted.
+Alliance deployment: The Alliance CLI and \`resolveAllianceConfig\` default the index to \`rag-hybrid\` (and rerank to \`bge-reranker-v2-m3\`) when those env vars are omitted.
 
 For manual flows with the full tool surface, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate unless \`PINECONE_DISABLE_SUGGEST_FLOW=true\`).
 

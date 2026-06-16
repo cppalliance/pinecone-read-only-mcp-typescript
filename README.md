@@ -103,8 +103,8 @@ To try the server on **your own** Pinecone project (free tier, no Alliance index
 
 The codebase is split into two layers:
 
-- **`src/core/`** — generic MCP–Pinecone bridge (`PineconeClient`, `resolveConfig`, core MCP tools). Import from `@will-cppa/pinecone-read-only-mcp` (package root).
-- **`src/alliance/`** — C++ Alliance app tools (`suggest_query_params`, `guided_query`, Boost/Slack URL builtins). Import from `@will-cppa/pinecone-read-only-mcp/alliance` and use `createServer(config)` → `ctx.setClient(...)` → `setupAllianceServer({ context: ctx })` for the full tool surface (what the CLI uses); see [Library embedding](#library-embedding) below.
+- **`src/core/`** — generic MCP–Pinecone bridge (`PineconeClient`, `resolveConfig`, eight MCP tools including `guided_query`). Import from `@will-cppa/pinecone-read-only-mcp` (package root).
+- **`src/alliance/`** — C++ Alliance app layer (`suggest_query_params`, Boost/Slack URL builtins). Import from `@will-cppa/pinecone-read-only-mcp/alliance` and use `createServer(config)` → `ctx.setClient(...)` → `setupAllianceServer({ context: ctx })` for the full tool surface (what the CLI uses); suggest-flow gate on by default. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for core vs Alliance defaults and [Library embedding](#library-embedding) below.
 
 ## Configuration
 

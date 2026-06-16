@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setupAllianceServer } from '../alliance/setup.js';
 import { resolveAllianceConfig } from '../alliance/config.js';
+import { setPineconeClient } from '../core/index.js';
 import { resolveConfig } from '../core/config.js';
+import { getDefaultServerContext } from '../core/server/server-context.js';
 import * as guidedQueryTool from '../core/server/tools/guided-query-tool.js';
 import { registerQueryTool } from '../core/server/tools/query-tool.js';
 import {
@@ -70,6 +73,32 @@ describe('cross-entry-point: core vs Alliance defaults', () => {
     });
     const err = assertToolErrorCode(raw, 'FLOW_GATE');
     expect(err.suggestion).toBe("Call suggest_query_params for namespace 'wg21' first");
+  });
+
+  it('setupAllianceServer wires Alliance gate defaults: query returns FLOW_GATE', async () => {
+    const cfg = resolveAllianceConfig(
+      { apiKey: 'sk-test', indexName: 'my-index' },
+      { PINECONE_API_KEY: 'sk-test', PINECONE_INDEX_NAME: 'my-index' }
+    );
+    setPineconeClient(
+      new PineconeClient({
+        apiKey: cfg.apiKey,
+        indexName: cfg.indexName,
+        defaultTopK: cfg.defaultTopK,
+      })
+    );
+    await setupAllianceServer({ config: cfg });
+    const ctx = getDefaultServerContext();
+    expect(ctx.getConfig().disableSuggestFlow).toBe(false);
+
+    const server = createMockServer();
+    registerQueryTool(server as never, ctx);
+    const raw = await server.getHandler('query')!({
+      query_text: 'hello',
+      namespace: 'wg21',
+      preset: 'fast',
+    });
+    assertToolErrorCode(raw, 'FLOW_GATE');
   });
 
   it('core setup registers guided_query handler', async () => {
