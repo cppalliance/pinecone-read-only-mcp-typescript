@@ -24,6 +24,18 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - **Breaking (core):** `resolveConfig` requires a Pinecone index name and no longer applies Alliance index/rerank defaults. Removed exported `DEFAULT_INDEX_NAME` and `DEFAULT_RERANK_MODEL` from the package root. Rerank is opt-in when `PINECONE_RERANK_MODEL` / `rerankModel` is unset.
 - **Breaking (core):** `setupCoreServer` MCP `instructions` use `CORE_SERVER_INSTRUCTIONS` (no `guided_query` / `suggest_query_params`). `resolveConfig` defaults `disableSuggestFlow` to `true` so `query` / `count` / `query_documents` work without Alliance tools. Alliance CLI / `resolveAllianceConfig` unchanged: gate on by default, `ALLIANCE_SERVER_INSTRUCTIONS`.
 - **Alliance CLI / `resolveAllianceConfig`:** When index or rerank env/CLI values are omitted, defaults remain `rag-hybrid` and `bge-reranker-v2-m3` (API-key-only MCP configs unchanged). See [examples/alliance/.env.example](examples/alliance/.env.example).
+- **Breaking (library):** Trimmed public re-exports — `buildQueryExperimental` and `buildGuidedQueryExperimental` removed from package root and `/alliance` entry. See [MIGRATION.md](docs/MIGRATION.md#unreleased-trimmed-library-exports).
+
+### Added
+
+- Zod schemas for all nine MCP tool success responses (`queryResponseSchema`, `guidedQueryResponseSchema`, etc.) exported from the package root for client-side validation. Success payloads are runtime-validated before return.
+- Stable vs experimental response field taxonomy documented in [docs/TOOLS.md](docs/TOOLS.md) and [docs/deprecation-policy.md](docs/deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
+- Formal deprecation policy ([docs/deprecation-policy.md](docs/deprecation-policy.md)) and breaking-change release notes template ([docs/templates/breaking-change-release-notes.md](docs/templates/breaking-change-release-notes.md)).
+
+### Removed
+
+- **Breaking (library):** `buildQueryExperimental` and `buildGuidedQueryExperimental` are no longer re-exported from `@will-cppa/pinecone-read-only-mcp` or `@will-cppa/pinecone-read-only-mcp/alliance`. They were internal helpers used to assemble the `experimental` block on `query` / `query_documents` / `guided_query` success payloads. The assembled fields and Zod schemas (`queryResponseSchema`, `QueryExperimental`, etc.) are unchanged — see [Unreleased stable vs experimental](docs/MIGRATION.md#unreleased-stable-vs-experimental-response-fields).
+- **No change:** `HybridQueryResult`, `HybridLegFailed`, and `KeywordIndexNamespacesResult` remain exported as the declared return types of public `PineconeClient` methods.
 
 ## [0.2.0] - 2026-05-29
 

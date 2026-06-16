@@ -69,6 +69,23 @@ When no experimental fields apply, the `experimental` key is **omitted** (not an
 
 **Promotion:** Moving a field from `experimental` to stable requires CHANGELOG, TOOLS.md, and schema updates per [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 
+## Unreleased: trimmed library exports
+
+**Who is affected:** Library embedders that imported `buildQueryExperimental` or `buildGuidedQueryExperimental` from `@will-cppa/pinecone-read-only-mcp` or `/alliance`.
+
+**Before:**
+
+```ts
+import { buildQueryExperimental } from '@will-cppa/pinecone-read-only-mcp';
+```
+
+**After:** These helpers are internal to the server. Options:
+
+1. Invoke the relevant MCP tool handler and parse the success payload with `queryResponseSchema` / `guidedQueryResponseSchema`.
+2. Build the `experimental` object yourself to match `QueryExperimental` if you control the response shape.
+
+`PineconeClient.query()` return types (`HybridQueryResult`, etc.) and all Zod response schemas remain on the public surface.
+
 ## Unreleased: `ServerContext` instance APIs (phase 1)
 
 **Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. Phase 1 introduces an opt-in **`ServerContext`** without removing legacy getters.

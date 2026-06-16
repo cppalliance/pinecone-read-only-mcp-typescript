@@ -26,8 +26,6 @@ export type { MetadataFilterValidationError } from './server/metadata-filter.js'
 export { toolErrorSchema } from './server/tool-error.js';
 export type { ToolError, ToolErrorCode } from './server/tool-error.js';
 export {
-  buildGuidedQueryExperimental,
-  buildQueryExperimental,
   countResponseSchema,
   generateUrlsResponseSchema,
   guidedQueryResponseSchema,
