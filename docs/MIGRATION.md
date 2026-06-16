@@ -110,7 +110,7 @@ const server = await setupAllianceServer(config);
 
 Module-level helpers (`getPineconeClient`, `registerUrlGenerator`, `requireSuggested`, etc.) continue to work; they delegate to a process-default context.
 
-**New (recommended — phase 4 explicit context at setup):**
+**New (recommended — phase 4 explicit context at setup):** For one-shot client injection at construction, see [ServerContext composition API](#unreleased-servercontext-composition-api) (`createServer(config, { client })` or `createIsolatedContext`).
 
 ```ts
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
@@ -120,6 +120,21 @@ import {
 } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 const config = resolveAllianceConfig({ apiKey: process.env.PINECONE_API_KEY! });
+const client = new PineconeClient({
+  apiKey: config.apiKey,
+  indexName: config.indexName,
+  sparseIndexName: config.sparseIndexName,
+  rerankModel: config.rerankModel,
+  defaultTopK: config.defaultTopK,
+  requestTimeoutMs: config.requestTimeoutMs,
+});
+const ctx = createServer(config, { client }); // equivalent to createServer + setClient
+const server = await setupAllianceServer({ context: ctx });
+```
+
+Alternatively, inject the client after `createServer`:
+
+```ts
 const ctx = createServer(config);
 ctx.setClient(
   new PineconeClient({
@@ -134,16 +149,23 @@ ctx.setClient(
 const server = await setupAllianceServer({ context: ctx });
 ```
 
-Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
+Pass `config` at setup only when the context is not yet configured; after `createServer` + client injection, pass `{ context: ctx }` only.
 
 **Core-only setup** (seven tools, no Alliance builtins):
 
 ```ts
-import { createServer, PineconeClient, resolveConfig, setupCoreServer } from '@will-cppa/pinecone-read-only-mcp';
+import {
+  createServer,
+  PineconeClient,
+  resolveConfig,
+  setupCoreServer,
+} from '@will-cppa/pinecone-read-only-mcp';
 
 const config = resolveConfig({ apiKey: '...', indexName: 'my-index' });
-const ctx = createServer(config);
-ctx.setClient(new PineconeClient({ /* ... */ }));
+const client = new PineconeClient({
+  /* ... */
+});
+const ctx = createServer(config, { client });
 const server = await setupCoreServer({ context: ctx });
 ```
 
@@ -159,6 +181,48 @@ registerQueryTool(server, ctx);
 **Later (future minors/major):** Legacy module getters will be marked `### Deprecated` per [deprecation-policy.md](./deprecation-policy.md).
 
 See also [deprecation-policy.md § Future instance APIs](./deprecation-policy.md#future-instance-apis-servercontext).
+
+---
+
+## Unreleased: ServerContext composition API
+
+**Rationale:** Embedders can inject client, URL generators, namespace cache seed, and suggest-flow seed at construction without process-global facades.
+
+**Who is affected:** Library embedders calling `new ServerContext(config, client)` directly or building multi-tenant servers.
+
+**Before:**
+
+```ts
+new ServerContext(config, pineconeClient);
+```
+
+**After:**
+
+```ts
+import {
+  createIsolatedContext,
+  createServer,
+  resolveConfig,
+  setupCoreServer,
+  ServerContext,
+} from '@will-cppa/pinecone-read-only-mcp';
+
+ServerContext.fromClient(config, pineconeClient);
+// or
+new ServerContext(config, { client: pineconeClient });
+
+// Multi-tenant (no process default):
+const config = resolveConfig({ apiKey: '...', indexName: 'my-index' });
+const ctx = createIsolatedContext(config, {
+  client: myClient,
+  urlGenerators: [['my-ns', myGenerator]],
+});
+await setupCoreServer({ context: ctx });
+```
+
+Suggest-flow gate settings (`disableSuggestFlow`, `cacheTtlMs`) remain on `ServerConfig`, not on composition.
+
+See also [ServerContext instance APIs (phase 1)](#unreleased-servercontext-instance-apis-phase-1) for legacy vs explicit-context setup.
 
 ---
 

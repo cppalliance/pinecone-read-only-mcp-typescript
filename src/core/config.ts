@@ -101,6 +101,13 @@ export interface ConfigOverrides {
  * Build a `ServerConfig` from CLI overrides, environment variables, and defaults.
  * CLI > env > default precedence is preserved.
  *
+ * Output is the `config` half of the embedder pattern `{ config, composition }`.
+ * Suggest-flow gate settings (`disableSuggestFlow`, `cacheTtlMs`) belong on the
+ * returned config. Per-instance injectables (Pinecone client, URL generators,
+ * namespace cache seed, suggest-flow seed) belong in {@link ServerContextComposition}
+ * passed to {@link createIsolatedContext} (multi-tenant) or {@link createServer}
+ * (singleton CLI path).
+ *
  * @throws Error when no API key or index name is provided.
  */
 export function resolveConfig(

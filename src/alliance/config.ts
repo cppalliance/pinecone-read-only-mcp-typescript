@@ -22,6 +22,10 @@ export const DEFAULT_ALLIANCE_RERANK_MODEL = ALLIANCE_DEFAULT_RERANK_MODEL;
 /**
  * Build {@link ServerConfig} for Alliance CLI and `setupAllianceServer`.
  * Fills index and rerank from Alliance defaults when unset, then calls core `resolveConfig`.
+ *
+ * Output is the `config` half of the embedder pattern `{ config, composition }`.
+ * Pair with {@link createIsolatedContext} or {@link createServer} and an optional
+ * {@link ServerContextComposition} for per-instance injectables.
  */
 export function resolveAllianceConfig(
   overrides: ConfigOverrides = {},

@@ -7,7 +7,17 @@
  */
 
 export { setPineconeClient } from './server/client-context.js';
-export { ServerContext, createServer, getDefaultServerContext } from './server/server-context.js';
+export {
+  ServerContext,
+  createServer,
+  createIsolatedContext,
+  getDefaultServerContext,
+} from './server/server-context.js';
+export type {
+  ServerContextComposition,
+  NamespaceCacheSeed,
+  SuggestionFlowSeedEntry,
+} from './server/server-context.js';
 export {
   validateMetadataFilter,
   validateMetadataFilterDetailed,
