@@ -42,7 +42,12 @@ export interface ServerConfig {
   cacheTtlMs: number;
   /** Per-call timeout (ms) applied to outbound Pinecone requests. */
   requestTimeoutMs: number;
-  /** When true, the suggest_query_params flow gate is bypassed. */
+  /**
+   * When true, the suggest_query_params flow gate is bypassed for `query`, `count`, and
+   * `query_documents`. Core {@link resolveConfig} defaults this to `true` so generic embedders
+   * can call retrieval tools directly; use `guided_query` for ceremony-free orchestration or
+   * set `PINECONE_DISABLE_SUGGEST_FLOW=false` to require `suggest_query_params` first.
+   */
   disableSuggestFlow: boolean;
   /** When true, on-startup probe verifies dense + sparse indexes exist. */
   checkIndexes: boolean;
@@ -107,6 +112,12 @@ export interface ConfigOverrides {
  * namespace cache seed, suggest-flow seed) belong in {@link ServerContextComposition}
  * passed to {@link createIsolatedContext} (multi-tenant) or {@link createServer}
  * (singleton CLI path).
+ *
+ * **Suggest-flow gate default:** `disableSuggestFlow` defaults to `true` (gate off). Generic
+ * embedders can call `query` / `count` / `query_documents` without `suggest_query_params`;
+ * prefer `guided_query` for single-call orchestration. Set `PINECONE_DISABLE_SUGGEST_FLOW=false`
+ * or `disableSuggestFlow: false` in overrides to enable the gate. Alliance
+ * {@link resolveAllianceConfig} overrides this to `false` by default.
  *
  * @throws Error when no API key or index name is provided.
  */

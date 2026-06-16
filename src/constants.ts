@@ -49,15 +49,16 @@ Notes:
 - Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.
 - The server emits structured logs to stderr (text by default, set PINECONE_READ_ONLY_MCP_LOG_FORMAT=json for log aggregation).`;
 
-/** MCP instructions for {@link setupCoreServer} (seven core tools only). */
-export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed. For \`setupCoreServer\` / package-root \`resolveConfig\`, \`PINECONE_INDEX_NAME\` (or \`--index-name\`) is required in addition to \`PINECONE_API_KEY\`. Misconfiguration surfaces at startup, not as tool errors.
+/** MCP instructions for {@link setupCoreServer} (eight core tools including guided_query). */
+export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns \`experimental.decision_trace\` you can show the user. Alternatively call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed. For \`setupCoreServer\` / package-root \`resolveConfig\`, \`PINECONE_INDEX_NAME\` (or \`--index-name\`) is required in addition to \`PINECONE_API_KEY\`. Misconfiguration surfaces at startup, not as tool errors.
 
 ${SERVER_FEATURES_AND_NOTES}
 
 Usage:
-1. Use list_namespaces (cached) to discover available namespaces in the index. The response includes \`expires_at_iso\` so you know when to refresh.
-2. Optionally use namespace_router to choose candidate namespace(s) from user intent.
-3. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, query_documents for full-document content, keyword_search for lexical retrieval, or generate_urls when records need synthesized URLs.`;
+1. Prefer guided_query for single-call retrieval (no prerequisite tools).
+2. Use list_namespaces (cached) to discover available namespaces in the index. The response includes \`expires_at_iso\` so you know when to refresh.
+3. Optionally use namespace_router to choose candidate namespace(s) from user intent.
+4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, query_documents for full-document content, keyword_search for lexical retrieval, or generate_urls when records need synthesized URLs.`;
 
 /** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
 export const ALLIANCE_INSTRUCTIONS_APPENDIX = `

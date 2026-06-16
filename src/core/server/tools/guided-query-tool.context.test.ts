@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { registerBuiltinUrlGenerators } from '../url-builtins.js';
-import { registerQueryTool } from '../../core/server/tools/query-tool.js';
-import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
+import { registerBuiltinUrlGenerators } from '../../../alliance/url-builtins.js';
+import { guidedQueryResponseSchema } from '../response-schemas.js';
+import { registerQueryTool } from './query-tool.js';
+import { registerSuggestQueryParamsTool } from '../../../alliance/tools/suggest-query-params-tool.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
-import { guidedQueryResponseSchema } from '../../core/server/response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
@@ -12,7 +12,7 @@ import {
   makeHybridQueryResult,
   makeSearchResult,
   parseToolJson,
-} from '../../core/server/tools/test-helpers.js';
+} from './test-helpers.js';
 
 const namespaceMetadata = {
   document_number: 'string',

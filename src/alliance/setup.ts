@@ -4,7 +4,6 @@ import { getDefaultServerContext, type ServerContext } from '../core/server/serv
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServer, type ServerHandle, type SetupCoreServerOptions } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
-import { registerGuidedQueryTool } from './tools/guided-query-tool.js';
 import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-tool.js';
 
 /**
@@ -56,7 +55,7 @@ function normalizeSetupAllianceArgs(
 
 /**
  * Create and configure the MCP server with the full Alliance tool surface:
- * all core tools plus `suggest_query_params`, `guided_query`, and built-in URL generators.
+ * all core tools (including `guided_query`) plus `suggest_query_params` and built-in URL generators.
  *
  * When `config` is omitted, resolves env via {@link resolveAllianceConfig} (Alliance index/rerank defaults when unset).
  */
@@ -88,6 +87,5 @@ export async function setupAllianceServer(
 
   registerBuiltinUrlGenerators(resolvedCtx);
   registerSuggestQueryParamsTool(server, resolvedCtx);
-  registerGuidedQueryTool(server, resolvedCtx);
   return server;
 }

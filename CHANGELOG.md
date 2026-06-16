@@ -10,6 +10,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Added
 
+- `guided_query` tool registered by `setupCoreServer` / package-root import (core-layer handler; no Alliance URL generators or index defaults required).
 - `ServerContextComposition` interface plus `NamespaceCacheSeed` and `SuggestionFlowSeedEntry` types for dependency injection into `ServerContext`.
 - `createIsolatedContext(config, composition?)` factory for multi-tenant embedders (no process-global side effects).
 - Zod schemas for all nine MCP tool success responses (`queryResponseSchema`, `guidedQueryResponseSchema`, etc.) exported from the package root for client-side validation. Success payloads are runtime-validated before return.
@@ -22,7 +23,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - `createServer(config, composition?)` now accepts an optional composition object.
 - **Breaking (MCP):** Experimental tool response fields are nested under `experimental` on success payloads. Affected tools: `query`, `query_documents`, `guided_query`. Fields moved: `degraded`, `degradation_reason`, `hybrid_leg_failed`, `rerank_skipped_reason` (query-shaped tools); `decision_trace` (`guided_query`). Stable fields (`status`, `results`, `namespace`, etc.) are unchanged. See [MIGRATION.md](docs/MIGRATION.md#unreleased-stable-vs-experimental-response-fields).
 - **Breaking (core):** `resolveConfig` requires a Pinecone index name and no longer applies Alliance index/rerank defaults. Removed exported `DEFAULT_INDEX_NAME` and `DEFAULT_RERANK_MODEL` from the package root. Rerank is opt-in when `PINECONE_RERANK_MODEL` / `rerankModel` is unset.
-- **Breaking (core):** `setupCoreServer` MCP `instructions` use `CORE_SERVER_INSTRUCTIONS` (no `guided_query` / `suggest_query_params`). `resolveConfig` defaults `disableSuggestFlow` to `true` so `query` / `count` / `query_documents` work without Alliance tools. Alliance CLI / `resolveAllianceConfig` unchanged: gate on by default, `ALLIANCE_SERVER_INSTRUCTIONS`.
+- **Breaking (core):** `setupCoreServer` MCP `instructions` use `CORE_SERVER_INSTRUCTIONS` (includes `guided_query`; no `suggest_query_params`). `resolveConfig` defaults `disableSuggestFlow` to `true` so `query` / `count` / `query_documents` work without Alliance tools. Alliance CLI / `resolveAllianceConfig` unchanged: gate on by default, `ALLIANCE_SERVER_INSTRUCTIONS`.
 - **Alliance CLI / `resolveAllianceConfig`:** When index or rerank env/CLI values are omitted, defaults remain `rag-hybrid` and `bge-reranker-v2-m3` (API-key-only MCP configs unchanged). See [examples/alliance/.env.example](examples/alliance/.env.example).
 
 ## [0.2.0] - 2026-05-29

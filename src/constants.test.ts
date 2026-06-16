@@ -6,8 +6,8 @@ import {
 } from './constants.js';
 
 describe('server instructions', () => {
-  it('CORE_SERVER_INSTRUCTIONS does not reference Alliance-only tools', () => {
-    expect(CORE_SERVER_INSTRUCTIONS).not.toMatch(/guided_query/);
+  it('CORE_SERVER_INSTRUCTIONS includes guided_query but not suggest_query_params', () => {
+    expect(CORE_SERVER_INSTRUCTIONS).toMatch(/guided_query/);
     expect(CORE_SERVER_INSTRUCTIONS).not.toMatch(/suggest_query_params/);
   });
 
