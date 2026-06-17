@@ -69,6 +69,102 @@ When no experimental fields apply, the `experimental` key is **omitted** (not an
 
 **Promotion:** Moving a field from `experimental` to stable requires CHANGELOG, TOOLS.md, and schema updates per [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 
+## Unreleased: Legacy module-facade deprecations
+
+**Rationale:** Module-level singleton facades (`setPineconeClient`, `registerUrlGenerator`, `getDefaultServerContext`, etc.) delegate to a process-global `ServerContext`. They complicate multi-tenant embedding and hide initialization order. They are marked `@deprecated` in JSDoc; earliest removal is **two minor releases after** the deprecation minor (see [deprecation-policy.md § Deprecation window](./deprecation-policy.md#deprecation-window)).
+
+**Who is affected:** Library embedders importing facade functions from `@will-cppa/pinecone-read-only-mcp` or `/alliance`.
+
+**Recommended pattern:** `createServer(config)` → `ctx.setClient(...)` → `setupCoreServer({ context: ctx })` or `setupAllianceServer({ context: ctx })`.
+
+### Client
+
+**Before (deprecated):**
+
+```ts
+import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
+
+setPineconeClient(new PineconeClient({ /* ... */ }));
+```
+
+**After:**
+
+```ts
+import { createServer, PineconeClient, resolveConfig } from '@will-cppa/pinecone-read-only-mcp';
+
+const config = resolveConfig({ apiKey: '...', indexName: 'my-index' });
+const ctx = createServer(config);
+ctx.setClient(new PineconeClient({ /* ... */ }));
+```
+
+### Config
+
+**Before (deprecated):** `getServerConfig()` / `setServerConfig(config)` / `resetServerConfig()`.
+
+**After:** `ctx.getConfig()` / `ctx.setConfig(config)` / `ctx.teardown()`.
+
+### URL registry
+
+**Before (deprecated):**
+
+```ts
+import { registerUrlGenerator } from '@will-cppa/pinecone-read-only-mcp';
+
+registerUrlGenerator('my-ns', myGenerator);
+```
+
+**After:**
+
+```ts
+ctx.registerUrlGenerator('my-ns', myGenerator);
+```
+
+Same for `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`, and `resetUrlGenerationRegistry` → `ctx.unregisterUrlGenerator`, `ctx.generateUrlForNamespace`, `ctx.hasUrlGenerator`, `ctx.resetUrlGenerators`.
+
+### Suggest-flow gate
+
+**Before (deprecated):** `markSuggested`, `requireSuggested`, `resetSuggestionFlow`.
+
+**After:** `ctx.markSuggested`, `ctx.requireSuggested`, `ctx.resetSuggestionFlow`.
+
+### Namespaces cache
+
+**Before (deprecated):** `getNamespacesWithCache()`, `invalidateNamespacesCache()`.
+
+**After:** `ctx.getNamespacesWithCache()`, `ctx.invalidateNamespacesCache()`.
+
+### Process-default context
+
+**Before (deprecated):**
+
+```ts
+import { getDefaultServerContext, setupCoreServer } from '@will-cppa/pinecone-read-only-mcp';
+
+await setupCoreServer(config); // uses process default
+const ctx = getDefaultServerContext();
+```
+
+**After:**
+
+```ts
+const ctx = createServer(config);
+ctx.setClient(client);
+await setupCoreServer({ context: ctx });
+```
+
+### Teardown
+
+**Before:** `teardownServer()` resets the process-default context.
+
+**After:** `await ctx.teardown()` or `await using server = await setupAllianceServer({ context: ctx })` for automatic cleanup. `teardownServer()` remains available during the deprecation window for legacy single-server flows; prefer per-context lifecycle for new code.
+
+### CLI and tests
+
+- **CLI:** unchanged — the binary uses internal setup paths.
+- **Test fakes:** pass a dedicated `ServerContext` via `createIsolatedContext` or `createServer` + `{ context: ctx }` at setup instead of mutating process globals.
+
+See [deprecation-policy.md § Active deprecations](./deprecation-policy.md#active-deprecations-legacy-module-facades) for the full inventory.
+
 ## Unreleased: trimmed library exports
 
 **Who is affected:** Library embedders that imported `buildQueryExperimental` or `buildGuidedQueryExperimental` from `@will-cppa/pinecone-read-only-mcp` or `/alliance`.
@@ -86,11 +182,11 @@ import { buildQueryExperimental } from '@will-cppa/pinecone-read-only-mcp';
 
 `PineconeClient.query()` return types (`HybridQueryResult`, etc.) and all Zod response schemas remain on the public surface.
 
-## Unreleased: `ServerContext` instance APIs (phase 1)
+## Unreleased: `ServerContext` instance APIs (initial)
 
-**Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. Phase 1 introduces an opt-in **`ServerContext`** without removing legacy getters.
+**Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. The initial milestone introduces an opt-in **`ServerContext`**; legacy module facades are deprecated (see [Legacy module-facade deprecations](#unreleased-legacy-module-facade-deprecations)).
 
-**Now (0.2.x — unchanged for existing embedders):**
+**Deprecated (migrate before removal):**
 
 ```ts
 import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
@@ -108,9 +204,9 @@ setPineconeClient(
 const server = await setupAllianceServer(config);
 ```
 
-Module-level helpers (`getPineconeClient`, `registerUrlGenerator`, `requireSuggested`, etc.) continue to work; they delegate to a process-default context.
+Module-level helpers (`getPineconeClient`, `registerUrlGenerator`, `requireSuggested`, etc.) still work during the deprecation window; they delegate to a process-default context.
 
-**New (recommended — phase 4 explicit context at setup):** For one-shot client injection at construction, see [ServerContext composition API](#unreleased-servercontext-composition-api) (`createServer(config, { client })` or `createIsolatedContext`).
+**Recommended (instance-first):** For one-shot client injection at construction, see [ServerContext composition API](#unreleased-servercontext-composition-api) (`createServer(config, { client })` or `createIsolatedContext`).
 
 ```ts
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
@@ -178,7 +274,7 @@ import { registerQueryTool, registerCountTool, registerListNamespacesTool } from
 registerQueryTool(server, ctx);
 ```
 
-**Later (future minors/major):** Legacy module getters will be marked `### Deprecated` per [deprecation-policy.md](./deprecation-policy.md).
+**Later:** Legacy module getters will be removed at the earliest removal minor per [deprecation-policy.md](./deprecation-policy.md).
 
 See also [deprecation-policy.md § Future instance APIs](./deprecation-policy.md#future-instance-apis-servercontext).
 

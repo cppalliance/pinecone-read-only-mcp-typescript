@@ -159,7 +159,7 @@ export class ServerContext implements AsyncDisposable {
   /** Return the client only when explicitly injected (legacy {@link getPineconeClient} path). */
   getClientIfSet(): PineconeClient {
     if (!this.clientExplicitlySet || !this.client) {
-      throw new Error('Pinecone client not initialized. Call setPineconeClient first.');
+      throw new Error('Pinecone client not initialized. Call ServerContext.setClient() first.');
     }
     return this.client;
   }
@@ -373,7 +373,15 @@ export function peekDefaultServerContext(): ServerContext | null {
   return defaultContext;
 }
 
-/** Process-default context used by legacy module facades. */
+/**
+ * Process-default context used by legacy module facades.
+ *
+ * @deprecated Legacy module facade. Pass a {@link ServerContext} from {@link createServer}
+ * explicitly to setup APIs instead. Removal follows docs/deprecation-policy.md (no earlier
+ * than two minor releases after the deprecation minor). See
+ * docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see createServer
+ */
 export function getDefaultServerContext(): ServerContext {
   if (!defaultContext) {
     const cfg = pendingConfig ?? undefined;

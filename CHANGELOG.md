@@ -26,6 +26,10 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 - **Alliance CLI / `resolveAllianceConfig`:** When index or rerank env/CLI values are omitted, defaults remain `rag-hybrid` and `bge-reranker-v2-m3` (API-key-only MCP configs unchanged). See [examples/alliance/.env.example](examples/alliance/.env.example).
 - **Breaking (library):** Trimmed public re-exports — `buildQueryExperimental` and `buildGuidedQueryExperimental` removed from package root and `/alliance` entry. See [MIGRATION.md](docs/MIGRATION.md#unreleased-trimmed-library-exports).
 
+### Deprecated
+
+- Module-level singleton facades — use `ServerContext` instance methods via `createServer(config)` and `{ context: ctx }` at setup instead. Deprecated in the **next minor release** (see `[Unreleased]` until version is tagged); earliest removal **two minor releases later** per [deprecation-policy.md](docs/deprecation-policy.md#deprecation-window). Affected symbols: `getPineconeClient`, `setPineconeClient`, `clearPineconeClient`, `getServerConfig`, `setServerConfig`, `resetServerConfig`, `registerUrlGenerator`, `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`, `resetUrlGenerationRegistry`, `markSuggested`, `requireSuggested`, `resetSuggestionFlow`, `getNamespacesWithCache`, `invalidateNamespacesCache`, `getDefaultServerContext`. See [MIGRATION.md § Legacy module-facade deprecations](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations) and [deprecation-policy.md](docs/deprecation-policy.md#active-deprecations-legacy-module-facades).
+
 ### Added
 
 - Zod schemas for all nine MCP tool success responses (`queryResponseSchema`, `guidedQueryResponseSchema`, etc.) exported from the package root for client-side validation. Success payloads are runtime-validated before return.

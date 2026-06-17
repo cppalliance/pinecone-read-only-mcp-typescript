@@ -14,9 +14,9 @@
  * `await using server = await setupAllianceServer({ context: ctx })` for
  * automatic teardown, or call `ctx.teardown()` when done.
  *
- * **Legacy (single process-default server):** `setPineconeClient(client)` then
- * `await setupAllianceServer(config)` still works; call `teardownServer()` before
- * re-initializing the default context.
+ * **Legacy (deprecated):** `setPineconeClient(client)` then
+ * `await setupAllianceServer(config)` still works during the deprecation window;
+ * see [docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations).
  */
 
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';

@@ -7,7 +7,7 @@
 | Can core and alliance be separate npm packages? | **Yes, technically feasible.** Production dependency is one-way (`alliance` → `core`); no circular imports.                                                                                                                      |
 | Which consumers use which layer?                | **Alliance layer:** CLI, MCP client configs, Alliance examples, internal C++ Alliance deployments. **Core layer:** generic embedders, core-only setup, shared types/errors. No known external community consumers yet (pre-1.0). |
 | Recommended package structure                   | **npm workspace monorepo** in this repository (not separate git repos) if/when the split proceeds.                                                                                                                               |
-| **Decision**                                    | **Split later** — after phase 5 legacy-getter deprecation completes and one deprecation window has elapsed. Keep the unified package until then.                                                                                 |
+| **Decision**                                    | **Split later** — after legacy facade deprecation completes and one deprecation window has elapsed. Keep the unified package until then.                                                                                 |
 
 The source boundary (`src/core/` vs `src/alliance/`) is already clean enough to become a package boundary. The remaining blockers are public API surface (legacy module facades still exported from core), build/workspace tooling (not yet present), and low external adoption incentive while the project is still pre-1.0.
 
@@ -88,7 +88,7 @@ Core setup uses `CORE_SERVER_INSTRUCTIONS` (7 tools). Alliance setup uses `ALLIA
 
 ### 2.5 What is already decoupled
 
-Phases 1–4 of the ServerContext roadmap established:
+The ServerContext instance API on main established:
 
 - Per-instance `ServerContext` with URL registry, suggest-flow gate, namespaces cache, and client slot
 - All 9 tool handlers accept optional `ctx`
@@ -153,7 +153,7 @@ A split requires:
 | `vitest` config spanning workspace packages                                  | Low–medium |
 | npm publish: two packages, version coordination policy                       | Medium     |
 
-Estimated implementation effort for the split itself: **~3–5 days** (not including phase 5 API cleanup or consumer migration docs).
+Estimated implementation effort for the split itself: **~3–5 days** (not including legacy facade removal or consumer migration docs).
 
 ### 3.5 Public API blockers (must resolve before split)
 
@@ -162,9 +162,9 @@ The core public API (`src/core/index.ts`) still exports **legacy module facades*
 - `setPineconeClient`
 - `registerUrlGenerator`, `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`
 
-These are Alliance-era singleton patterns. Publishing them as the stable surface of a standalone "generic core" package would cement the wrong contract. **Phase 5** deprecates and eventually removes these exports, leaving `ServerContext` + setup APIs as the supported public contract.
+These are Alliance-era singleton patterns. Publishing them as the stable surface of a standalone "generic core" package would cement the wrong contract. **Legacy facade deprecation** marks and eventually removes these exports, leaving `ServerContext` + setup APIs as the supported public contract.
 
-Until phase 5 completes, "core" is generic in _source layout_ but not yet generic in _published API_.
+Until facade removal at 1.0, "core" is generic in _source layout_ but not yet generic in _published API_.
 
 ### 3.6 Extension surface (T23) and package split
 
@@ -262,7 +262,7 @@ pinecone-read-only-mcp-typescript/
 
 **Suggested version policy:**
 
-- Core: conservative minors; API stable toward 1.0 after phase 5
+- Core: conservative minors; API stable toward 1.0 after legacy facade removal
 - Alliance: faster minors; `dependencies: { "@will-cppa/pinecone-read-only-mcp": "^0.x.0" }` with CI matrix testing latest compatible core
 
 ### 5.2 Option B: Separate git repositories
@@ -281,7 +281,7 @@ Continue with `exports["."]` and `exports["./alliance"]` in one package.
 
 **Pros:** Zero build migration; single version; simplest publish story.
 
-**Cons:** Alliance-only changes always bump the shared version; eval T23 coupling perception remains; core public API still carries legacy facades until phase 5 regardless.
+**Cons:** Alliance-only changes always bump the shared version; eval T23 coupling perception remains; core public API still carries legacy facades until facade removal regardless.
 
 ---
 
@@ -289,13 +289,13 @@ Continue with `exports["."]` and `exports["./alliance"]` in one package.
 
 ### Recommended: **Split later** (not now)
 
-Defer the npm package split until **after phase 5 legacy-getter deprecation** has shipped and **one deprecation policy window** has elapsed (see [deprecation-policy.md](./deprecation-policy.md)).
+Defer the npm package split until **after legacy facade deprecation** has shipped and **one deprecation policy window** has elapsed (see [deprecation-policy.md](./deprecation-policy.md)).
 
 Do **not** implement workspace packages in the current sprint. This PR delivers the evaluation only.
 
 ### Rationale
 
-1. **Source boundary is ready; published API is not.** Phases 1–4 cleaned instance-path architecture, but core still exports `setPineconeClient`, global URL registry helpers, and `getDefaultServerContext`. Splitting now would publish those as the long-term "generic core" contract. Phase 5 must finish first.
+1. **Source boundary is ready; published API is not.** The ServerContext instance API is in place on main, but core still exports `setPineconeClient`, global URL registry helpers, and `getDefaultServerContext`. Splitting now would publish those as the long-term "generic core" contract. Legacy facade deprecation and removal must finish first.
 
 2. **Low external adoption incentive.** All current consumers are internal or documentation-driven. Shared version bumps are inconvenient but not blocking release velocity today.
 
@@ -308,9 +308,9 @@ Do **not** implement workspace packages in the current sprint. This PR delivers 
 | Option                        | When it makes sense                                     | Why not now                                                        |
 | ----------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
 | **Split now**                 | External core-only adopters blocked by Alliance cadence | Legacy facades still in core exports; tooling not ready            |
-| **Split with phase 4 only**   | Urgent multi-team release decoupling                    | Phase 5 still required for clean API; no urgent consumer pressure  |
+| **Split with instance API only**   | Urgent multi-team release decoupling                    | Legacy facade removal still required for clean API; no urgent consumer pressure  |
 | **Keep unified indefinitely** | Single consumer, stable 1.0 shipped                     | Loses future cadence decoupling; re-evaluate at 1.0 planning       |
-| **Split at 1.0**              | Clean semver major for both packages                    | **Preferred target window** — combine with phase 5 removal release |
+| **Split at 1.0**              | Clean semver major for both packages                    | **Preferred target window** — combine with facade removal release |
 
 ---
 
@@ -318,8 +318,8 @@ Do **not** implement workspace packages in the current sprint. This PR delivers 
 
 Proceed with Option A (workspace monorepo) when **all** of the following are true:
 
-- [ ] Phase 5 release 1: legacy facades marked `@deprecated` in `src/core/index.ts`
-- [ ] Phase 5 release 3 (or agreed 1.0): module-level singleton accessors removed from public exports
+- [ ] Release 1: legacy facades marked `@deprecated` in `src/core/index.ts`
+- [ ] Release 3 (or agreed 1.0): module-level singleton accessors removed from public exports
 - [ ] `src/types.ts` contains only core-shared types; Alliance-specific types live under `src/alliance/`
 - [ ] `src/logger.ts` owned by core; Alliance uses core export
 - [ ] `constants.ts` split between packages (no Alliance instructions in core tarball)
@@ -327,7 +327,7 @@ Proceed with Option A (workspace monorepo) when **all** of the following are tru
 - [ ] `MIGRATION.md` documents package names, shim period, and MCP config updates
 - [ ] At least one **external** or **multi-team** consumer needs independent Alliance release cadence
 
-**Suggested trigger:** planning for **1.0.0** major release, combining phase 5 removal with package split if checklist is complete.
+**Suggested trigger:** planning for **1.0.0** major release, combining facade removal with package split if checklist is complete.
 
 ---
 

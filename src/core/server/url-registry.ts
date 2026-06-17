@@ -38,6 +38,12 @@ export type UrlGeneratorFn = UrlGenerator;
 /**
  * Clear all URL generators.
  * Used by {@link teardownServer} so a subsequent setup can reinstall generators.
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.resetUrlGenerators} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.resetUrlGenerators
  */
 export function resetUrlGenerationRegistry(): void {
   getDefaultServerContext().resetUrlGenerators();
@@ -48,17 +54,38 @@ export function resetUrlGenerationRegistry(): void {
  *
  * @param namespace exact namespace name (matches the value returned by `list_namespaces`).
  * @param generator function that turns a record's metadata into a URL ({@link UrlGeneratorFn}).
+ * @deprecated Legacy module facade. Use {@link ServerContext.registerUrlGenerator} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.registerUrlGenerator
  */
 export function registerUrlGenerator(namespace: string, generator: UrlGeneratorFn): void {
   getDefaultServerContext().registerUrlGenerator(namespace, generator);
 }
 
-/** Remove a namespace's URL generator. Returns true if a generator was removed. */
+/**
+ * Remove a namespace's URL generator. Returns true if a generator was removed.
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.unregisterUrlGenerator} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.unregisterUrlGenerator
+ */
 export function unregisterUrlGenerator(namespace: string): boolean {
   return getDefaultServerContext().unregisterUrlGenerator(namespace);
 }
 
-/** True when the namespace has a registered URL generator (does not consider `metadata.url`). */
+/**
+ * True when the namespace has a registered URL generator (does not consider `metadata.url`).
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.hasUrlGenerator} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.hasUrlGenerator
+ */
 export function hasUrlGenerator(namespace: string): boolean {
   return getDefaultServerContext().hasUrlGenerator(namespace);
 }
@@ -66,6 +93,12 @@ export function hasUrlGenerator(namespace: string): boolean {
 /**
  * Generate a URL for a record in the given namespace when metadata.url is missing.
  * Uses the registry of URL generators; returns unavailable for namespaces without a generator.
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.generateUrlForNamespace} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.generateUrlForNamespace
  */
 export function generateUrlForNamespace(
   namespace: string,

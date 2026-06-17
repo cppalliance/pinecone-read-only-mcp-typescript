@@ -8,11 +8,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { config as loadEnv } from 'dotenv';
 import {
+  createServer,
   PineconeClient,
   resolveConfig,
-  setPineconeClient,
   setupCoreServer,
-  teardownServer,
 } from '@will-cppa/pinecone-read-only-mcp';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +47,8 @@ async function main(): Promise<void> {
     indexName,
   });
 
-  setPineconeClient(
+  const ctx = createServer(config);
+  ctx.setClient(
     new PineconeClient({
       apiKey: config.apiKey,
       indexName: config.indexName,
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
   );
 
   const { clientTransport, serverTransport } = createLinkedTransports();
-  const server = await setupCoreServer(config);
+  const server = await setupCoreServer({ context: ctx });
   await server.connect(serverTransport);
 
   const client = new Client({ name: 'quickstart-demo', version: '1.0.0' });
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
   } finally {
     await client.close();
     await server.close();
-    teardownServer();
+    await ctx.teardown();
   }
 }
 
