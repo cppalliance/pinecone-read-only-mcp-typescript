@@ -10,6 +10,7 @@ import {
 } from './server/server-context.js';
 import { registerCountTool } from './server/tools/count-tool.js';
 import { registerGenerateUrlsTool } from './server/tools/generate-urls-tool.js';
+import { registerGuidedQueryTool } from './server/tools/guided-query-tool.js';
 import { registerKeywordSearchTool } from './server/tools/keyword-search-tool.js';
 import { registerListNamespacesTool } from './server/tools/list-namespaces-tool.js';
 import { registerNamespaceRouterTool } from './server/tools/namespace-router-tool.js';
@@ -29,11 +30,12 @@ export function teardownServer(): void {
 }
 
 /**
- * Create and configure the MCP server with generic (core) tools only.
+ * Create and configure the MCP server with generic (core) tools.
  *
- * Does not register Alliance-specific tools (`suggest_query_params`, `guided_query`)
- * or built-in Boost/Slack URL generators. Use {@link setupAllianceServer} from
- * `@will-cppa/pinecone-read-only-mcp/alliance` for the full tool surface.
+ * Registers eight core tools including `guided_query`. Does not register Alliance-specific
+ * `suggest_query_params` or built-in Boost/Slack URL generators. Use
+ * {@link setupAllianceServer} from `@will-cppa/pinecone-read-only-mcp/alliance` for the
+ * full Alliance tool surface (suggest-flow gate on by default).
  */
 export type SetupCoreServerOptions = {
   config?: ServerConfig;
@@ -138,6 +140,7 @@ export async function setupCoreServer(
   registerKeywordSearchTool(server, ctx);
   registerQueryDocumentsTool(server, ctx);
   registerGenerateUrlsTool(server, ctx);
+  registerGuidedQueryTool(server, ctx);
 
   ctx.markToolsRegistered();
 

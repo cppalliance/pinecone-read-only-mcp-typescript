@@ -243,6 +243,17 @@ Core `resolveConfig` throws `Missing Pinecone index name: …` when the index is
 - The binary uses `resolveAllianceConfig`; API-key-only configs still default to `rag-hybrid` and `bge-reranker-v2-m3`.
 - Explicit env overrides still win. Copy [examples/alliance/.env.example](../examples/alliance/.env.example) to document Alliance conventions.
 
+### Suggest-flow gate (`disableSuggestFlow`) — intentional divergence
+
+| Entry point | Default | Rationale |
+| ----------- | ------- | --------- |
+| `resolveConfig` / `setupCoreServer` | Gate **off** (`disableSuggestFlow: true`) | Generic embedders can call `query` / `count` / `query_documents` directly; `guided_query` is the recommended ceremony-free path |
+| `resolveAllianceConfig` / CLI | Gate **on** (`disableSuggestFlow: false`) | Production MCP safety: manual `query` requires `suggest_query_params` first |
+
+**Decision (unchanged):** Exposing `guided_query` in core does **not** change the core gate default. Core keeps the gate off so direct tool access remains available; Alliance keeps the gate on for CLI/MCP deployments.
+
+**When migrating entry points:** If you move from Alliance to core (or vice versa), query gate behavior changes unless you set `disableSuggestFlow` explicitly. Use `guided_query` to avoid the multi-step suggest flow in either setup.
+
 ---
 
 ## Migrating to v0.2.0

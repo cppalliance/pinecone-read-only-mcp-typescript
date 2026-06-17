@@ -24,8 +24,8 @@ Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecati
 
 | Setup | Tools | MCP instructions |
 | ----- | ----- | ------------------ |
-| `setupCoreServer` (package root) | **7:** `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls` | `CORE_SERVER_INSTRUCTIONS` — no `guided_query` or `suggest_query_params` |
-| `setupAllianceServer` / published CLI | **9:** core tools plus `suggest_query_params`, `guided_query` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes guided/suggest quickstart |
+| `setupCoreServer` (package root) | **8:** `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls`, `guided_query` | `CORE_SERVER_INSTRUCTIONS` — includes `guided_query`; no `suggest_query_params` |
+| `setupAllianceServer` / published CLI | **9:** core tools plus `suggest_query_params` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes suggest-flow quickstart |
 
 ## Suggest-flow gate
 

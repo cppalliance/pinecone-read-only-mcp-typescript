@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPineconeClient } from './client-context.js';
 import { getNamespacesWithCache } from './namespaces-cache.js';
-import { registerGuidedQueryTool } from '../../alliance/tools/guided-query-tool.js';
+import { registerGuidedQueryTool } from './tools/guided-query-tool.js';
 import { setLogLevel } from '../../logger.js';
 import { redactApiKey, redactSensitiveFields } from '../../logger.js';
 import { classifyToolCatchError, pineconeToolError } from './tool-error.js';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPineconeClient } from '../../core/server/client-context.js';
-import { getNamespacesWithCache } from '../../core/server/namespaces-cache.js';
+import { getPineconeClient } from '../client-context.js';
+import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
 import {
   assertToolErrorCode,
@@ -9,18 +9,18 @@ import {
   makeNamespaceCacheEntry,
   makeSearchResult,
   parseToolJson,
-} from '../../core/server/tools/test-helpers.js';
+} from './test-helpers.js';
 
-vi.mock('../../core/server/client-context.js', () => ({
+vi.mock('../client-context.js', () => ({
   getPineconeClient: vi.fn(),
 }));
 
-vi.mock('../../core/server/namespaces-cache.js', () => ({
+vi.mock('../namespaces-cache.js', () => ({
   getNamespacesWithCache: vi.fn(),
 }));
 
 /** Real `markSuggested` may call `getServerConfig()` during sweep (CI has no API key); isolate the handler. */
-vi.mock('../../core/server/suggestion-flow.js', () => ({
+vi.mock('../suggestion-flow.js', () => ({
   markSuggested: vi.fn(),
 }));
 

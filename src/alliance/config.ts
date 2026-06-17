@@ -23,6 +23,13 @@ export const DEFAULT_ALLIANCE_RERANK_MODEL = ALLIANCE_DEFAULT_RERANK_MODEL;
  * Build {@link ServerConfig} for Alliance CLI and `setupAllianceServer`.
  * Fills index and rerank from Alliance defaults when unset, then calls core `resolveConfig`.
  *
+ * **Suggest-flow gate default:** After core resolution, `disableSuggestFlow` is overridden to
+ * `false` (gate on) unless `PINECONE_DISABLE_SUGGEST_FLOW` or `disableSuggestFlow` in overrides
+ * says otherwise. This differs from package-root {@link resolveConfig} (`true` / gate off).
+ * Switching between core and Alliance entry points changes query gate behavior — use
+ * `guided_query` (available in both) for ceremony-free retrieval, or call
+ * `suggest_query_params` before gated tools when the gate is on.
+ *
  * Output is the `config` half of the embedder pattern `{ config, composition }`.
  * Pair with {@link createIsolatedContext} or {@link createServer} and an optional
  * {@link ServerContextComposition} for per-instance injectables.

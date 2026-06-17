@@ -37,6 +37,8 @@ For the full Alliance tool surface (including `suggest_query_params`, `guided_qu
 | `resolveConfig` | Package root, `setupCoreServer`, quickstart | **Throws** | Omitted (no rerank) | Off (`disableSuggestFlow: true`) |
 | `resolveAllianceConfig` | Published CLI, `setupAllianceServer` | `rag-hybrid` | `bge-reranker-v2-m3` | On (`disableSuggestFlow: false`) |
 
+**Warning:** Switching between `resolveConfig` / `setupCoreServer` (package root) and `resolveAllianceConfig` / `setupAllianceServer` changes suggest-flow gate behavior. Core defaults bypass the gate; Alliance defaults enforce it. Use `guided_query` (registered in both setups) for single-call retrieval without manual `suggest_query_params`, or align `disableSuggestFlow` explicitly when migrating between entry points.
+
 C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/alliance/.env.example). Constants: `ALLIANCE_DEFAULT_INDEX_NAME` / `ALLIANCE_DEFAULT_RERANK_MODEL` from `@will-cppa/pinecone-read-only-mcp/alliance`.
 
 ---
