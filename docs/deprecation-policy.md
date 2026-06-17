@@ -32,7 +32,7 @@ Renames may ship the **replacement immediately** alongside the deprecated alias 
 
 APIs deprecated **before** this policy was published follow the removal target recorded in CHANGELOG and source comments at deprecation time. The `paper_number` field on query result rows (use `document_id` instead) was deprecated in **0.2.0** with removal planned no earlier than the **next major** release after `1.0.0`; it will not be removed in a `0.y` minor without an explicit CHANGELOG entry and MIGRATION update.
 
-### Active deprecations — legacy module facades
+### Active deprecations - legacy module facades
 
 Module-level singleton facades delegate to `getDefaultServerContext()`. Migrate to **`ServerContext`** instance methods via `createServer(config)` and pass `{ context: ctx }` to `setupCoreServer` / `setupAllianceServer`. Deprecated in the **next published minor** after merge; earliest removal **two minor releases later** (per [Deprecation window](#deprecation-window) above). See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations).
 
@@ -108,7 +108,7 @@ New response fields added before `1.0.0` default to `experimental` unless explic
 
 ## Future instance APIs (`ServerContext`)
 
-Legacy module-level facades are deprecated per the [active deprecations table](#active-deprecations-legacy-module-facades) above. `ServerContext` + `createServer` / setup APIs are the supported public contract going forward.
+Legacy module-level facades are deprecated per the [active deprecations table](./deprecation-policy.md#active-deprecations-legacy-module-facades) above. `ServerContext` + `createServer` / setup APIs are the supported public contract going forward.
 
 See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations) for before/after embedder snippets.
 

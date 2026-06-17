@@ -318,7 +318,7 @@ await setupCoreServer({ context: ctx });
 
 Suggest-flow gate settings (`disableSuggestFlow`, `cacheTtlMs`) remain on `ServerConfig`, not on composition.
 
-See also [ServerContext instance APIs (phase 1)](#unreleased-servercontext-instance-apis-phase-1) for legacy vs explicit-context setup.
+See also [ServerContext instance APIs (initial)](#unreleased-servercontext-instance-apis-initial) for legacy vs explicit-context setup.
 
 ---
 
