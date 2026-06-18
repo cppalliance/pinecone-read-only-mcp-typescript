@@ -32,6 +32,21 @@ Renames may ship the **replacement immediately** alongside the deprecated alias 
 
 APIs deprecated **before** this policy was published follow the removal target recorded in CHANGELOG and source comments at deprecation time. The `paper_number` field on query result rows (use `document_id` instead) was deprecated in **0.2.0** with removal planned no earlier than the **next major** release after `1.0.0`; it will not be removed in a `0.y` minor without an explicit CHANGELOG entry and MIGRATION update.
 
+### Active deprecations - legacy module facades
+
+Module-level singleton facades delegate to `getDefaultServerContext()`. Migrate to **`ServerContext`** instance methods via `createServer(config)` and pass `{ context: ctx }` to `setupCoreServer` / `setupAllianceServer`. Deprecated in the **next published minor** after merge; earliest removal **two minor releases later** (per [Deprecation window](#deprecation-window) above). See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations).
+
+| Facade | Layer | Replacement | Deprecated in | Earliest removal |
+| ------ | ----- | ----------- | ------------- | ---------------- |
+| `getPineconeClient` / `setPineconeClient` / `clearPineconeClient` | core | `ctx.getClient()` / `ctx.setClient()` / `ctx.clearClient()` | next minor (TBD at release) | two minors after deprecation minor |
+| `getServerConfig` / `setServerConfig` / `resetServerConfig` | core | `ctx.getConfig()` / `ctx.setConfig()` / `ctx.teardown()` | next minor (TBD at release) | two minors after deprecation minor |
+| `registerUrlGenerator` / `unregisterUrlGenerator` / `generateUrlForNamespace` / `hasUrlGenerator` / `resetUrlGenerationRegistry` | core | `ctx.registerUrlGenerator()` etc. / `ctx.resetUrlGenerators()` | next minor (TBD at release) | two minors after deprecation minor |
+| `markSuggested` / `requireSuggested` / `resetSuggestionFlow` | core | `ctx.markSuggested()` / `ctx.requireSuggested()` / `ctx.resetSuggestionFlow()` | next minor (TBD at release) | two minors after deprecation minor |
+| `getNamespacesWithCache` / `invalidateNamespacesCache` | core | `ctx.getNamespacesWithCache()` / `ctx.invalidateNamespacesCache()` | next minor (TBD at release) | two minors after deprecation minor |
+| `getDefaultServerContext` | core | Return value of `createServer` or explicit `context` at setup | next minor (TBD at release) | two minors after deprecation minor |
+
+`teardownServer()` remains supported during the deprecation window; prefer `ctx.teardown()` or `await using` on the setup handle. Documented in MIGRATION.md; not marked `@deprecated` until a later release.
+
 ## How we deprecate (maintainer checklist)
 
 For each deprecated public surface:
@@ -93,13 +108,9 @@ New response fields added before `1.0.0` default to `experimental` unless explic
 
 ## Future instance APIs (`ServerContext`)
 
-Phase 1 of the **`ServerContext`** / **`createServer(config)`** refactor is available while legacy module-level getters remain supported. See [MIGRATION.md § ServerContext instance APIs](./MIGRATION.md#unreleased-servercontext-instance-apis-phase-1) for upgrade steps.
+Legacy module-level facades are deprecated per the [active deprecations table](./deprecation-policy.md#active-deprecations-legacy-module-facades) above. `ServerContext` + `createServer` / setup APIs are the supported public contract going forward.
 
-That work will:
-
-- Add new instance APIs without removing legacy getters in the same release.
-- Document legacy getters under `### Deprecated` with a named removal target per this policy.
-- Link migration steps from [MIGRATION.md](./MIGRATION.md) to this document.
+See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations) for before/after embedder snippets.
 
 ## CHANGELOG format for breaking changes
 

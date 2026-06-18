@@ -95,6 +95,14 @@ npm install
 npm run build
 ```
 
+## Stability
+
+This package ships as **`0.y.z`**. Under [semver §4](https://semver.org/spec/v2.0.0.html#spec-item-4), **minor versions may contain breaking changes** until `1.0.0`. Pin an exact version or use `~` (tilde) ranges — not `^` (caret) — until 1.0 to avoid absorbing breaking minors automatically.
+
+Breaking changes include: type signature changes, tool schema changes, default behavior changes, and removed exports.
+
+See [docs/deprecation-policy.md](docs/deprecation-policy.md) for the full deprecation window (minimum two minors before removal).
+
 ## Quick start
 
 To try the server on **your own** Pinecone project (free tier, no Alliance index), follow [examples/quickstart/README.md](examples/quickstart/README.md): create two integrated-embedding indexes, copy [examples/quickstart/.env.example](examples/quickstart/.env.example), seed sample data, and run the MCP demo. Use an explicit `PINECONE_INDEX_NAME` in that flow rather than relying on Alliance default index names.
@@ -129,7 +137,7 @@ Each **`ServerContext`** owns its own suggest-flow gate, namespaces cache, URL g
 
 Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
 
-Legacy module getters (`setPineconeClient`, `registerUrlGenerator`, etc.) still delegate to a process-default context when you omit `context` at setup.
+Module-level singleton facades (`setPineconeClient`, `registerUrlGenerator`, `getDefaultServerContext`, etc.) are **deprecated** — they delegate to a process-default context when you omit `context` at setup. Prefer explicit `ServerContext` per [Library embedding](#library-embedding). See [docs/deprecation-policy.md](docs/deprecation-policy.md#active-deprecations-legacy-module-facades).
 
 ### Library embedding
 
@@ -145,21 +153,35 @@ ctx.setClient(new PineconeClient({ /* ... */ }));
 const server = await setupAllianceServer({ context: ctx });
 ```
 
-Use **`await using server = await setupAllianceServer({ context: ctx })`** for automatic teardown, or call **`ctx.teardown()`** when done. For legacy single-server flows that rely on the process-default context, **`teardownServer()`** resets that default before re-initializing.
+Use **`await using server = await setupAllianceServer({ context: ctx })`** for automatic teardown, or call **`ctx.teardown()`** when done.
 
 For the **generic bridge only**, see [examples/quickstart/mcp-demo.ts](examples/quickstart/mcp-demo.ts). For the **full Alliance surface**, see [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) and [docs/TOOLS.md](docs/TOOLS.md#suggest-flow-gate).
+
+#### Legacy (deprecated)
+
+Process-default / facade-based setup remains available during the deprecation window (removal per [deprecation-policy.md](docs/deprecation-policy.md) — two minors after the deprecation minor):
+
+```ts
+import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
+import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+
+setPineconeClient(new PineconeClient({ /* ... */ }));
+const server = await setupAllianceServer(resolveAllianceConfig({ apiKey: '...' }));
+// Call teardownServer() before re-initializing the process-default context.
+```
+
+Do not use this pattern for new code or multi-tenant embedding. See [docs/MIGRATION.md](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations).
 
 ### Custom URL generators
 
 Namespaces other than `mailing` and `slack-Cpplang` (or different URL rules for any namespace) can use programmatic registration — no fork required.
 
-Import `registerUrlGenerator` and types `UrlGeneratorFn` / `UrlGenerationResult` from `@will-cppa/pinecone-read-only-mcp`. Register **additional** namespaces before tools that emit URLs run. Built-in `mailing` / `slack-Cpplang` generators are installed by `setupAllianceServer` (not by `setupCoreServer`).
+Register **additional** namespaces on your `ServerContext` before tools that emit URLs run. Built-in `mailing` / `slack-Cpplang` generators are installed by `setupAllianceServer` (not by `setupCoreServer`).
 
 ```ts
 import {
   createServer,
   PineconeClient,
-  registerUrlGenerator,
   type UrlGenerationResult,
   type UrlGeneratorFn,
 } from '@will-cppa/pinecone-read-only-mcp';
@@ -184,7 +206,7 @@ const myDocs: UrlGeneratorFn = (metadata): UrlGenerationResult => {
     : { url: null, method: 'unavailable', reason: 'doc_id missing' };
 };
 
-registerUrlGenerator('product-docs', myDocs);
+ctx.registerUrlGenerator('product-docs', myDocs);
 ```
 
 A fuller embedding sample lives in [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts).

@@ -8,7 +8,15 @@ type FlowState = {
   user_query: string;
 };
 
-/** Record that suggest_query_params was called for this namespace (enables query/count for the flow). */
+/**
+ * Record that suggest_query_params was called for this namespace (enables query/count for the flow).
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.markSuggested} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.markSuggested
+ */
 export function markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>): void {
   getDefaultServerContext().markSuggested(namespace, state);
 }
@@ -20,6 +28,12 @@ export function markSuggested(namespace: string, state: Omit<FlowState, 'updated
  * When `disableSuggestFlow` is set on the active config, this is a no-op
  * that always succeeds with an empty placeholder flow — operators that turn
  * the safety guard off accept the consequences.
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.requireSuggested} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.requireSuggested
  */
 export function requireSuggested(namespace: string):
   | {
@@ -33,7 +47,15 @@ export function requireSuggested(namespace: string):
   return getDefaultServerContext().requireSuggested(namespace);
 }
 
-/** Clear suggest-flow gate state (used by {@link teardownServer} and tests). */
+/**
+ * Clear suggest-flow gate state (used by {@link teardownServer} and tests).
+ *
+ * @deprecated Legacy module facade. Use {@link ServerContext.resetSuggestionFlow} on a
+ * {@link ServerContext} from {@link createServer} instead. Removal follows
+ * docs/deprecation-policy.md (no earlier than two minor releases after the
+ * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @see ServerContext.resetSuggestionFlow
+ */
 export function resetSuggestionFlow(): void {
   getDefaultServerContext().resetSuggestionFlow();
 }
