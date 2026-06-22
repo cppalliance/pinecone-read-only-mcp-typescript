@@ -16,7 +16,7 @@
  *
  * **Legacy (deprecated):** `setPineconeClient(client)` then
  * `await setupAllianceServer(config)` still works during the deprecation window;
- * see [docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations).
+ * see [docs/MIGRATION.md#030-legacy-module-facade-deprecations](docs/MIGRATION.md#030-legacy-module-facade-deprecations).
  */
 
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';

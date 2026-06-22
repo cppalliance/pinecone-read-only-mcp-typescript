@@ -1,4 +1,5 @@
-import { getDefaultServerContext } from './server-context.js';
+import { warnLegacyFacade } from './legacy-facade-warn.js';
+import { resolveDefaultServerContext } from './server-context.js';
 import type { RecommendedTool } from './query-suggestion.js';
 
 type FlowState = {
@@ -11,14 +12,14 @@ type FlowState = {
 /**
  * Record that suggest_query_params was called for this namespace (enables query/count for the flow).
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.markSuggested} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.markSuggested} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.markSuggested
  */
 export function markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>): void {
-  getDefaultServerContext().markSuggested(namespace, state);
+  warnLegacyFacade('markSuggested');
+  resolveDefaultServerContext().markSuggested(namespace, state);
 }
 
 /**
@@ -29,10 +30,9 @@ export function markSuggested(namespace: string, state: Omit<FlowState, 'updated
  * that always succeeds with an empty placeholder flow — operators that turn
  * the safety guard off accept the consequences.
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.requireSuggested} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.requireSuggested} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.requireSuggested
  */
 export function requireSuggested(namespace: string):
@@ -44,18 +44,19 @@ export function requireSuggested(namespace: string):
       ok: false;
       message: string;
     } {
-  return getDefaultServerContext().requireSuggested(namespace);
+  warnLegacyFacade('requireSuggested');
+  return resolveDefaultServerContext().requireSuggested(namespace);
 }
 
 /**
  * Clear suggest-flow gate state (used by {@link teardownServer} and tests).
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.resetSuggestionFlow} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.resetSuggestionFlow} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.resetSuggestionFlow
  */
 export function resetSuggestionFlow(): void {
-  getDefaultServerContext().resetSuggestionFlow();
+  warnLegacyFacade('resetSuggestionFlow');
+  resolveDefaultServerContext().resetSuggestionFlow();
 }
