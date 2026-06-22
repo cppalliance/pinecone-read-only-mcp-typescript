@@ -74,7 +74,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
-    "@pinecone-database/pinecone": "^7.1.0",
+    "@pinecone-database/pinecone": "^8.0.0",
     "dotenv": "^17.2.3",
     "zod": "^4.3.6"
   },
