@@ -34,16 +34,16 @@ APIs deprecated **before** this policy was published follow the removal target r
 
 ### Active deprecations - legacy module facades
 
-Module-level singleton facades delegate to `getDefaultServerContext()`. Migrate to **`ServerContext`** instance methods via `createServer(config)` and pass `{ context: ctx }` to `setupCoreServer` / `setupAllianceServer`. Deprecated in the **next published minor** after merge; earliest removal **two minor releases later** (per [Deprecation window](#deprecation-window) above). See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations).
+Module-level singleton facades delegate to `getDefaultServerContext()`. Migrate to **`ServerContext`** instance methods via `createServer(config)` and pass `{ context: ctx }` to `setupCoreServer` / `setupAllianceServer`. Deprecated in **`0.3.0`**; earliest removal **`0.5.0`** (per [Deprecation window](#deprecation-window) above). See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#030-legacy-module-facade-deprecations).
 
 | Facade | Layer | Replacement | Deprecated in | Earliest removal |
 | ------ | ----- | ----------- | ------------- | ---------------- |
-| `getPineconeClient` / `setPineconeClient` / `clearPineconeClient` | core | `ctx.getClient()` / `ctx.setClient()` / `ctx.clearClient()` | next minor (TBD at release) | two minors after deprecation minor |
-| `getServerConfig` / `setServerConfig` / `resetServerConfig` | core | `ctx.getConfig()` / `ctx.setConfig()` / `ctx.teardown()` | next minor (TBD at release) | two minors after deprecation minor |
-| `registerUrlGenerator` / `unregisterUrlGenerator` / `generateUrlForNamespace` / `hasUrlGenerator` / `resetUrlGenerationRegistry` | core | `ctx.registerUrlGenerator()` etc. / `ctx.resetUrlGenerators()` | next minor (TBD at release) | two minors after deprecation minor |
-| `markSuggested` / `requireSuggested` / `resetSuggestionFlow` | core | `ctx.markSuggested()` / `ctx.requireSuggested()` / `ctx.resetSuggestionFlow()` | next minor (TBD at release) | two minors after deprecation minor |
-| `getNamespacesWithCache` / `invalidateNamespacesCache` | core | `ctx.getNamespacesWithCache()` / `ctx.invalidateNamespacesCache()` | next minor (TBD at release) | two minors after deprecation minor |
-| `getDefaultServerContext` | core | Return value of `createServer` or explicit `context` at setup | next minor (TBD at release) | two minors after deprecation minor |
+| `getPineconeClient` / `setPineconeClient` / `clearPineconeClient` | core | `ctx.getClient()` / `ctx.setClient()` / `ctx.clearClient()` | **0.3.0** | **0.5.0** |
+| `getServerConfig` / `setServerConfig` / `resetServerConfig` | core | `ctx.getConfig()` / `ctx.setConfig()` / `ctx.teardown()` | **0.3.0** | **0.5.0** |
+| `registerUrlGenerator` / `unregisterUrlGenerator` / `generateUrlForNamespace` / `hasUrlGenerator` / `resetUrlGenerationRegistry` | core | `ctx.registerUrlGenerator()` etc. / `ctx.resetUrlGenerators()` | **0.3.0** | **0.5.0** |
+| `markSuggested` / `requireSuggested` / `resetSuggestionFlow` | core | `ctx.markSuggested()` / `ctx.requireSuggested()` / `ctx.resetSuggestionFlow()` | **0.3.0** | **0.5.0** |
+| `getNamespacesWithCache` / `invalidateNamespacesCache` | core | `ctx.getNamespacesWithCache()` / `ctx.invalidateNamespacesCache()` | **0.3.0** | **0.5.0** |
+| `getDefaultServerContext` | core | Return value of `createServer` or explicit `context` at setup | **0.3.0** | **0.5.0** |
 
 `teardownServer()` remains supported during the deprecation window; prefer `ctx.teardown()` or `await using` on the setup handle. Documented in MIGRATION.md; not marked `@deprecated` until a later release.
 
@@ -110,7 +110,7 @@ New response fields added before `1.0.0` default to `experimental` unless explic
 
 Legacy module-level facades are deprecated per the [active deprecations table](./deprecation-policy.md#active-deprecations-legacy-module-facades) above. `ServerContext` + `createServer` / setup APIs are the supported public contract going forward.
 
-See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#unreleased-legacy-module-facade-deprecations) for before/after embedder snippets.
+See [MIGRATION.md § Legacy module-facade deprecations](./MIGRATION.md#030-legacy-module-facade-deprecations) for before/after embedder snippets.
 
 ## CHANGELOG format for breaking changes
 

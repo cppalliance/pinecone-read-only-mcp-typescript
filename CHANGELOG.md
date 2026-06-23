@@ -8,6 +8,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-23
+
 ### Added
 
 - `guided_query` tool registered by `setupCoreServer` / package-root import (core-layer handler; no Alliance URL generators or index defaults required).
@@ -29,18 +31,16 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Deprecated
 
-- Module-level singleton facades — use `ServerContext` instance methods via `createServer(config)` and `{ context: ctx }` at setup instead. Deprecated in the **next minor release** (see `[Unreleased]` until version is tagged); earliest removal **two minor releases later** per [deprecation-policy.md](docs/deprecation-policy.md#deprecation-window). Affected symbols: `getPineconeClient`, `setPineconeClient`, `clearPineconeClient`, `getServerConfig`, `setServerConfig`, `resetServerConfig`, `registerUrlGenerator`, `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`, `resetUrlGenerationRegistry`, `markSuggested`, `requireSuggested`, `resetSuggestionFlow`, `getNamespacesWithCache`, `invalidateNamespacesCache`, `getDefaultServerContext`. See [MIGRATION.md § Legacy module-facade deprecations](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations) and [deprecation-policy.md](docs/deprecation-policy.md#active-deprecations-legacy-module-facades).
-
-### Added
-
-- Zod schemas for all nine MCP tool success responses (`queryResponseSchema`, `guidedQueryResponseSchema`, etc.) exported from the package root for client-side validation. Success payloads are runtime-validated before return.
-- Stable vs experimental response field taxonomy documented in [docs/TOOLS.md](docs/TOOLS.md) and [docs/deprecation-policy.md](docs/deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
-- Formal deprecation policy ([docs/deprecation-policy.md](docs/deprecation-policy.md)) and breaking-change release notes template ([docs/templates/breaking-change-release-notes.md](docs/templates/breaking-change-release-notes.md)).
+- Module-level singleton facades — use `ServerContext` instance methods via `createServer(config)` and `{ context: ctx }` at setup instead. Deprecated in **0.3.0**; earliest removal **0.5.0** per [deprecation-policy.md](docs/deprecation-policy.md#deprecation-window). Affected symbols: `getPineconeClient`, `setPineconeClient`, `clearPineconeClient`, `getServerConfig`, `setServerConfig`, `resetServerConfig`, `registerUrlGenerator`, `unregisterUrlGenerator`, `generateUrlForNamespace`, `hasUrlGenerator`, `resetUrlGenerationRegistry`, `markSuggested`, `requireSuggested`, `resetSuggestionFlow`, `getNamespacesWithCache`, `invalidateNamespacesCache`, `getDefaultServerContext`. Opt-in runtime warnings when `PINECONE_DEPRECATION_WARNINGS=1` or log level is `DEBUG`. See [MIGRATION.md § Legacy module-facade deprecations](docs/MIGRATION.md#030-legacy-module-facade-deprecations) and [deprecation-policy.md](docs/deprecation-policy.md#active-deprecations-legacy-module-facades).
 
 ### Removed
 
 - **Breaking (library):** `buildQueryExperimental` and `buildGuidedQueryExperimental` are no longer re-exported from `@will-cppa/pinecone-read-only-mcp` or `@will-cppa/pinecone-read-only-mcp/alliance`. They were internal helpers used to assemble the `experimental` block on `query` / `query_documents` / `guided_query` success payloads. The assembled fields and Zod schemas (`queryResponseSchema`, `QueryExperimental`, etc.) are unchanged — see [Unreleased stable vs experimental](docs/MIGRATION.md#unreleased-stable-vs-experimental-response-fields).
 - **No change:** `HybridQueryResult`, `HybridLegFailed`, and `KeywordIndexNamespacesResult` remain exported as the declared return types of public `PineconeClient` methods.
+
+### Fixed
+
+- Legacy module facades no longer silently diverge from an explicit `ServerContext` passed to `setupCoreServer` / `setupAllianceServer`. Mixing legacy facades with `{ context: ctx }` setup now throws with migration guidance instead of dual-state behavior.
 
 ## [0.2.0] - 2026-05-29
 

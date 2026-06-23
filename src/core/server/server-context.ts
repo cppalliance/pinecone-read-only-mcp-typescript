@@ -1,6 +1,7 @@
 import type { ServerConfig } from '../config.js';
 import { resolveConfig } from '../config.js';
 import { PineconeClient } from '../pinecone-client.js';
+import { warnLegacyFacade } from './legacy-facade-warn.js';
 import { normalizeNamespace } from './namespace-utils.js';
 import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
@@ -361,12 +362,21 @@ export class ServerContext implements AsyncDisposable {
       pendingConfig = null;
       pendingComposition = null;
     }
+    if (facadeSupersededBy === this) {
+      facadeSupersededBy = null;
+    }
   }
 }
 
 let defaultContext: ServerContext | null = null;
+let facadeSupersededBy: ServerContext | null = null;
 let pendingConfig: ServerConfig | null = null;
 let pendingComposition: ServerContextComposition | null = null;
+
+const LEGACY_FACADE_SUPERSEDED_MESSAGE =
+  'Legacy module facades are unavailable after setup with an explicit context. ' +
+  'Use methods on the ServerContext passed to setupCoreServer / setupAllianceServer. ' +
+  'See docs/MIGRATION.md#030-legacy-module-facade-deprecations.';
 
 /** Peek at the process-default context without materializing a new one. */
 export function peekDefaultServerContext(): ServerContext | null {
@@ -376,13 +386,21 @@ export function peekDefaultServerContext(): ServerContext | null {
 /**
  * Process-default context used by legacy module facades.
  *
- * @deprecated Legacy module facade. Pass a {@link ServerContext} from {@link createServer}
- * explicitly to setup APIs instead. Removal follows docs/deprecation-policy.md (no earlier
- * than two minor releases after the deprecation minor). See
- * docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Pass a
+ * {@link ServerContext} from {@link createServer} explicitly to setup APIs instead. See
+ * docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see createServer
  */
 export function getDefaultServerContext(): ServerContext {
+  warnLegacyFacade('getDefaultServerContext');
+  return resolveDefaultServerContext();
+}
+
+/** Resolve process-default context for internal setup and legacy facade delegation (no warning). */
+export function resolveDefaultServerContext(): ServerContext {
+  if (facadeSupersededBy !== null) {
+    throw new Error(LEGACY_FACADE_SUPERSEDED_MESSAGE);
+  }
   if (!defaultContext) {
     const cfg = pendingConfig ?? undefined;
     const comp = pendingComposition ?? undefined;
@@ -393,9 +411,24 @@ export function getDefaultServerContext(): ServerContext {
   return defaultContext;
 }
 
+/**
+ * Mark that setup runs on an explicit non-default context so legacy module facades fail fast.
+ * When {@link ctx} is the process default, legacy facades remain available.
+ */
+export function installExplicitServerContext(ctx: ServerContext): void {
+  if (defaultContext !== null && defaultContext !== ctx) {
+    defaultContext.teardown();
+    defaultContext = null;
+    pendingConfig = null;
+    pendingComposition = null;
+  }
+  facadeSupersededBy = defaultContext === ctx ? null : ctx;
+}
+
 /** Replace or clear the process-default context (tests and teardown). */
 export function setDefaultServerContext(ctx: ServerContext | null): void {
   defaultContext = ctx;
+  facadeSupersededBy = null;
   if (ctx === null) {
     pendingConfig = null;
     pendingComposition = null;
@@ -416,6 +449,7 @@ export function teardownDefaultServerContext(): void {
     defaultContext.teardown();
     defaultContext = null;
   }
+  facadeSupersededBy = null;
   pendingConfig = null;
   pendingComposition = null;
 }
@@ -435,6 +469,7 @@ export function createServer(
 ): ServerContext {
   const ctx = new ServerContext(config, composition);
   defaultContext = ctx;
+  facadeSupersededBy = null;
   pendingConfig = null;
   pendingComposition = null;
   return ctx;

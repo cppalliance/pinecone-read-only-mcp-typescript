@@ -3,8 +3,9 @@ import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../consta
 import type { ServerConfig } from './config.js';
 import {
   createServer,
-  getDefaultServerContext,
+  installExplicitServerContext,
   peekDefaultServerContext,
+  resolveDefaultServerContext,
   teardownDefaultServerContext,
   type ServerContext,
 } from './server/server-context.js';
@@ -92,6 +93,7 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
       }
       opts.context.setConfig(opts.config);
     }
+    installExplicitServerContext(opts.context);
     return opts.context;
   }
 
@@ -103,7 +105,7 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
       );
     }
 
-    const defaultCtx = getDefaultServerContext();
+    const defaultCtx = resolveDefaultServerContext();
     const existingClient = defaultCtx.hasInjectedClient() ? defaultCtx.getClientIfSet() : undefined;
     const ctx = createServer(opts.config);
     if (existingClient) {
@@ -112,7 +114,7 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
     return ctx;
   }
 
-  return getDefaultServerContext();
+  return resolveDefaultServerContext();
 }
 
 export async function setupCoreServer(

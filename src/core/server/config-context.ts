@@ -1,6 +1,7 @@
 import type { ServerConfig } from '../config.js';
+import { warnLegacyFacade } from './legacy-facade-warn.js';
 import {
-  getDefaultServerContext,
+  resolveDefaultServerContext,
   setDefaultServerContext,
   setPendingServerConfig,
 } from './server-context.js';
@@ -8,26 +9,26 @@ import {
 /**
  * Replace the process-global server config (called from setup with CLI/env-derived config).
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.setConfig} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.setConfig} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.setConfig
  */
 export function setServerConfig(config: ServerConfig): void {
+  warnLegacyFacade('setServerConfig');
   setPendingServerConfig(config);
 }
 
 /**
  * Clear active config so the next `getServerConfig()` resolves again (used by {@link teardownServer}).
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.teardown} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.teardown} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.teardown
  */
 export function resetServerConfig(): void {
+  warnLegacyFacade('resetServerConfig');
   setDefaultServerContext(null);
 }
 
@@ -39,12 +40,12 @@ export function resetServerConfig(): void {
  * (requires `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` or throws). Alliance apps should
  * pass config from `resolveAllianceConfig()` into `setupAllianceServer(config)`.
  *
- * @deprecated Legacy module facade. Use {@link ServerContext.getConfig} on a
- * {@link ServerContext} from {@link createServer} instead. Removal follows
- * docs/deprecation-policy.md (no earlier than two minor releases after the
- * deprecation minor). See docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations.
+ * @deprecated since 0.3.0 — removal no earlier than 0.5.0. Legacy module facade. Use
+ * {@link ServerContext.getConfig} on a {@link ServerContext} from {@link createServer}
+ * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.getConfig
  */
 export function getServerConfig(): ServerConfig {
-  return getDefaultServerContext().getConfig();
+  warnLegacyFacade('getServerConfig');
+  return resolveDefaultServerContext().getConfig();
 }

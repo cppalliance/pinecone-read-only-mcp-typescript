@@ -170,7 +170,7 @@ const server = await setupAllianceServer(resolveAllianceConfig({ apiKey: '...' }
 // Call teardownServer() before re-initializing the process-default context.
 ```
 
-Do not use this pattern for new code or multi-tenant embedding. See [docs/MIGRATION.md](docs/MIGRATION.md#unreleased-legacy-module-facade-deprecations).
+Do not use this pattern for new code or multi-tenant embedding. See [docs/MIGRATION.md](docs/MIGRATION.md#030-legacy-module-facade-deprecations).
 
 ### Custom URL generators
 

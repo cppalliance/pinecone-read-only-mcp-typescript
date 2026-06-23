@@ -1,6 +1,6 @@
 import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
 import type { ServerConfig } from '../core/config.js';
-import { getDefaultServerContext, type ServerContext } from '../core/server/server-context.js';
+import { resolveDefaultServerContext, type ServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServer, type ServerHandle, type SetupCoreServerOptions } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
@@ -82,7 +82,7 @@ export async function setupAllianceServer(
       config: opts.config ?? config,
       instructions,
     });
-    resolvedCtx = getDefaultServerContext();
+    resolvedCtx = resolveDefaultServerContext();
   }
 
   registerBuiltinUrlGenerators(resolvedCtx);

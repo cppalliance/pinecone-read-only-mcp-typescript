@@ -69,9 +69,9 @@ When no experimental fields apply, the `experimental` key is **omitted** (not an
 
 **Promotion:** Moving a field from `experimental` to stable requires CHANGELOG, TOOLS.md, and schema updates per [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 
-## Unreleased: Legacy module-facade deprecations
+## 0.3.0: Legacy module-facade deprecations
 
-**Rationale:** Module-level singleton facades (`setPineconeClient`, `registerUrlGenerator`, `getDefaultServerContext`, etc.) delegate to a process-global `ServerContext`. They complicate multi-tenant embedding and hide initialization order. They are marked `@deprecated` in JSDoc; earliest removal is **two minor releases after** the deprecation minor (see [deprecation-policy.md § Deprecation window](./deprecation-policy.md#deprecation-window)).
+**Rationale:** Module-level singleton facades (`setPineconeClient`, `registerUrlGenerator`, `getDefaultServerContext`, etc.) delegate to a process-global `ServerContext`. They complicate multi-tenant embedding and hide initialization order. They are marked `@deprecated` in JSDoc since **0.3.0**; earliest removal is **0.5.0** (see [deprecation-policy.md § Deprecation window](./deprecation-policy.md#deprecation-window)).
 
 **Who is affected:** Library embedders importing facade functions from `@will-cppa/pinecone-read-only-mcp` or `/alliance`.
 
@@ -184,7 +184,7 @@ import { buildQueryExperimental } from '@will-cppa/pinecone-read-only-mcp';
 
 ## Unreleased: `ServerContext` instance APIs (initial)
 
-**Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. The initial milestone introduces an opt-in **`ServerContext`**; legacy module facades are deprecated (see [Legacy module-facade deprecations](#unreleased-legacy-module-facade-deprecations)).
+**Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. The initial milestone introduces an opt-in **`ServerContext`**; legacy module facades are deprecated since **0.3.0** (see [Legacy module-facade deprecations](#030-legacy-module-facade-deprecations)).
 
 **Deprecated (migrate before removal):**
 
