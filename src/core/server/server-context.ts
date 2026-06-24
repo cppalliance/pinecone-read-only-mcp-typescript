@@ -391,6 +391,9 @@ export class ServerContext<
 /** Context bound to a core-resolved config; accepted by {@link setupCoreServer}. */
 export type CoreServerContext = ServerContext<CoreServerConfig>;
 
+/** Context bound to an Alliance-resolved config; accepted by {@link setupAllianceServer}. */
+export type AllianceServerContext = ServerContext<AllianceServerConfig>;
+
 let defaultContext: ServerContext | null = null;
 let facadeSupersededBy: ServerContext | null = null;
 let pendingConfig: ServerConfigBase | null = null;

@@ -11,6 +11,7 @@ export {
   resolveAllianceConfig,
 } from './config.js';
 export type { AllianceServerConfig } from './config.js';
+export type { AllianceServerContext } from '../core/server/server-context.js';
 export { setupAllianceServer, type SetupAllianceServerOptions } from './setup.js';
 export {
   registerBuiltinUrlGenerators,

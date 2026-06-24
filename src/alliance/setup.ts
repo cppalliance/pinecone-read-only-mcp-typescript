@@ -1,6 +1,6 @@
 import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
 import type { AllianceServerConfig, ServerConfigBase } from '../core/config.js';
-import { createServer, type ServerContext } from '../core/server/server-context.js';
+import { createServer, type AllianceServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServerOnContext, type ServerHandle } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
@@ -11,7 +11,7 @@ import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-too
  */
 export type SetupAllianceServerOptions = {
   config?: AllianceServerConfig;
-  context?: ServerContext;
+  context?: AllianceServerContext;
   /** MCP server instructions; defaults to {@link ALLIANCE_SERVER_INSTRUCTIONS}. */
   instructions?: string;
 };
@@ -69,7 +69,7 @@ export async function setupAllianceServer(
   const instructions = opts.instructions ?? ALLIANCE_SERVER_INSTRUCTIONS;
 
   let server: ServerHandle;
-  let resolvedCtx: ServerContext;
+  let resolvedCtx: AllianceServerContext;
 
   if (opts.context) {
     resolvedCtx = opts.context;

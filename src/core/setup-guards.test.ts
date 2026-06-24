@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
+import type { AllianceServerConfig } from './config.js';
 import { setPineconeClient, setupCoreServer, teardownServer } from './index.js';
 import {
   ServerContext,
+  createIsolatedContext,
   getDefaultServerContext,
   setDefaultServerContext,
 } from './server/server-context.js';
@@ -21,7 +24,10 @@ describe('setup guards (CodeRabbit PR #150)', () => {
   it('preserves injected client when setupAllianceServer receives context only', async () => {
     isolateFromDefaultContext();
     const mockClient = { query: vi.fn() };
-    const ctx = createTestServerContext({ client: mockClient as never });
+    const ctx = createIsolatedContext(
+      resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'test-index' }),
+      { client: mockClient as never }
+    );
 
     await setupAllianceServer({ context: ctx });
 
@@ -30,7 +36,7 @@ describe('setup guards (CodeRabbit PR #150)', () => {
 
   it('installs Alliance defaults on context without config (no core lazy-resolve)', async () => {
     isolateFromDefaultContext();
-    const ctx = new ServerContext();
+    const ctx = new ServerContext<AllianceServerConfig>();
     expect(ctx.hasConfig()).toBe(false);
 
     vi.stubEnv('PINECONE_API_KEY', 'sk-alliance-default');
