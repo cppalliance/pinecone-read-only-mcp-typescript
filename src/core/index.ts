@@ -17,6 +17,7 @@ export type {
   ServerContextComposition,
   NamespaceCacheSeed,
   SuggestionFlowSeedEntry,
+  CoreServerContext,
 } from './server/server-context.js';
 export {
   validateMetadataFilter,

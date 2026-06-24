@@ -2,7 +2,7 @@ import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
 import type { AllianceServerConfig, ServerConfigBase } from '../core/config.js';
 import { createServer, type ServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
-import { setupCoreServer, type ServerHandle } from '../core/setup.js';
+import { setupCoreServerOnContext, type ServerHandle } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
 import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-tool.js';
 
@@ -74,13 +74,21 @@ export async function setupAllianceServer(
   if (opts.context) {
     resolvedCtx = opts.context;
     if (opts.config !== undefined) {
+      if (resolvedCtx.hasInjectedClient()) {
+        throw new Error(
+          'Passing both config and context clears an injected Pinecone client. ' +
+            'Omit config when reusing a pre-configured context, or call setClient() after setup.'
+        );
+      }
       resolvedCtx.setConfig(opts.config);
+    } else if (!resolvedCtx.hasConfig()) {
+      resolvedCtx.setConfig(resolveAllianceConfig({}));
     }
-    server = await setupCoreServer({ context: resolvedCtx, instructions });
+    server = await setupCoreServerOnContext(resolvedCtx, instructions);
   } else {
     const config = opts.config ?? resolveAllianceConfig({});
     const ctx = createServer(config);
-    server = await setupCoreServer({ context: ctx, instructions });
+    server = await setupCoreServerOnContext(ctx, instructions);
     resolvedCtx = ctx;
   }
 

@@ -28,6 +28,22 @@ describe('setup guards (CodeRabbit PR #150)', () => {
     expect(ctx.getClient()).toBe(mockClient);
   });
 
+  it('installs Alliance defaults on context without config (no core lazy-resolve)', async () => {
+    isolateFromDefaultContext();
+    const ctx = new ServerContext();
+    expect(ctx.hasConfig()).toBe(false);
+
+    vi.stubEnv('PINECONE_API_KEY', 'sk-alliance-default');
+    try {
+      await setupAllianceServer({ context: ctx });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(ctx.hasConfig()).toBe(true);
+    expect(ctx.getConfig().disableSuggestFlow).toBe(false);
+  });
+
   it('allows config update when context only has a lazy-built client', async () => {
     isolateFromDefaultContext();
     const cfgA = resolveTestConfig({ apiKey: 'lazy-config-a', indexName: 'idx-a' });

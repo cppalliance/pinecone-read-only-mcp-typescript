@@ -6,6 +6,7 @@ import type { ConfigOverrides, CoreServerConfig } from '../../config.js';
 import {
   ServerContext,
   teardownDefaultServerContext,
+  type CoreServerContext,
   type ServerContextComposition,
 } from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
@@ -142,7 +143,7 @@ export function createTestServerContext(options?: {
   config?: ConfigOverrides;
   client?: PineconeClient;
   composition?: ServerContextComposition;
-}): ServerContext {
+}): CoreServerContext {
   const config = resolveTestConfig(options?.config);
   const composition: ServerContextComposition = {
     ...options?.composition,
