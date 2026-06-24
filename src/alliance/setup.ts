@@ -1,5 +1,6 @@
 import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
 import type { AllianceServerConfig, ServerConfigBase } from '../core/config.js';
+import { getServerConfigLineage } from '../core/config.js';
 import { createServer, type AllianceServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServerOnContext, type ServerHandle } from '../core/setup.js';
@@ -17,12 +18,23 @@ export type SetupAllianceServerOptions = {
 };
 
 function isServerConfig(value: unknown): value is AllianceServerConfig {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as ServerConfigBase).apiKey === 'string' &&
-    typeof (value as ServerConfigBase).indexName === 'string'
-  );
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const base = value as ServerConfigBase;
+  if (typeof base.apiKey !== 'string' || typeof base.indexName !== 'string') {
+    return false;
+  }
+  return getServerConfigLineage(base) === 'alliance';
+}
+
+function assertAllianceServerConfig(config: ServerConfigBase): AllianceServerConfig {
+  if (getServerConfigLineage(config) !== 'alliance') {
+    throw new TypeError(
+      'Expected AllianceServerConfig. Use setupCoreServer for core-branded config.'
+    );
+  }
+  return config as AllianceServerConfig;
 }
 
 function isSetupAllianceServerOptions(value: unknown): value is SetupAllianceServerOptions {
@@ -67,6 +79,10 @@ export async function setupAllianceServer(
 ): Promise<ServerHandle> {
   const opts = normalizeSetupAllianceArgs(configOrOptions, legacyOptions);
   const instructions = opts.instructions ?? ALLIANCE_SERVER_INSTRUCTIONS;
+
+  if (opts.config) {
+    assertAllianceServerConfig(opts.config);
+  }
 
   let server: ServerHandle;
   let resolvedCtx: AllianceServerContext;

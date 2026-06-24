@@ -71,13 +71,29 @@ export type AllianceServerConfig = ServerConfigBase & {
 /** Branded union accepted by {@link createServer} and {@link createIsolatedContext}. */
 export type AnyServerConfig = CoreServerConfig | AllianceServerConfig;
 
-/** Attach the core brand after {@link resolveConfig} resolution (zero runtime cost). */
+/** Runtime lineage marker (compile-time brands are erased). */
+export const SERVER_CONFIG_LINEAGE = Symbol.for('@will-cppa/pinecone-read-only-mcp.config-lineage');
+
+export type ServerConfigLineage = 'core' | 'alliance';
+
+type ServerConfigLineageHost = ServerConfigBase & {
+  [SERVER_CONFIG_LINEAGE]?: ServerConfigLineage;
+};
+
+/** Read config lineage set by {@link brandCoreConfig} / {@link brandAllianceConfig}. */
+export function getServerConfigLineage(config: ServerConfigBase): ServerConfigLineage | undefined {
+  return (config as ServerConfigLineageHost)[SERVER_CONFIG_LINEAGE];
+}
+
+/** Attach the core brand after {@link resolveConfig} resolution. */
 export function brandCoreConfig(config: ServerConfigBase): CoreServerConfig {
+  (config as ServerConfigLineageHost)[SERVER_CONFIG_LINEAGE] = 'core';
   return config as CoreServerConfig;
 }
 
-/** Attach the Alliance brand after {@link resolveAllianceConfig} resolution (zero runtime cost). */
+/** Attach the Alliance brand after {@link resolveAllianceConfig} resolution. */
 export function brandAllianceConfig(config: ServerConfigBase): AllianceServerConfig {
+  (config as ServerConfigLineageHost)[SERVER_CONFIG_LINEAGE] = 'alliance';
   return config as AllianceServerConfig;
 }
 

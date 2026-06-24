@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
-import type { AllianceServerConfig } from './config.js';
 import { setPineconeClient, setupCoreServer, teardownServer } from './index.js';
 import {
   ServerContext,
+  createUnconfiguredAllianceContext,
   createIsolatedContext,
   getDefaultServerContext,
   setDefaultServerContext,
@@ -36,8 +36,9 @@ describe('setup guards (CodeRabbit PR #150)', () => {
 
   it('installs Alliance defaults on context without config (no core lazy-resolve)', async () => {
     isolateFromDefaultContext();
-    const ctx = new ServerContext<AllianceServerConfig>();
+    const ctx = createUnconfiguredAllianceContext();
     expect(ctx.hasConfig()).toBe(false);
+    expect(() => ctx.getConfig()).toThrow(/Alliance ServerContext has no config/);
 
     vi.stubEnv('PINECONE_API_KEY', 'sk-alliance-default');
     try {
@@ -113,6 +114,22 @@ describe('setup guards (CodeRabbit PR #150)', () => {
   it('throws TypeError for invalid setupAllianceServer options object', async () => {
     await expect(setupAllianceServer({ foo: 'bar' } as never)).rejects.toThrow(
       /AllianceServerConfig or SetupAllianceServerOptions/
+    );
+  });
+
+  it('rejects Alliance-branded config at runtime on setupCoreServer', async () => {
+    const allianceCfg = resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    await expect(setupCoreServer(allianceCfg as never)).rejects.toThrow(/CoreServerConfig/);
+    await expect(setupCoreServer({ config: allianceCfg } as never)).rejects.toThrow(
+      /CoreServerConfig/
+    );
+  });
+
+  it('rejects core-branded config at runtime on setupAllianceServer', async () => {
+    const coreCfg = resolveTestConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    await expect(setupAllianceServer(coreCfg as never)).rejects.toThrow(/AllianceServerConfig/);
+    await expect(setupAllianceServer({ config: coreCfg } as never)).rejects.toThrow(
+      /AllianceServerConfig/
     );
   });
 });

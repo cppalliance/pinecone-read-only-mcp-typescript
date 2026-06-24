@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
 import type { CoreServerConfig, ServerConfigBase } from './config.js';
+import { getServerConfigLineage } from './config.js';
 import {
   createServer,
   installExplicitServerContext,
@@ -47,12 +48,23 @@ export type SetupCoreServerOptions = {
 };
 
 function isServerConfig(value: unknown): value is CoreServerConfig {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as ServerConfigBase).apiKey === 'string' &&
-    typeof (value as ServerConfigBase).indexName === 'string'
-  );
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const base = value as ServerConfigBase;
+  if (typeof base.apiKey !== 'string' || typeof base.indexName !== 'string') {
+    return false;
+  }
+  return getServerConfigLineage(base) === 'core';
+}
+
+function assertCoreServerConfig(config: ServerConfigBase): CoreServerConfig {
+  if (getServerConfigLineage(config) !== 'core') {
+    throw new TypeError(
+      'Expected CoreServerConfig. Use setupAllianceServer for Alliance-branded config.'
+    );
+  }
+  return config as CoreServerConfig;
 }
 
 function isSetupCoreServerOptions(value: unknown): value is SetupCoreServerOptions {
@@ -84,6 +96,10 @@ function normalizeSetupCoreServerArgs(
 }
 
 function resolveSetupContext(opts: SetupCoreServerOptions): CoreServerContext {
+  if (opts.config) {
+    assertCoreServerConfig(opts.config);
+  }
+
   if (opts.context) {
     if (opts.config) {
       if (opts.context.hasInjectedClient()) {

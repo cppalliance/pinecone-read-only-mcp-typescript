@@ -31,6 +31,15 @@ export type SuggestionFlowSeedEntry = {
   user_query: string;
 };
 
+/** Constructor options for contexts that must not lazy-resolve core defaults. */
+export type ServerContextInitOptions = {
+  /**
+   * When true, {@link getConfig} throws until Alliance config is seeded
+   * (see {@link createUnconfiguredAllianceContext}).
+   */
+  unconfiguredAlliance?: boolean;
+};
+
 /** Pre-built dependencies accepted by {@link ServerContext} and factory helpers. */
 export interface ServerContextComposition {
   client?: PineconeClient;
@@ -79,11 +88,13 @@ export class ServerContext<
   private client: PineconeClient | null = null;
   private clientExplicitlySet = false;
   private configValue: T | null = null;
+  private readonly unconfiguredAlliance: boolean;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
   private namespacesCache: CacheEntry | null = null;
 
-  constructor(config?: T, composition?: ServerContextComposition) {
+  constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
+    this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
     if (config) {
       this.configValue = config;
     }
@@ -144,6 +155,11 @@ export class ServerContext<
 
   getConfig(): T {
     if (!this.configValue) {
+      if (this.unconfiguredAlliance) {
+        throw new Error(
+          'Alliance ServerContext has no config. Call setConfig(), createServer(resolveAllianceConfig(...)), or setupAllianceServer before getConfig().'
+        );
+      }
       this.configValue = resolveConfig({}) as unknown as T;
     }
     return this.configValue;
@@ -393,6 +409,16 @@ export type CoreServerContext = ServerContext<CoreServerConfig>;
 
 /** Context bound to an Alliance-resolved config; accepted by {@link setupAllianceServer}. */
 export type AllianceServerContext = ServerContext<AllianceServerConfig>;
+
+/**
+ * Empty Alliance context that rejects core lazy-resolve in {@link ServerContext.getConfig}
+ * until {@link setupAllianceServer} or {@link ServerContext.setConfig} seeds Alliance config.
+ */
+export function createUnconfiguredAllianceContext(): AllianceServerContext {
+  return new ServerContext<AllianceServerConfig>(undefined, undefined, {
+    unconfiguredAlliance: true,
+  });
+}
 
 let defaultContext: ServerContext | null = null;
 let facadeSupersededBy: ServerContext | null = null;

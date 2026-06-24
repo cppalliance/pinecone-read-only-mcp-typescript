@@ -11,6 +11,7 @@ export {
   ServerContext,
   createServer,
   createIsolatedContext,
+  createUnconfiguredAllianceContext,
   getDefaultServerContext,
 } from './server/server-context.js';
 export type {
