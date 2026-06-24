@@ -84,13 +84,13 @@ describe('setup guards (CodeRabbit PR #150)', () => {
 
   it('throws TypeError for invalid setupCoreServer options object', async () => {
     await expect(setupCoreServer({ foo: 'bar' } as never)).rejects.toThrow(
-      /ServerConfig or SetupCoreServerOptions/
+      /CoreServerConfig or SetupCoreServerOptions/
     );
   });
 
   it('throws TypeError for invalid setupAllianceServer options object', async () => {
     await expect(setupAllianceServer({ foo: 'bar' } as never)).rejects.toThrow(
-      /ServerConfig or SetupAllianceServerOptions/
+      /AllianceServerConfig or SetupAllianceServerOptions/
     );
   });
 });

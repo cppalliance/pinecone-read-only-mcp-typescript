@@ -1,8 +1,8 @@
 import { ALLIANCE_SERVER_INSTRUCTIONS } from '../constants.js';
-import type { ServerConfig } from '../core/config.js';
-import { resolveDefaultServerContext, type ServerContext } from '../core/server/server-context.js';
+import type { AllianceServerConfig, ServerConfigBase } from '../core/config.js';
+import { createServer, type ServerContext } from '../core/server/server-context.js';
 import { resolveAllianceConfig } from './config.js';
-import { setupCoreServer, type ServerHandle, type SetupCoreServerOptions } from '../core/setup.js';
+import { setupCoreServer, type ServerHandle } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
 import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-tool.js';
 
@@ -10,18 +10,18 @@ import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-too
  * Options for {@link setupAllianceServer}.
  */
 export type SetupAllianceServerOptions = {
-  config?: ServerConfig;
+  config?: AllianceServerConfig;
   context?: ServerContext;
   /** MCP server instructions; defaults to {@link ALLIANCE_SERVER_INSTRUCTIONS}. */
   instructions?: string;
 };
 
-function isServerConfig(value: unknown): value is ServerConfig {
+function isServerConfig(value: unknown): value is AllianceServerConfig {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as ServerConfig).apiKey === 'string' &&
-    typeof (value as ServerConfig).indexName === 'string'
+    typeof (value as ServerConfigBase).apiKey === 'string' &&
+    typeof (value as ServerConfigBase).indexName === 'string'
   );
 }
 
@@ -38,7 +38,7 @@ function isSetupAllianceServerOptions(value: unknown): value is SetupAllianceSer
 }
 
 function normalizeSetupAllianceArgs(
-  configOrOptions?: ServerConfig | SetupAllianceServerOptions,
+  configOrOptions?: AllianceServerConfig | SetupAllianceServerOptions,
   legacyOptions?: Pick<SetupAllianceServerOptions, 'instructions'>
 ): SetupAllianceServerOptions {
   if (configOrOptions === undefined) {
@@ -50,7 +50,9 @@ function normalizeSetupAllianceArgs(
   if (isSetupAllianceServerOptions(configOrOptions)) {
     return { ...configOrOptions, ...legacyOptions };
   }
-  throw new TypeError('configOrOptions must be a ServerConfig or SetupAllianceServerOptions');
+  throw new TypeError(
+    'configOrOptions must be an AllianceServerConfig or SetupAllianceServerOptions'
+  );
 }
 
 /**
@@ -60,7 +62,7 @@ function normalizeSetupAllianceArgs(
  * When `config` is omitted, resolves env via {@link resolveAllianceConfig} (Alliance index/rerank defaults when unset).
  */
 export async function setupAllianceServer(
-  configOrOptions?: ServerConfig | SetupAllianceServerOptions,
+  configOrOptions?: AllianceServerConfig | SetupAllianceServerOptions,
   legacyOptions?: Pick<SetupAllianceServerOptions, 'instructions'>
 ): Promise<ServerHandle> {
   const opts = normalizeSetupAllianceArgs(configOrOptions, legacyOptions);
@@ -71,18 +73,15 @@ export async function setupAllianceServer(
 
   if (opts.context) {
     resolvedCtx = opts.context;
-    const coreOpts: SetupCoreServerOptions = { context: resolvedCtx, instructions };
     if (opts.config !== undefined) {
-      coreOpts.config = opts.config;
+      resolvedCtx.setConfig(opts.config);
     }
-    server = await setupCoreServer(coreOpts);
+    server = await setupCoreServer({ context: resolvedCtx, instructions });
   } else {
     const config = opts.config ?? resolveAllianceConfig({});
-    server = await setupCoreServer({
-      config: opts.config ?? config,
-      instructions,
-    });
-    resolvedCtx = resolveDefaultServerContext();
+    const ctx = createServer(config);
+    server = await setupCoreServer({ context: ctx, instructions });
+    resolvedCtx = ctx;
   }
 
   registerBuiltinUrlGenerators(resolvedCtx);

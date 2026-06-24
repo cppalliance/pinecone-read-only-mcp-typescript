@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
-import type { ServerConfig } from './config.js';
+import type { CoreServerConfig, ServerConfigBase } from './config.js';
 import {
   createServer,
   installExplicitServerContext,
@@ -39,18 +39,18 @@ export function teardownServer(): void {
  * full Alliance tool surface (suggest-flow gate on by default).
  */
 export type SetupCoreServerOptions = {
-  config?: ServerConfig;
+  config?: CoreServerConfig;
   context?: ServerContext;
   /** MCP server instructions; defaults to {@link CORE_SERVER_INSTRUCTIONS}. */
   instructions?: string;
 };
 
-function isServerConfig(value: unknown): value is ServerConfig {
+function isServerConfig(value: unknown): value is CoreServerConfig {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as ServerConfig).apiKey === 'string' &&
-    typeof (value as ServerConfig).indexName === 'string'
+    typeof (value as ServerConfigBase).apiKey === 'string' &&
+    typeof (value as ServerConfigBase).indexName === 'string'
   );
 }
 
@@ -67,7 +67,7 @@ function isSetupCoreServerOptions(value: unknown): value is SetupCoreServerOptio
 }
 
 function normalizeSetupCoreServerArgs(
-  configOrOptions?: ServerConfig | SetupCoreServerOptions,
+  configOrOptions?: CoreServerConfig | SetupCoreServerOptions,
   legacyOptions?: Pick<SetupCoreServerOptions, 'instructions'>
 ): SetupCoreServerOptions {
   if (configOrOptions === undefined) {
@@ -79,7 +79,7 @@ function normalizeSetupCoreServerArgs(
   if (isSetupCoreServerOptions(configOrOptions)) {
     return { ...configOrOptions, ...legacyOptions };
   }
-  throw new TypeError('configOrOptions must be a ServerConfig or SetupCoreServerOptions');
+  throw new TypeError('configOrOptions must be a CoreServerConfig or SetupCoreServerOptions');
 }
 
 function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
@@ -118,7 +118,7 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
 }
 
 export async function setupCoreServer(
-  configOrOptions?: ServerConfig | SetupCoreServerOptions,
+  configOrOptions?: CoreServerConfig | SetupCoreServerOptions,
   legacyOptions?: Pick<SetupCoreServerOptions, 'instructions'>
 ): Promise<ServerHandle> {
   const opts = normalizeSetupCoreServerArgs(configOrOptions, legacyOptions);

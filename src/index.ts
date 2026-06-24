@@ -10,7 +10,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as dotenv from 'dotenv';
 import { parseCli, printHelp, printVersion } from './cli.js';
-import type { ServerConfig } from './core/config.js';
+import type { AllianceServerConfig } from './alliance/config.js';
 import { resolveAllianceConfig } from './alliance/config.js';
 import { PineconeClient } from './core/pinecone-client.js';
 import { createServer } from './core/server/server-context.js';
@@ -23,7 +23,7 @@ dotenv.config();
  * Build a config from CLI argv + environment, exiting fast on
  * --help, --version, or missing API key / index name.
  */
-function buildConfigOrExit(): ServerConfig {
+function buildConfigOrExit(): AllianceServerConfig {
   const parsed = parseCli();
   if (parsed.kind === 'help') {
     printHelp();

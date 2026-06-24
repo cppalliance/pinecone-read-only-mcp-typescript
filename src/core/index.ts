@@ -63,7 +63,15 @@ export {
 } from './server/url-registry.js';
 export type { UrlGenerationResult, UrlGenerator, UrlGeneratorFn } from './server/url-registry.js';
 export { resolveConfig, trimOptional } from './config.js';
-export type { ServerConfig, LogLevel, LogFormat, ConfigOverrides } from './config.js';
+export type {
+  ServerConfig,
+  ServerConfigBase,
+  CoreServerConfig,
+  AnyServerConfig,
+  LogLevel,
+  LogFormat,
+  ConfigOverrides,
+} from './config.js';
 export { PineconeClient } from './pinecone-client.js';
 export type {
   PineconeClientConfig,

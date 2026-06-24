@@ -4,10 +4,11 @@
 
 import {
   asBool,
+  brandAllianceConfig,
   resolveConfig,
   trimOptional,
+  type AllianceServerConfig,
   type ConfigOverrides,
-  type ServerConfig,
 } from '../core/config.js';
 
 /** C++ Alliance default dense index when env/CLI omit `PINECONE_INDEX_NAME`. */
@@ -20,7 +21,7 @@ export const ALLIANCE_DEFAULT_RERANK_MODEL = 'bge-reranker-v2-m3';
 export const DEFAULT_ALLIANCE_RERANK_MODEL = ALLIANCE_DEFAULT_RERANK_MODEL;
 
 /**
- * Build {@link ServerConfig} for Alliance CLI and `setupAllianceServer`.
+ * Build {@link AllianceServerConfig} for Alliance CLI and `setupAllianceServer`.
  * Fills index and rerank from Alliance defaults when unset, then calls core `resolveConfig`.
  *
  * **Suggest-flow gate default:** After core resolution, `disableSuggestFlow` is overridden to
@@ -37,7 +38,7 @@ export const DEFAULT_ALLIANCE_RERANK_MODEL = ALLIANCE_DEFAULT_RERANK_MODEL;
 export function resolveAllianceConfig(
   overrides: ConfigOverrides = {},
   env: NodeJS.ProcessEnv = process.env
-): ServerConfig {
+): AllianceServerConfig {
   const indexName =
     trimOptional(overrides.indexName) ??
     trimOptional(env['PINECONE_INDEX_NAME']) ??
@@ -49,5 +50,7 @@ export function resolveAllianceConfig(
   const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env);
   const disableSuggestFlow =
     overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], false);
-  return { ...cfg, disableSuggestFlow };
+  return brandAllianceConfig({ ...cfg, disableSuggestFlow });
 }
+
+export type { AllianceServerConfig } from '../core/config.js';

@@ -1,8 +1,9 @@
 /**
  * Shared runtime config types and resolver.
  *
- * `ServerConfig` is the single source of truth flowed from `parseCli()` →
- * `setupCoreServer(config)` / `setupAllianceServer(config)` → every collaborator.
+ * Branded types ({@link CoreServerConfig}, {@link AllianceServerConfig}) distinguish
+ * configs produced by {@link resolveConfig} vs {@link resolveAllianceConfig} at compile time.
+ * {@link ServerConfigBase} is the shared structural type for read paths (e.g. `ctx.getConfig()`).
  * Modules MUST NOT read `process.env` directly anymore — they receive their slice of the config.
  */
 
@@ -14,13 +15,16 @@ export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 /** Allowed log output formats. */
 export type LogFormat = 'text' | 'json';
 
+declare const coreServerConfigBrand: unique symbol;
+declare const allianceServerConfigBrand: unique symbol;
+
 /**
- * Unified runtime configuration for the MCP server.
+ * Unified runtime configuration for the MCP server (structural fields only).
  *
  * Built once by `parseCli()` (or constructed directly by library consumers)
  * and threaded through setup. `apiKey` and `indexName` are required.
  */
-export interface ServerConfig {
+export interface ServerConfigBase {
   /** Pinecone API key. Required. */
   apiKey: string;
   /** Dense (hybrid) index name (`PINECONE_INDEX_NAME` or CLI `--index-name`). Required. */
@@ -51,6 +55,30 @@ export interface ServerConfig {
   disableSuggestFlow: boolean;
   /** When true, on-startup probe verifies dense + sparse indexes exist. */
   checkIndexes: boolean;
+}
+
+/** Backward-compatible alias for {@link ServerConfigBase} (read paths, docs). */
+export type ServerConfig = ServerConfigBase;
+
+/** Config produced by {@link resolveConfig} (core defaults: gate off, explicit index required). */
+export type CoreServerConfig = ServerConfigBase & { readonly [coreServerConfigBrand]: 'core' };
+
+/** Config produced by {@link resolveAllianceConfig} (Alliance defaults: gate on, `rag-hybrid` index). */
+export type AllianceServerConfig = ServerConfigBase & {
+  readonly [allianceServerConfigBrand]: 'alliance';
+};
+
+/** Branded union accepted by {@link createServer} and {@link createIsolatedContext}. */
+export type AnyServerConfig = CoreServerConfig | AllianceServerConfig;
+
+/** Attach the core brand after {@link resolveConfig} resolution (zero runtime cost). */
+export function brandCoreConfig(config: ServerConfigBase): CoreServerConfig {
+  return config as CoreServerConfig;
+}
+
+/** Attach the Alliance brand after {@link resolveAllianceConfig} resolution (zero runtime cost). */
+export function brandAllianceConfig(config: ServerConfigBase): AllianceServerConfig {
+  return config as AllianceServerConfig;
 }
 
 /** Default per-call timeout for Pinecone requests, in milliseconds. */
@@ -103,7 +131,7 @@ export interface ConfigOverrides {
 }
 
 /**
- * Build a `ServerConfig` from CLI overrides, environment variables, and defaults.
+ * Build a {@link CoreServerConfig} from CLI overrides, environment variables, and defaults.
  * CLI > env > default precedence is preserved.
  *
  * Output is the `config` half of the embedder pattern `{ config, composition }`.
@@ -124,7 +152,7 @@ export interface ConfigOverrides {
 export function resolveConfig(
   overrides: ConfigOverrides,
   env: NodeJS.ProcessEnv = process.env
-): ServerConfig {
+): CoreServerConfig {
   const apiKey = (overrides.apiKey ?? env['PINECONE_API_KEY'] ?? '').trim();
   if (!apiKey) {
     throw new Error(
@@ -164,7 +192,7 @@ export function resolveConfig(
     overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], true);
   const checkIndexes = overrides.checkIndexes ?? asBool(env['PINECONE_CHECK_INDEXES'], false);
 
-  return {
+  return brandCoreConfig({
     apiKey,
     indexName,
     sparseIndexName,
@@ -176,5 +204,5 @@ export function resolveConfig(
     requestTimeoutMs,
     disableSuggestFlow,
     checkIndexes,
-  };
+  });
 }

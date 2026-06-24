@@ -1,4 +1,4 @@
-import type { ServerConfig } from '../config.js';
+import type { AnyServerConfig, ServerConfigBase } from '../config.js';
 import { resolveConfig } from '../config.js';
 import { PineconeClient } from '../pinecone-client.js';
 import { warnLegacyFacade } from './legacy-facade-warn.js';
@@ -51,7 +51,7 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-function buildPineconeClient(config: ServerConfig): PineconeClient {
+function buildPineconeClient(config: ServerConfigBase): PineconeClient {
   return new PineconeClient({
     apiKey: config.apiKey,
     indexName: config.indexName,
@@ -71,12 +71,12 @@ export class ServerContext implements AsyncDisposable {
   private toolsRegistered = false;
   private client: PineconeClient | null = null;
   private clientExplicitlySet = false;
-  private configValue: ServerConfig | null = null;
+  private configValue: ServerConfigBase | null = null;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
   private namespacesCache: CacheEntry | null = null;
 
-  constructor(config?: ServerConfig, composition?: ServerContextComposition) {
+  constructor(config?: ServerConfigBase, composition?: ServerContextComposition) {
     if (config) {
       this.configValue = config;
     }
@@ -118,18 +118,18 @@ export class ServerContext implements AsyncDisposable {
   }
 
   /** Build a context with an externally-constructed Pinecone client. */
-  static fromClient(config: ServerConfig, client: PineconeClient): ServerContext {
+  static fromClient(config: ServerConfigBase, client: PineconeClient): ServerContext {
     return new ServerContext(config, { client });
   }
 
-  getConfig(): ServerConfig {
+  getConfig(): ServerConfigBase {
     if (!this.configValue) {
       this.configValue = resolveConfig({});
     }
     return this.configValue;
   }
 
-  setConfig(config: ServerConfig): void {
+  setConfig(config: ServerConfigBase): void {
     this.configValue = config;
     this.invalidateConfigDerivedState();
   }
@@ -370,7 +370,7 @@ export class ServerContext implements AsyncDisposable {
 
 let defaultContext: ServerContext | null = null;
 let facadeSupersededBy: ServerContext | null = null;
-let pendingConfig: ServerConfig | null = null;
+let pendingConfig: ServerConfigBase | null = null;
 let pendingComposition: ServerContextComposition | null = null;
 
 const LEGACY_FACADE_SUPERSEDED_MESSAGE =
@@ -436,7 +436,7 @@ export function setDefaultServerContext(ctx: ServerContext | null): void {
 }
 
 /** Stash config until the default context is first materialized. */
-export function setPendingServerConfig(config: ServerConfig): void {
+export function setPendingServerConfig(config: ServerConfigBase): void {
   pendingConfig = config;
   if (defaultContext) {
     defaultContext.setConfig(config);
@@ -456,7 +456,7 @@ export function teardownDefaultServerContext(): void {
 
 /** Multi-tenant: no process-global side effects. */
 export function createIsolatedContext(
-  config: ServerConfig,
+  config: AnyServerConfig,
   composition?: ServerContextComposition
 ): ServerContext {
   return new ServerContext(config, composition);
@@ -464,7 +464,7 @@ export function createIsolatedContext(
 
 /** Create a configured context and install it as the process default. */
 export function createServer(
-  config: ServerConfig,
+  config: AnyServerConfig,
   composition?: ServerContextComposition
 ): ServerContext {
   const ctx = new ServerContext(config, composition);
