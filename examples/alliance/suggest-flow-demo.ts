@@ -19,9 +19,8 @@
 import {
   createServer,
   PineconeClient,
-  resolveConfig,
 } from '@will-cppa/pinecone-read-only-mcp';
-import { setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -34,7 +33,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const config = resolveConfig({ apiKey, indexName });
+  const config = resolveAllianceConfig({ apiKey, indexName });
   const ctx = createServer(config);
   ctx.setClient(
     new PineconeClient({

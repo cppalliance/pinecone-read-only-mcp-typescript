@@ -11,12 +11,15 @@ export {
   ServerContext,
   createServer,
   createIsolatedContext,
+  createUnconfiguredAllianceContext,
   getDefaultServerContext,
 } from './server/server-context.js';
 export type {
   ServerContextComposition,
   NamespaceCacheSeed,
   SuggestionFlowSeedEntry,
+  CoreServerContext,
+  AllianceServerContext,
 } from './server/server-context.js';
 export {
   validateMetadataFilter,
@@ -63,7 +66,15 @@ export {
 } from './server/url-registry.js';
 export type { UrlGenerationResult, UrlGenerator, UrlGeneratorFn } from './server/url-registry.js';
 export { resolveConfig, trimOptional } from './config.js';
-export type { ServerConfig, LogLevel, LogFormat, ConfigOverrides } from './config.js';
+export type {
+  ServerConfig,
+  ServerConfigBase,
+  CoreServerConfig,
+  AnyServerConfig,
+  LogLevel,
+  LogFormat,
+  ConfigOverrides,
+} from './config.js';
 export { PineconeClient } from './pinecone-client.js';
 export type {
   PineconeClientConfig,

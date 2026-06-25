@@ -2,10 +2,11 @@ import type { z } from 'zod';
 import type { HybridQueryResult, SearchResult } from '../../../types.js';
 import { resolveConfig } from '../../config.js';
 import type { PineconeClient } from '../../pinecone-client.js';
-import type { ConfigOverrides, ServerConfig } from '../../config.js';
+import type { ConfigOverrides, CoreServerConfig } from '../../config.js';
 import {
   ServerContext,
   teardownDefaultServerContext,
+  type CoreServerContext,
   type ServerContextComposition,
 } from '../server-context.js';
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
@@ -122,7 +123,7 @@ export function makeNamespaceCacheEntry(
 /** Stable TTL (seconds) for tests — overrides env `PINECONE_CACHE_TTL_SECONDS`. */
 const TEST_CACHE_TTL_SECONDS = 3600;
 
-export function resolveTestConfig(overrides: ConfigOverrides = {}): ServerConfig {
+export function resolveTestConfig(overrides: ConfigOverrides = {}): CoreServerConfig {
   return resolveConfig({
     apiKey: 'sk-test',
     indexName: 'test-index',
@@ -142,7 +143,7 @@ export function createTestServerContext(options?: {
   config?: ConfigOverrides;
   client?: PineconeClient;
   composition?: ServerContextComposition;
-}): ServerContext {
+}): CoreServerContext {
   const config = resolveTestConfig(options?.config);
   const composition: ServerContextComposition = {
     ...options?.composition,

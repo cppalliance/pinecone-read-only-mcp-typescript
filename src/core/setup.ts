@@ -1,12 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { CORE_SERVER_INSTRUCTIONS, SERVER_NAME, SERVER_VERSION } from '../constants.js';
-import type { ServerConfig } from './config.js';
+import type { CoreServerConfig, ServerConfigBase } from './config.js';
+import { getServerConfigLineage } from './config.js';
 import {
   createServer,
   installExplicitServerContext,
   peekDefaultServerContext,
   resolveDefaultServerContext,
   teardownDefaultServerContext,
+  type CoreServerContext,
   type ServerContext,
 } from './server/server-context.js';
 import { registerCountTool } from './server/tools/count-tool.js';
@@ -39,19 +41,30 @@ export function teardownServer(): void {
  * full Alliance tool surface (suggest-flow gate on by default).
  */
 export type SetupCoreServerOptions = {
-  config?: ServerConfig;
-  context?: ServerContext;
+  config?: CoreServerConfig;
+  context?: CoreServerContext;
   /** MCP server instructions; defaults to {@link CORE_SERVER_INSTRUCTIONS}. */
   instructions?: string;
 };
 
-function isServerConfig(value: unknown): value is ServerConfig {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as ServerConfig).apiKey === 'string' &&
-    typeof (value as ServerConfig).indexName === 'string'
-  );
+function isServerConfig(value: unknown): value is CoreServerConfig {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const base = value as ServerConfigBase;
+  if (typeof base.apiKey !== 'string' || typeof base.indexName !== 'string') {
+    return false;
+  }
+  return getServerConfigLineage(base) === 'core';
+}
+
+function assertCoreServerConfig(config: ServerConfigBase): CoreServerConfig {
+  if (getServerConfigLineage(config) !== 'core') {
+    throw new TypeError(
+      'Expected CoreServerConfig. Use setupAllianceServer for Alliance-branded config.'
+    );
+  }
+  return config as CoreServerConfig;
 }
 
 function isSetupCoreServerOptions(value: unknown): value is SetupCoreServerOptions {
@@ -67,7 +80,7 @@ function isSetupCoreServerOptions(value: unknown): value is SetupCoreServerOptio
 }
 
 function normalizeSetupCoreServerArgs(
-  configOrOptions?: ServerConfig | SetupCoreServerOptions,
+  configOrOptions?: CoreServerConfig | SetupCoreServerOptions,
   legacyOptions?: Pick<SetupCoreServerOptions, 'instructions'>
 ): SetupCoreServerOptions {
   if (configOrOptions === undefined) {
@@ -79,10 +92,14 @@ function normalizeSetupCoreServerArgs(
   if (isSetupCoreServerOptions(configOrOptions)) {
     return { ...configOrOptions, ...legacyOptions };
   }
-  throw new TypeError('configOrOptions must be a ServerConfig or SetupCoreServerOptions');
+  throw new TypeError('configOrOptions must be a CoreServerConfig or SetupCoreServerOptions');
 }
 
-function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
+function resolveSetupContext(opts: SetupCoreServerOptions): CoreServerContext {
+  if (opts.config) {
+    assertCoreServerConfig(opts.config);
+  }
+
   if (opts.context) {
     if (opts.config) {
       if (opts.context.hasInjectedClient()) {
@@ -92,6 +109,11 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
         );
       }
       opts.context.setConfig(opts.config);
+    } else {
+      const stored = opts.context.getConfigIfSet();
+      if (stored) {
+        assertCoreServerConfig(stored);
+      }
     }
     installExplicitServerContext(opts.context);
     return opts.context;
@@ -114,15 +136,13 @@ function resolveSetupContext(opts: SetupCoreServerOptions): ServerContext {
     return ctx;
   }
 
-  return resolveDefaultServerContext();
+  return resolveDefaultServerContext() as CoreServerContext;
 }
 
-export async function setupCoreServer(
-  configOrOptions?: ServerConfig | SetupCoreServerOptions,
-  legacyOptions?: Pick<SetupCoreServerOptions, 'instructions'>
+async function registerCoreToolSurface(
+  ctx: ServerContext,
+  instructions?: string
 ): Promise<ServerHandle> {
-  const opts = normalizeSetupCoreServerArgs(configOrOptions, legacyOptions);
-  const ctx = resolveSetupContext(opts);
   ctx.assertCanRegisterTools();
 
   const server = new McpServer(
@@ -131,7 +151,7 @@ export async function setupCoreServer(
       version: SERVER_VERSION,
     },
     {
-      instructions: opts.instructions ?? CORE_SERVER_INSTRUCTIONS,
+      instructions: instructions ?? CORE_SERVER_INSTRUCTIONS,
     }
   );
 
@@ -151,4 +171,25 @@ export async function setupCoreServer(
     await ctx[Symbol.asyncDispose]();
   };
   return handle;
+}
+
+/**
+ * Register core MCP tools on a pre-configured context (Alliance layer internal entry).
+ * Does not accept {@link AllianceServerConfig}; use {@link setupAllianceServer} instead.
+ */
+export async function setupCoreServerOnContext(
+  ctx: ServerContext,
+  instructions?: string
+): Promise<ServerHandle> {
+  installExplicitServerContext(ctx);
+  return registerCoreToolSurface(ctx, instructions);
+}
+
+export async function setupCoreServer(
+  configOrOptions?: CoreServerConfig | SetupCoreServerOptions,
+  legacyOptions?: Pick<SetupCoreServerOptions, 'instructions'>
+): Promise<ServerHandle> {
+  const opts = normalizeSetupCoreServerArgs(configOrOptions, legacyOptions);
+  const ctx = resolveSetupContext(opts);
+  return registerCoreToolSurface(ctx, opts.instructions);
 }

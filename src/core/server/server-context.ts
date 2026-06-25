@@ -1,4 +1,9 @@
-import type { ServerConfig } from '../config.js';
+import type {
+  AnyServerConfig,
+  AllianceServerConfig,
+  CoreServerConfig,
+  ServerConfigBase,
+} from '../config.js';
 import { resolveConfig } from '../config.js';
 import { PineconeClient } from '../pinecone-client.js';
 import { warnLegacyFacade } from './legacy-facade-warn.js';
@@ -26,6 +31,15 @@ export type SuggestionFlowSeedEntry = {
   user_query: string;
 };
 
+/** Constructor options for contexts that must not lazy-resolve core defaults. */
+export type ServerContextInitOptions = {
+  /**
+   * When true, {@link getConfig} throws until Alliance config is seeded
+   * (see {@link createUnconfiguredAllianceContext}).
+   */
+  unconfiguredAlliance?: boolean;
+};
+
 /** Pre-built dependencies accepted by {@link ServerContext} and factory helpers. */
 export interface ServerContextComposition {
   client?: PineconeClient;
@@ -51,7 +65,7 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-function buildPineconeClient(config: ServerConfig): PineconeClient {
+function buildPineconeClient(config: ServerConfigBase): PineconeClient {
   return new PineconeClient({
     apiKey: config.apiKey,
     indexName: config.indexName,
@@ -66,17 +80,21 @@ function buildPineconeClient(config: ServerConfig): PineconeClient {
  * Encapsulates per-server state: Pinecone client, config, URL registry,
  * suggest-flow gate, and namespaces cache.
  */
-export class ServerContext implements AsyncDisposable {
+export class ServerContext<
+  T extends ServerConfigBase = ServerConfigBase,
+> implements AsyncDisposable {
   disposed = false;
   private toolsRegistered = false;
   private client: PineconeClient | null = null;
   private clientExplicitlySet = false;
-  private configValue: ServerConfig | null = null;
+  private configValue: T | null = null;
+  private readonly unconfiguredAlliance: boolean;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
   private namespacesCache: CacheEntry | null = null;
 
-  constructor(config?: ServerConfig, composition?: ServerContextComposition) {
+  constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
+    this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
     if (config) {
       this.configValue = config;
     }
@@ -118,18 +136,36 @@ export class ServerContext implements AsyncDisposable {
   }
 
   /** Build a context with an externally-constructed Pinecone client. */
-  static fromClient(config: ServerConfig, client: PineconeClient): ServerContext {
+  static fromClient<T extends ServerConfigBase>(
+    config: T,
+    client: PineconeClient
+  ): ServerContext<T> {
     return new ServerContext(config, { client });
   }
 
-  getConfig(): ServerConfig {
+  /** Whether config was set at construction or via {@link setConfig} (does not lazy-resolve). */
+  hasConfig(): boolean {
+    return this.configValue !== null;
+  }
+
+  /** Return stored config without lazy env resolution; `null` when unset. */
+  getConfigIfSet(): T | null {
+    return this.configValue;
+  }
+
+  getConfig(): T {
     if (!this.configValue) {
-      this.configValue = resolveConfig({});
+      if (this.unconfiguredAlliance) {
+        throw new Error(
+          'Alliance ServerContext has no config. Call setConfig(), createServer(resolveAllianceConfig(...)), or setupAllianceServer before getConfig().'
+        );
+      }
+      this.configValue = resolveConfig({}) as unknown as T;
     }
     return this.configValue;
   }
 
-  setConfig(config: ServerConfig): void {
+  setConfig(config: T): void {
     this.configValue = config;
     this.invalidateConfigDerivedState();
   }
@@ -368,9 +404,25 @@ export class ServerContext implements AsyncDisposable {
   }
 }
 
+/** Context bound to a core-resolved config; accepted by {@link setupCoreServer}. */
+export type CoreServerContext = ServerContext<CoreServerConfig>;
+
+/** Context bound to an Alliance-resolved config; accepted by {@link setupAllianceServer}. */
+export type AllianceServerContext = ServerContext<AllianceServerConfig>;
+
+/**
+ * Empty Alliance context that rejects core lazy-resolve in {@link ServerContext.getConfig}
+ * until {@link setupAllianceServer} or {@link ServerContext.setConfig} seeds Alliance config.
+ */
+export function createUnconfiguredAllianceContext(): AllianceServerContext {
+  return new ServerContext<AllianceServerConfig>(undefined, undefined, {
+    unconfiguredAlliance: true,
+  });
+}
+
 let defaultContext: ServerContext | null = null;
 let facadeSupersededBy: ServerContext | null = null;
-let pendingConfig: ServerConfig | null = null;
+let pendingConfig: ServerConfigBase | null = null;
 let pendingComposition: ServerContextComposition | null = null;
 
 const LEGACY_FACADE_SUPERSEDED_MESSAGE =
@@ -436,7 +488,7 @@ export function setDefaultServerContext(ctx: ServerContext | null): void {
 }
 
 /** Stash config until the default context is first materialized. */
-export function setPendingServerConfig(config: ServerConfig): void {
+export function setPendingServerConfig(config: ServerConfigBase): void {
   pendingConfig = config;
   if (defaultContext) {
     defaultContext.setConfig(config);
@@ -456,7 +508,15 @@ export function teardownDefaultServerContext(): void {
 
 /** Multi-tenant: no process-global side effects. */
 export function createIsolatedContext(
-  config: ServerConfig,
+  config: CoreServerConfig,
+  composition?: ServerContextComposition
+): CoreServerContext;
+export function createIsolatedContext(
+  config: AllianceServerConfig,
+  composition?: ServerContextComposition
+): ServerContext<AllianceServerConfig>;
+export function createIsolatedContext(
+  config: AnyServerConfig,
   composition?: ServerContextComposition
 ): ServerContext {
   return new ServerContext(config, composition);
@@ -464,7 +524,15 @@ export function createIsolatedContext(
 
 /** Create a configured context and install it as the process default. */
 export function createServer(
-  config: ServerConfig,
+  config: CoreServerConfig,
+  composition?: ServerContextComposition
+): CoreServerContext;
+export function createServer(
+  config: AllianceServerConfig,
+  composition?: ServerContextComposition
+): ServerContext<AllianceServerConfig>;
+export function createServer(
+  config: AnyServerConfig,
   composition?: ServerContextComposition
 ): ServerContext {
   const ctx = new ServerContext(config, composition);

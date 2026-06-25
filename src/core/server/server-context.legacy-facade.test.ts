@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveAllianceConfig } from '../../alliance/config.js';
 import { setupAllianceServer } from '../../alliance/setup.js';
 import { setPineconeClient, setupCoreServer, teardownServer } from '../index.js';
 import { getPineconeClient } from './client-context.js';
@@ -46,10 +47,10 @@ describe('legacy facade vs explicit setup context', () => {
   it('setupAllianceServer with explicit context throws on legacy facade use', async () => {
     isolateFromDefaultContext();
     setPineconeClient({ query: vi.fn() } as never);
-    const isolatedCtx = createTestServerContext({
-      config: resolveTestConfig({ disableSuggestFlow: false }),
-      client: { query: vi.fn() } as never,
-    });
+    const isolatedCtx = createIsolatedContext(
+      resolveAllianceConfig({ apiKey: 'isolated', indexName: 'idx-iso' }),
+      { client: { query: vi.fn() } as never }
+    );
 
     await setupAllianceServer({ context: isolatedCtx });
 

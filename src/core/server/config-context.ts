@@ -1,4 +1,4 @@
-import type { ServerConfig } from '../config.js';
+import type { ServerConfigBase } from '../config.js';
 import { warnLegacyFacade } from './legacy-facade-warn.js';
 import {
   resolveDefaultServerContext,
@@ -14,7 +14,7 @@ import {
  * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.setConfig
  */
-export function setServerConfig(config: ServerConfig): void {
+export function setServerConfig(config: ServerConfigBase): void {
   warnLegacyFacade('setServerConfig');
   setPendingServerConfig(config);
 }
@@ -45,7 +45,7 @@ export function resetServerConfig(): void {
  * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.getConfig
  */
-export function getServerConfig(): ServerConfig {
+export function getServerConfig(): ServerConfigBase {
   warnLegacyFacade('getServerConfig');
   return resolveDefaultServerContext().getConfig();
 }

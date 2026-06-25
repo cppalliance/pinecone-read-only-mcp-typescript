@@ -352,6 +352,37 @@ Core `resolveConfig` throws `Missing Pinecone index name: …` when the index is
 
 ---
 
+## Unreleased: Branded ServerConfig types
+
+**Rationale:** `resolveConfig()` and `resolveAllianceConfig()` produced structurally identical configs. Passing Alliance-resolved config or context into `setupCoreServer()` compiled but silently changed suggest-flow gate behavior (and related defaults).
+
+**Who is affected:** Library embedders typing resolver returns or setup arguments as `ServerConfig` instead of the branded types.
+
+**Migration:**
+
+Use branded resolver outputs with matching setup entry points and context factories:
+
+```typescript
+import { createServer, resolveConfig, setupCoreServer } from '@will-cppa/pinecone-read-only-mcp';
+import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+
+const coreCfg = resolveConfig({ apiKey, indexName });
+await setupCoreServer({ context: createServer(coreCfg) });
+
+const allianceCfg = resolveAllianceConfig({ apiKey });
+await setupAllianceServer({ context: createServer(allianceCfg) });
+```
+
+**Compile-time errors (intentional):**
+
+- `setupCoreServer(allianceCfg)` — Alliance config on core setup
+- `setupCoreServer({ context: createServer(allianceCfg) })` — Alliance context on core setup
+- `setupAllianceServer(coreCfg)` and `setupAllianceServer({ context: createServer(coreCfg) })` — symmetric misuse
+
+**Unchanged:** `ServerConfig` / `ServerConfigBase` remain valid for reading fields from `ctx.getConfig()` and other read-only config paths.
+
+---
+
 ## Migrating to v0.2.0
 
 ### Namespace trimming and suggest-flow

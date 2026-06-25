@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
 import { setPineconeClient, setupCoreServer, teardownServer } from './index.js';
 import {
   ServerContext,
+  createUnconfiguredAllianceContext,
+  createIsolatedContext,
   getDefaultServerContext,
   setDefaultServerContext,
 } from './server/server-context.js';
@@ -21,11 +24,31 @@ describe('setup guards (CodeRabbit PR #150)', () => {
   it('preserves injected client when setupAllianceServer receives context only', async () => {
     isolateFromDefaultContext();
     const mockClient = { query: vi.fn() };
-    const ctx = createTestServerContext({ client: mockClient as never });
+    const ctx = createIsolatedContext(
+      resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'test-index' }),
+      { client: mockClient as never }
+    );
 
     await setupAllianceServer({ context: ctx });
 
     expect(ctx.getClient()).toBe(mockClient);
+  });
+
+  it('installs Alliance defaults on context without config (no core lazy-resolve)', async () => {
+    isolateFromDefaultContext();
+    const ctx = createUnconfiguredAllianceContext();
+    expect(ctx.hasConfig()).toBe(false);
+    expect(() => ctx.getConfig()).toThrow(/Alliance ServerContext has no config/);
+
+    vi.stubEnv('PINECONE_API_KEY', 'sk-alliance-default');
+    try {
+      await setupAllianceServer({ context: ctx });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(ctx.hasConfig()).toBe(true);
+    expect(ctx.getConfig().disableSuggestFlow).toBe(false);
   });
 
   it('allows config update when context only has a lazy-built client', async () => {
@@ -84,13 +107,45 @@ describe('setup guards (CodeRabbit PR #150)', () => {
 
   it('throws TypeError for invalid setupCoreServer options object', async () => {
     await expect(setupCoreServer({ foo: 'bar' } as never)).rejects.toThrow(
-      /ServerConfig or SetupCoreServerOptions/
+      /CoreServerConfig or SetupCoreServerOptions/
     );
   });
 
   it('throws TypeError for invalid setupAllianceServer options object', async () => {
     await expect(setupAllianceServer({ foo: 'bar' } as never)).rejects.toThrow(
-      /ServerConfig or SetupAllianceServerOptions/
+      /AllianceServerConfig or SetupAllianceServerOptions/
+    );
+  });
+
+  it('rejects Alliance-branded config at runtime on setupCoreServer', async () => {
+    const allianceCfg = resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    await expect(setupCoreServer(allianceCfg as never)).rejects.toThrow(/CoreServerConfig/);
+    await expect(setupCoreServer({ config: allianceCfg } as never)).rejects.toThrow(
+      /CoreServerConfig/
+    );
+  });
+
+  it('rejects core-branded config at runtime on setupAllianceServer', async () => {
+    const coreCfg = resolveTestConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    await expect(setupAllianceServer(coreCfg as never)).rejects.toThrow(/AllianceServerConfig/);
+    await expect(setupAllianceServer({ config: coreCfg } as never)).rejects.toThrow(
+      /AllianceServerConfig/
+    );
+  });
+
+  it('rejects context with cross-branded config at runtime on setupCoreServer', async () => {
+    isolateFromDefaultContext();
+    const allianceCfg = resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    const ctx = createIsolatedContext(allianceCfg);
+    await expect(setupCoreServer({ context: ctx as never })).rejects.toThrow(/CoreServerConfig/);
+  });
+
+  it('rejects context with cross-branded config at runtime on setupAllianceServer', async () => {
+    isolateFromDefaultContext();
+    const coreCfg = resolveTestConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    const ctx = createIsolatedContext(coreCfg);
+    await expect(setupAllianceServer({ context: ctx as never })).rejects.toThrow(
+      /AllianceServerConfig/
     );
   });
 });

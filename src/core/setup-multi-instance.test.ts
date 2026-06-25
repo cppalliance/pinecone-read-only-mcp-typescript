@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
+import { createIsolatedContext } from './server/server-context.js';
 import { setupCoreServer, teardownServer } from './setup.js';
 import {
   createTestServerContext,
@@ -21,7 +22,7 @@ describe('setup multi-instance (phase 4)', () => {
     const cfgA = resolveTestConfig({ apiKey: 'multi-setup-a' });
     const cfgB = resolveAllianceConfig({ apiKey: 'multi-setup-b', indexName: 'idx-b' });
     const ctxA = createTestServerContext({ config: cfgA });
-    const ctxB = createTestServerContext({ config: cfgB });
+    const ctxB = createIsolatedContext(cfgB);
 
     await expect(setupCoreServer({ context: ctxA })).resolves.toBeDefined();
     await expect(setupAllianceServer({ context: ctxB })).resolves.toBeDefined();
@@ -32,7 +33,7 @@ describe('setup multi-instance (phase 4)', () => {
     const cfgA = resolveTestConfig({ apiKey: 'url-iso-a' });
     const cfgB = resolveAllianceConfig({ apiKey: 'url-iso-b', indexName: 'idx-b' });
     const ctxA = createTestServerContext({ config: cfgA });
-    const ctxB = createTestServerContext({ config: cfgB });
+    const ctxB = createIsolatedContext(cfgB);
 
     await setupCoreServer({ context: ctxA });
     await setupAllianceServer({ context: ctxB });
