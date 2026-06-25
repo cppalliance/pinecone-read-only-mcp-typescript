@@ -10,7 +10,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Changed
 
-- **Library:** `resolveConfig()` returns `CoreServerConfig`; `resolveAllianceConfig()` returns `AllianceServerConfig`. `setupCoreServer` / `setupAllianceServer` accept only their respective branded config and context types (`CoreServerContext` / `AllianceServerContext`). `ServerConfig` remains an alias for `ServerConfigBase` on read paths (`ctx.getConfig()`). See [MIGRATION.md](docs/MIGRATION.md#unreleased-branded-server-config).
+- **Library:** `resolveConfig()` returns `CoreServerConfig`; `resolveAllianceConfig()` returns `AllianceServerConfig`. `setupCoreServer` / `setupAllianceServer` accept only their respective branded config and context types (`CoreServerContext` / `AllianceServerContext`). `ServerConfig` remains an alias for `ServerConfigBase` on read paths (`ctx.getConfig()`). See [MIGRATION.md](docs/MIGRATION.md#unreleased-branded-serverconfig-types).
 
 ## [0.3.0] - 2026-06-23
 

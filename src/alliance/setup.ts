@@ -99,6 +99,11 @@ export async function setupAllianceServer(
       resolvedCtx.setConfig(opts.config);
     } else if (!resolvedCtx.hasConfig()) {
       resolvedCtx.setConfig(resolveAllianceConfig({}));
+    } else {
+      const stored = resolvedCtx.getConfigIfSet();
+      if (stored) {
+        assertAllianceServerConfig(stored);
+      }
     }
     server = await setupCoreServerOnContext(resolvedCtx, instructions);
   } else {

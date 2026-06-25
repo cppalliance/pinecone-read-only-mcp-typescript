@@ -109,6 +109,11 @@ function resolveSetupContext(opts: SetupCoreServerOptions): CoreServerContext {
         );
       }
       opts.context.setConfig(opts.config);
+    } else {
+      const stored = opts.context.getConfigIfSet();
+      if (stored) {
+        assertCoreServerConfig(stored);
+      }
     }
     installExplicitServerContext(opts.context);
     return opts.context;

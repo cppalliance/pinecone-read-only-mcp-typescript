@@ -132,4 +132,20 @@ describe('setup guards (CodeRabbit PR #150)', () => {
       /AllianceServerConfig/
     );
   });
+
+  it('rejects context with cross-branded config at runtime on setupCoreServer', async () => {
+    isolateFromDefaultContext();
+    const allianceCfg = resolveAllianceConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    const ctx = createIsolatedContext(allianceCfg);
+    await expect(setupCoreServer({ context: ctx as never })).rejects.toThrow(/CoreServerConfig/);
+  });
+
+  it('rejects context with cross-branded config at runtime on setupAllianceServer', async () => {
+    isolateFromDefaultContext();
+    const coreCfg = resolveTestConfig({ apiKey: 'sk-test', indexName: 'idx' });
+    const ctx = createIsolatedContext(coreCfg);
+    await expect(setupAllianceServer({ context: ctx as never })).rejects.toThrow(
+      /AllianceServerConfig/
+    );
+  });
 });
