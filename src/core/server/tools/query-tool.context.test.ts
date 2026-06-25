@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerQueryTool } from './query-tool.js';
-import { queryResponseSchema } from '../response-schemas.js';
+import { querySuccessResponseSchema } from '../response-schemas.js';
 import {
   assertToolErrorCode,
   createMockServer,
@@ -30,7 +30,7 @@ describe('query tool handler (ServerContext instance path)', () => {
       preset: 'fast',
     });
     const body = parseToolJson(raw);
-    expectMatchesResponseSchema(queryResponseSchema, body);
+    expectMatchesResponseSchema(querySuccessResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       mode: 'query_fast',

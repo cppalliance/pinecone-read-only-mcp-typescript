@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../../constants.js';
-import type { QueryResponse } from '../../../types.js';
 import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
@@ -15,7 +14,11 @@ import {
   logToolError,
   validationToolError,
 } from '../tool-error.js';
-import { buildQueryExperimental, querySuccessResponseSchema } from '../response-schemas.js';
+import {
+  buildQueryExperimental,
+  querySuccessResponseSchema,
+  type QuerySuccessResponse,
+} from '../response-schemas.js';
 import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 type QueryMode = 'query' | 'query_fast' | 'query_detailed';
@@ -76,7 +79,7 @@ async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
 
     const formattedResults = formatQueryResultRows(queryOutcome.results, { ctx });
 
-    const response: QueryResponse = {
+    const response: QuerySuccessResponse = {
       status: 'success',
       mode,
       query: query_text,
