@@ -124,7 +124,9 @@ export type KeywordIndexNamespacesResult =
 export type {
   QueryResultRowShape,
   QueryResponse,
+  QuerySuccessResponse,
   KeywordSearchResponse,
+  KeywordSearchSuccessResponse,
 } from './core/server/response-schemas.js';
 
 /** Internal merged hit shape before rerank (dense + sparse deduped). */

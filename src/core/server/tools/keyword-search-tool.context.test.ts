@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { registerKeywordSearchTool } from './keyword-search-tool.js';
-import { keywordSearchResponseSchema } from '../response-schemas.js';
+import { keywordSearchSuccessResponseSchema } from '../response-schemas.js';
 import {
   createMockServer,
   createTestServerContext,
@@ -27,7 +27,7 @@ describe('keyword_search tool handler (ServerContext instance path)', () => {
       top_k: 5,
     });
     const body = parseToolJson(raw);
-    expectMatchesResponseSchema(keywordSearchResponseSchema, body);
+    expectMatchesResponseSchema(keywordSearchSuccessResponseSchema, body);
     expect(body).toMatchObject({
       status: 'success',
       query: 'contracts',

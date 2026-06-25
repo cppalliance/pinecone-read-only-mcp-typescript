@@ -1,6 +1,10 @@
 /**
  * Zod schemas for MCP tool success responses.
  * Types are derived via `z.infer` — single source of truth for response contracts.
+ *
+ * Single canonical schema per response type. Handler-boundary schemas define required
+ * stable fields. Permissive exports are derived via `.partial()` for `guided_query` union
+ * reuse and backward-compatible client validation.
  */
 
 import { z } from 'zod';
@@ -70,21 +74,7 @@ export const guidedQueryExperimentalSchema = z.object({
   decision_trace: guidedQueryDecisionTraceSchema,
 });
 
-export const queryResponseSchema = z.object({
-  status: z.literal('success'),
-  mode: z.enum(['query', 'query_fast', 'query_detailed']).optional(),
-  query: z.string().optional(),
-  namespace: z.string().optional(),
-  metadata_filter: z.record(z.string(), z.unknown()).optional(),
-  result_count: z.number().optional(),
-  fields: z.array(z.string()).optional(),
-  results: z.array(queryResultRowSchema).optional(),
-  experimental: queryExperimentalSchema.optional(),
-});
-
-export type QueryResponse = z.infer<typeof queryResponseSchema>;
-
-/** Strict handler-boundary schema for `query` / `query_fast` / `query_detailed` success payloads. */
+/** Handler-boundary schema for `query` / `query_fast` / `query_detailed` success payloads. */
 export const querySuccessResponseSchema = z.object({
   status: z.literal('success'),
   mode: z.enum(['query', 'query_fast', 'query_detailed']),
@@ -98,6 +88,17 @@ export const querySuccessResponseSchema = z.object({
 });
 
 export type QuerySuccessResponse = z.infer<typeof querySuccessResponseSchema>;
+
+/** Permissive query shape for `guided_query` union reuse and client-side validation. */
+export const queryResponseSchema = querySuccessResponseSchema.partial({
+  mode: true,
+  query: true,
+  namespace: true,
+  result_count: true,
+  results: true,
+});
+
+export type QueryResponse = z.infer<typeof queryResponseSchema>;
 
 export const listNamespacesResponseSchema = z.object({
   status: z.literal('success'),
@@ -148,21 +149,7 @@ export const countResponseSchema = z.object({
 
 export type CountResponse = z.infer<typeof countResponseSchema>;
 
-export const keywordSearchResponseSchema = z.object({
-  status: z.literal('success'),
-  query: z.string().optional(),
-  namespace: z.string().optional(),
-  index: z.string().optional(),
-  metadata_filter: z.record(z.string(), z.unknown()).optional(),
-  result_count: z.number().optional(),
-  results: z.array(queryResultRowSchema).optional(),
-  fields: z.array(z.string()).optional(),
-});
-
-/** @deprecated Import from `response-schemas` / package root; alias kept for one minor cycle. */
-export type KeywordSearchResponse = z.infer<typeof keywordSearchResponseSchema>;
-
-/** Strict handler-boundary schema for `keyword_search` success payloads. */
+/** Handler-boundary schema for `keyword_search` success payloads. */
 export const keywordSearchSuccessResponseSchema = z.object({
   status: z.literal('success'),
   query: z.string(),
@@ -175,6 +162,18 @@ export const keywordSearchSuccessResponseSchema = z.object({
 });
 
 export type KeywordSearchSuccessResponse = z.infer<typeof keywordSearchSuccessResponseSchema>;
+
+/** Permissive keyword_search shape for client-side validation. */
+export const keywordSearchResponseSchema = keywordSearchSuccessResponseSchema.partial({
+  query: true,
+  namespace: true,
+  index: true,
+  result_count: true,
+  results: true,
+});
+
+/** @deprecated Import from `response-schemas` / package root; alias kept for one minor cycle. */
+export type KeywordSearchResponse = z.infer<typeof keywordSearchResponseSchema>;
 
 const queryDocumentRowSchema = z.object({
   document_id: z.string(),

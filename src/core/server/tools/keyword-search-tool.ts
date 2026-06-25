@@ -15,6 +15,7 @@ import {
 import {
   keywordSearchSuccessResponseSchema,
   type KeywordSearchResponse,
+  type KeywordSearchSuccessResponse,
 } from '../response-schemas.js';
 import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
@@ -22,7 +23,7 @@ import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 export type { KeywordSearchResponse };
 
 type KeywordSearchExecResult =
-  | { ok: true; body: KeywordSearchResponse }
+  | { ok: true; body: KeywordSearchSuccessResponse }
   | { ok: false; error: ToolError };
 
 async function executeKeywordSearch(
@@ -81,7 +82,7 @@ async function executeKeywordSearch(
     ctx,
   });
 
-  const response: KeywordSearchResponse = {
+  const response: KeywordSearchSuccessResponse = {
     status: 'success',
     query: normalizedQuery,
     namespace: normalizedNamespace,

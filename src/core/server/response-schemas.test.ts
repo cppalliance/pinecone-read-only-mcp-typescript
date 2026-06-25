@@ -85,6 +85,49 @@ describe('response-schemas', () => {
     expect(() => keywordSearchSuccessResponseSchema.parse({ status: 'success' })).toThrow();
   });
 
+  it('accepts every strict query payload in the permissive derived schema', () => {
+    const strictPayload = {
+      status: 'success' as const,
+      mode: 'query_fast' as const,
+      query: 'q',
+      namespace: 'wg21',
+      result_count: 1,
+      results: [
+        {
+          document_id: 'D1',
+          paper_number: 'D1',
+          title: 'T',
+          author: 'A',
+          url: '',
+          content: 'c',
+          score: 0.9,
+          reranked: false,
+        },
+      ],
+    };
+    expect(querySuccessResponseSchema.parse(strictPayload)).toBeDefined();
+    expect(queryResponseSchema.parse(strictPayload)).toBeDefined();
+  });
+
+  it('accepts permissive-only keyword search payload but rejects strict validation', () => {
+    const permissiveOnly = { status: 'success' as const };
+    expect(keywordSearchResponseSchema.parse(permissiveOnly)).toBeDefined();
+    expect(() => keywordSearchSuccessResponseSchema.parse(permissiveOnly)).toThrow();
+  });
+
+  it('accepts every strict keyword search payload in the permissive derived schema', () => {
+    const strictPayload = {
+      status: 'success' as const,
+      query: 'kw',
+      namespace: 'wg21',
+      index: 'test-index-sparse',
+      result_count: 0,
+      results: [] as [],
+    };
+    expect(keywordSearchSuccessResponseSchema.parse(strictPayload)).toBeDefined();
+    expect(keywordSearchResponseSchema.parse(strictPayload)).toBeDefined();
+  });
+
   it('rejects query response missing status', () => {
     expect(() => queryResponseSchema.parse({ results: [] })).toThrow();
   });
