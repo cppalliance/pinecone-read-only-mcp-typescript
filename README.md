@@ -5,7 +5,7 @@
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
 [![CI](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/workflows/CI/badge.svg)](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/actions)
 
-A Model Context Protocol (MCP) server that provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
+A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.25+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
 **Current version: 0.2.0** (npm `latest` after publish). Pin `@0.2.0` in install and MCP config for reproducible upgrades.
 
@@ -19,18 +19,18 @@ While the package is **`0.y.z`**, minor releases may include breaking changes ([
 
 ## Documentation
 
-| Doc                                            | Description                            |
-| ---------------------------------------------- | -------------------------------------- |
-| [docs/README.md](docs/README.md)               | Index of all guides                    |
-| [docs/TOOLS.md](docs/TOOLS.md)                 | Tool catalog & flows                   |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Env vars, CLI flags, library config    |
-| [docs/FAQ.md](docs/FAQ.md)                     | Common questions                       |
-| [docs/MIGRATION.md](docs/MIGRATION.md)         | Deprecations & breaking changes        |
-| [docs/deprecation-policy.md](docs/deprecation-policy.md) | Release & deprecation policy   |
-| [docs/CI_CD.md](docs/CI_CD.md)                 | GitHub Actions, SBOM, Docker, releases |
-| [docs/RELEASING.md](docs/RELEASING.md)         | npm publish via GitHub Releases        |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)   | How to contribute                      |
-| [docs/SECURITY.md](docs/SECURITY.md)           | Vulnerability reporting                |
+| Doc                                                      | Description                            |
+| -------------------------------------------------------- | -------------------------------------- |
+| [docs/README.md](docs/README.md)                         | Index of all guides                    |
+| [docs/TOOLS.md](docs/TOOLS.md)                           | Tool catalog & flows                   |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md)           | Env vars, CLI flags, library config    |
+| [docs/FAQ.md](docs/FAQ.md)                               | Common questions                       |
+| [docs/MIGRATION.md](docs/MIGRATION.md)                   | Deprecations & breaking changes        |
+| [docs/deprecation-policy.md](docs/deprecation-policy.md) | Release & deprecation policy           |
+| [docs/CI_CD.md](docs/CI_CD.md)                           | GitHub Actions, SBOM, Docker, releases |
+| [docs/RELEASING.md](docs/RELEASING.md)                   | npm publish via GitHub Releases        |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)             | How to contribute                      |
+| [docs/SECURITY.md](docs/SECURITY.md)                     | Vulnerability reporting                |
 
 ## Error responses
 
@@ -149,7 +149,11 @@ Module-level singleton facades (`setPineconeClient`, `registerUrlGenerator`, `ge
 ```ts
 const config = resolveAllianceConfig({ apiKey: '...' });
 const ctx = createServer(config);
-ctx.setClient(new PineconeClient({ /* ... */ }));
+ctx.setClient(
+  new PineconeClient({
+    /* ... */
+  })
+);
 const server = await setupAllianceServer({ context: ctx });
 ```
 
@@ -163,9 +167,16 @@ Process-default / facade-based setup remains available during the deprecation wi
 
 ```ts
 import { PineconeClient, setPineconeClient } from '@will-cppa/pinecone-read-only-mcp';
-import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import {
+  resolveAllianceConfig,
+  setupAllianceServer,
+} from '@will-cppa/pinecone-read-only-mcp/alliance';
 
-setPineconeClient(new PineconeClient({ /* ... */ }));
+setPineconeClient(
+  new PineconeClient({
+    /* ... */
+  })
+);
 const server = await setupAllianceServer(resolveAllianceConfig({ apiKey: '...' }));
 // Call teardownServer() before re-initializing the process-default context.
 ```
@@ -185,7 +196,10 @@ import {
   type UrlGenerationResult,
   type UrlGeneratorFn,
 } from '@will-cppa/pinecone-read-only-mcp';
-import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import {
+  resolveAllianceConfig,
+  setupAllianceServer,
+} from '@will-cppa/pinecone-read-only-mcp/alliance';
 
 const config = resolveAllianceConfig({ apiKey: '...' }); // optional: indexName, rerankModel
 const ctx = createServer(config);
@@ -217,12 +231,12 @@ A fuller embedding sample lives in [examples/alliance/custom-url-generator.ts](e
 
 **Alliance / advanced** — [examples/alliance/](examples/alliance/):
 
-| File | Description |
-| ---- | ----------- |
-| [examples/alliance/suggest-flow-demo.ts](examples/alliance/suggest-flow-demo.ts) | Manual **suggest_query_params → query** flow |
-| [examples/alliance/guided-query-demo.ts](examples/alliance/guided-query-demo.ts) | **guided_query** and `experimental.decision_trace` |
-| [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) | **setupAllianceServer** without the CLI |
-| [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts) | Custom **URL generator** registration |
+| File                                                                                       | Description                                        |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| [examples/alliance/suggest-flow-demo.ts](examples/alliance/suggest-flow-demo.ts)           | Manual **suggest_query_params → query** flow       |
+| [examples/alliance/guided-query-demo.ts](examples/alliance/guided-query-demo.ts)           | **guided_query** and `experimental.decision_trace` |
+| [examples/alliance/library-embedding-demo.ts](examples/alliance/library-embedding-demo.ts) | **setupAllianceServer** without the CLI            |
+| [examples/alliance/custom-url-generator.ts](examples/alliance/custom-url-generator.ts)     | Custom **URL generator** registration              |
 
 Run with `npx tsx examples/<path>.ts` from a checkout (requires valid Pinecone env for live paths). See [examples/README.md](examples/README.md).
 
