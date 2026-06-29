@@ -142,7 +142,7 @@ Each breaking bullet should state:
 - `old_name` on … — use `new_name` instead; removal targeted in **0.4.0** (deprecated **0.2.0**). See [MIGRATION.md](./MIGRATION.md#anchor).
 ```
 
-Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md) for PR expectations.
+Contributors: see [CONTRIBUTING.md](../CONTRIBUTING.md) for PR expectations.
 
 ## Release hygiene
 
@@ -156,6 +156,6 @@ Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md) for PR expectations.
 | -------- | ---- |
 | [MIGRATION.md](./MIGRATION.md) | Per-version upgrade how-to |
 | [CHANGELOG.md](../CHANGELOG.md) | Authoritative change list |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | PR and CHANGELOG expectations |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | PR and CHANGELOG expectations |
 | [RELEASING.md](./RELEASING.md) | npm publish via GitHub Releases |
 | [templates/breaking-change-release-notes.md](./templates/breaking-change-release-notes.md) | GitHub Release body template |
