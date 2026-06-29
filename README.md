@@ -7,7 +7,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.25+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
-**Current version: 0.3.0** (npm `latest` after publish). Pin `@0.3.0` in install and MCP config for reproducible upgrades.
+Current version: 0.3.0 (npm `latest` after publish). Pin `@0.3.0` in install and MCP config for reproducible upgrades.
 
 ## Upgrading to 0.3.0
 
