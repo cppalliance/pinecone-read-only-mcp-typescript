@@ -1,0 +1,8 @@
+# Default owners
+* @wpak-ai @jonathanMLDev
+
+# Critical paths (explicit for review routing)
+/src/ @wpak-ai @jonathanMLDev
+/src/alliance/ @wpak-ai @jonathanMLDev
+/package.json @wpak-ai @jonathanMLDev
+/.github/workflows/ @wpak-ai @jonathanMLDev
