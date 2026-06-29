@@ -5,6 +5,7 @@ export type RankedNamespace = {
   score: number;
   record_count: number;
   reasons: string[];
+  source?: string;
 };
 
 /**
@@ -66,6 +67,7 @@ export function rankNamespacesByQuery(
         score,
         record_count: ns.recordCount,
         reasons,
+        ...(ns.source !== undefined ? { source: ns.source } : {}),
       };
     })
     .sort((a, b) => {

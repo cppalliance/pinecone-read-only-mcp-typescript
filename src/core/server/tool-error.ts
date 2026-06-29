@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getLogLevel, error as logError } from '../../logger.js';
+import { getLogLevel, error as logError, info } from '../../logger.js';
 
 /** User-facing error message: detailed in DEBUG, generic otherwise. */
 export function getToolErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -13,8 +13,15 @@ export function getToolErrorMessage(error: unknown, fallbackMessage: string): st
 }
 
 /** Log tool failure to stderr via the level-based logger. */
-export function logToolError(toolName: string, error: unknown): void {
-  logError(`Error in ${toolName} tool`, error);
+export function logToolError(toolName: string, error: unknown, source?: string): void {
+  const suffix = source ? ` [source=${source}]` : '';
+  logError(`Error in ${toolName} tool${suffix}`, error);
+}
+
+/** Log resolved source at INFO when multi-source routing is active. */
+export function logToolInvocation(toolName: string, source: string | undefined): void {
+  if (!source) return;
+  info(`${toolName} [source=${source}]`);
 }
 
 export const toolErrorCodeSchema = z.enum([

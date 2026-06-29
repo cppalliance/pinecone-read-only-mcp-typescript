@@ -57,6 +57,7 @@ For successful `query`, `query_documents`, and `guided_query` payloads, **rerank
 - **Hybrid Search**: Combines dense and sparse embeddings for superior recall
 - **Semantic Reranking**: Uses BGE reranker model for improved precision
 - **Dynamic Namespace Discovery**: Automatically discovers available namespaces in your Pinecone index
+- **Multi-Source (optional)**: Connect multiple Pinecone projects in one MCP server via `PINECONE_SOURCES` or a JSON config file; use `list_sources` and per-result `source` tags for routing
 - **Metadata Filtering**: Supports optional metadata filters for refined searches
 - **Fast presets**: Lazy initialization, connection pooling, and efficient result merging; use the `query` tool `preset=fast | detailed | full` to trade latency vs quality (no published benchmarks yet — treat descriptions as qualitative).
 - **Production-oriented defaults**: Input validation, error handling, and configurable logging; upgrading from **0.1.x** — see [MIGRATION.md](docs/MIGRATION.md).
@@ -121,6 +122,8 @@ The codebase is split into two layers:
 ## Configuration
 
 You need a **Pinecone API key**. **Index** (`PINECONE_INDEX_NAME` or `--index-name`) is required for core/library use; the **published CLI** defaults to `rag-hybrid` when unset (Alliance deployment). Sparse index defaults to `{index}-sparse`. **Rerank:** set `PINECONE_RERANK_MODEL` to enable; the CLI defaults to `bge-reranker-v2-m3` when unset. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) (core vs Alliance table).
+
+**Multiple projects:** set `PINECONE_SOURCES` or `PINECONE_CONFIG_FILE` instead of a single `PINECONE_API_KEY` — see [Multi-source mode](docs/CONFIGURATION.md#multi-source-mode).
 
 Quick reference (published CLI / Alliance — core embedders require index, no index/rerank defaults):
 

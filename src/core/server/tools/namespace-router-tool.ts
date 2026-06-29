@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { rankNamespacesByQuery } from '../namespace-router.js';
 import type { ServerContext } from '../server-context.js';
+import { sourceParamSchema } from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   lifecycleToolError,
@@ -22,7 +23,8 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
     {
       description:
         'Suggest likely namespace(s) for a user query using namespace names, metadata fields, and keyword heuristics. ' +
-        'Use before suggest_query_params when namespace is unclear.',
+        'Use before suggest_query_params when namespace is unclear. ' +
+        'In multi-source mode, ranks across all sources unless source is set.',
       inputSchema: {
         user_query: z
           .string()
@@ -34,6 +36,7 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
           .max(5)
           .default(3)
           .describe('Maximum number of suggested namespaces (1-5).'),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -41,21 +44,23 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
         if (ctx?.disposed) {
           return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
         }
-        const { user_query, top_n } = params;
+        const { user_query, top_n, source } = params;
         if (!user_query?.trim()) {
           return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
         const { data, cache_hit } = ctx
-          ? await ctx.getNamespacesWithCache()
+          ? await ctx.getNamespacesWithCache(source)
           : await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(user_query.trim(), data, top_n);
+        const top = ranked[0];
 
         const response: NamespaceRouterResponse = {
           status: 'success',
           cache_hit,
           user_query: user_query.trim(),
           suggestions: ranked,
-          recommended_namespace: ranked[0]?.namespace ?? null,
+          recommended_namespace: top?.namespace ?? null,
+          ...(top?.source !== undefined ? { recommended_source: top.source } : {}),
         };
         return validatedJsonResponse(namespaceRouterResponseSchema, response);
       } catch (error) {

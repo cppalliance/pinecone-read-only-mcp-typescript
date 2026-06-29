@@ -165,6 +165,26 @@ await setupCoreServer({ context: ctx });
 
 See [deprecation-policy.md § Active deprecations](./deprecation-policy.md#active-deprecations-legacy-module-facades) for the full inventory.
 
+### Multi-source mode and legacy facades
+
+When `PINECONE_SOURCES` or a config file is active, legacy module facades (`getNamespacesWithCache`, `registerUrlGenerator`, `markSuggested`, `requireSuggested`, etc.) operate on the **default source only** (first inline source, or `defaultSource` from JSON). They do not aggregate across projects. Prefer an explicit `ServerContext` built with `sourceRegistry` from `buildSourceRegistry()` for multi-tenant or multi-project embedding.
+
+## Unreleased: Multi-source Pinecone projects
+
+**Who is affected:** Operators running separate MCP entries per Pinecone project, or library embedders needing multiple indexes.
+
+**After (single MCP server):**
+
+```bash
+PINECONE_SOURCES=public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private
+```
+
+Or point `PINECONE_CONFIG_FILE` at a JSON file (see [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example)).
+
+**Client flow:** `list_sources` → `list_namespaces` (note `source` on each row) → pass `source` on `query` / `count` / etc. when a namespace name is ambiguous.
+
+Single-key configs are unchanged; no migration required when using one API key.
+
 ## Unreleased: trimmed library exports
 
 **Who is affected:** Library embedders that imported `buildQueryExperimental` or `buildGuidedQueryExperimental` from `@will-cppa/pinecone-read-only-mcp` or `/alliance`.

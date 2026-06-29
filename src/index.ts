@@ -3,7 +3,7 @@
 /**
  * Pinecone Read-Only MCP CLI entry point.
  *
- * Thin composition root: parseCli() -> resolveAllianceConfig() -> createServer(config, { client })
+ * Thin composition root: parseCli() -> resolveAllianceConfig() -> createServer(config, composition)
  * -> setupAllianceServer({ context: ctx }) -> connect to stdio transport.
  */
 
@@ -14,6 +14,7 @@ import type { AllianceServerConfig } from './alliance/config.js';
 import { resolveAllianceConfig } from './alliance/config.js';
 import { PineconeClient } from './core/pinecone-client.js';
 import { createServer } from './core/server/server-context.js';
+import { buildSourceRegistry } from './core/server/source-registry.js';
 import { setupAllianceServer } from './alliance/setup.js';
 import { setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
 
@@ -56,33 +57,56 @@ async function main(): Promise<void> {
       );
     }
 
-    const client = new PineconeClient({
-      apiKey: config.apiKey,
-      indexName: config.indexName,
-      sparseIndexName: config.sparseIndexName,
-      rerankModel: config.rerankModel,
-      defaultTopK: config.defaultTopK,
-      requestTimeoutMs: config.requestTimeoutMs,
-    });
-    const ctx = createServer(config, { client });
+    let ctx;
+    if (config.sources && config.sources.length > 0) {
+      const sourceRegistry = buildSourceRegistry({
+        sources: config.sources,
+        defaultSource: config.defaultSource ?? config.sources[0]!.name,
+        cacheTtlMs: config.cacheTtlMs,
+        defaultTopK: config.defaultTopK,
+        requestTimeoutMs: config.requestTimeoutMs,
+      });
+      ctx = createServer(config, { sourceRegistry });
+    } else {
+      const client = new PineconeClient({
+        apiKey: config.apiKey,
+        indexName: config.indexName,
+        sparseIndexName: config.sparseIndexName,
+        rerankModel: config.rerankModel,
+        defaultTopK: config.defaultTopK,
+        requestTimeoutMs: config.requestTimeoutMs,
+      });
+      ctx = createServer(config, { client });
+    }
 
     if (config.checkIndexes) {
-      const result = await client.checkIndexes();
+      const result = await ctx.checkAllIndexes();
       if (!result.ok) {
         for (const err of result.errors) {
           process.stderr.write(`--check-indexes: ${err}\n`);
         }
         process.exit(1);
       }
-      process.stderr.write(
-        `--check-indexes: dense index "${config.indexName}" and sparse index "${config.sparseIndexName}" reachable.\n`
-      );
+      if (config.sources && config.sources.length > 0) {
+        process.stderr.write(
+          `--check-indexes: all ${config.sources.length} source(s) reachable.\n`
+        );
+      } else {
+        process.stderr.write(
+          `--check-indexes: dense index "${config.indexName}" and sparse index "${config.sparseIndexName}" reachable.\n`
+        );
+      }
     }
 
     process.stderr.write(`Starting Pinecone Read-Only MCP server with stdio transport\n`);
-    process.stderr.write(
-      `Using Pinecone index: ${config.indexName} (sparse: ${config.sparseIndexName})\n`
-    );
+    if (config.sources && config.sources.length > 0) {
+      const names = config.sources.map((s) => s.name).join(', ');
+      process.stderr.write(`Multi-source mode: [${names}] (default: ${config.defaultSource ?? config.sources[0]!.name})\n`);
+    } else {
+      process.stderr.write(
+        `Using Pinecone index: ${config.indexName} (sparse: ${config.sparseIndexName})\n`
+      );
+    }
     if (config.rerankModel) {
       process.stderr.write(`Rerank model: ${config.rerankModel}\n`);
     }

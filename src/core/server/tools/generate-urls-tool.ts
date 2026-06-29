@@ -4,6 +4,11 @@ import { normalizeNamespace } from '../namespace-utils.js';
 import type { ServerContext } from '../server-context.js';
 import { generateUrlForNamespace } from '../url-registry.js';
 import {
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
+import {
   classifyToolCatchError,
   lifecycleToolError,
   logToolError,
@@ -41,6 +46,7 @@ export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext)
           .describe(
             'Array of records from retrieval results. Each item may be either metadata itself or an object containing a metadata field.'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -48,7 +54,7 @@ export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext)
         if (ctx?.disposed) {
           return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
         }
-        const { namespace, records } = params;
+        const { namespace, records, source } = params;
         const nsNorm = normalizeNamespace(namespace);
         if (!nsNorm) {
           return jsonErrorResponse(
@@ -57,10 +63,21 @@ export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext)
             })
           );
         }
+        let activeCtx = ctx;
+        let activeSource: string | undefined;
+        if (ctx) {
+          const resolved = await resolveSourceForTool(ctx, source, nsNorm);
+          if (!resolved.ok) {
+            return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+          }
+          activeCtx = resolved.ctx;
+          activeSource = resolved.source;
+        }
+
         const results = records.map((record, index) => {
           const metadata = extractMetadata(record);
-          const generated = ctx
-            ? ctx.generateUrlForNamespace(nsNorm, metadata)
+          const generated = activeCtx
+            ? activeCtx.generateUrlForNamespace(nsNorm, metadata, activeSource)
             : generateUrlForNamespace(nsNorm, metadata);
           return {
             index,

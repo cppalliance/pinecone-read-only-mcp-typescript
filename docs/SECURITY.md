@@ -2,8 +2,8 @@
 
 ## API keys
 
-- **Never** commit real Pinecone API keys. Use environment variables (`PINECONE_API_KEY`) or secret managers in CI.
-- The CLI and `resolveConfig` read keys only from argv/env/overrides — logs must not echo raw keys.
+- **Never** commit real Pinecone API keys. Use environment variables (`PINECONE_API_KEY`, or per-source keys referenced from `PINECONE_SOURCES` / a JSON config file) or secret managers in CI.
+- The CLI and `resolveConfig` read keys only from argv/env/overrides — logs must not echo raw keys. In multi-source mode, each source may use a different API key; all are redacted in logs and MCP responses.
 
 ## Log redaction
 

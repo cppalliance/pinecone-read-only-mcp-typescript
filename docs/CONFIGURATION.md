@@ -25,8 +25,10 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | `requestTimeoutMs` | `requestTimeoutMs` / `PINECONE_REQUEST_TIMEOUT_MS` | `15000` |
 | `disableSuggestFlow` | `disableSuggestFlow` / `PINECONE_DISABLE_SUGGEST_FLOW` | **Core `resolveConfig`:** `true` (gate off). **Alliance `resolveAllianceConfig` / CLI:** `false` (gate on). Bool parsing: true/1/yes/on |
 | `checkIndexes` | `checkIndexes` / `PINECONE_CHECK_INDEXES` | `false` |
+| `sources` | `sources` / `PINECONE_SOURCES` or JSON config file | Omitted in single-key mode; see [Multi-source mode](#multi-source-mode) |
+| `defaultSource` | JSON config `defaultSource` only | First source when using inline `PINECONE_SOURCES` |
 
-**Throws** if `apiKey` or `indexName` is missing after trim.
+**Throws** if `apiKey` or `indexName` is missing after trim (single-key mode). In multi-source mode, `PINECONE_API_KEY` is ignored when `PINECONE_SOURCES` or a config file is set; credentials come from each source entry.
 
 For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and use the three-step instance-first recipe at [Library embedding](#library-embedding) below.
 
@@ -40,6 +42,50 @@ For the full Alliance tool surface (including `suggest_query_params`, `guided_qu
 **Warning:** Switching between `resolveConfig` / `setupCoreServer` (package root) and `resolveAllianceConfig` / `setupAllianceServer` changes suggest-flow gate behavior. Core defaults bypass the gate; Alliance defaults enforce it. Use `guided_query` (registered in both setups) for single-call retrieval without manual `suggest_query_params`, or align `disableSuggestFlow` explicitly when migrating between entry points.
 
 C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/alliance/.env.example). Constants: `ALLIANCE_DEFAULT_INDEX_NAME` / `ALLIANCE_DEFAULT_RERANK_MODEL` from `@will-cppa/pinecone-read-only-mcp/alliance`.
+
+---
+
+## Multi-source mode
+
+Use **one MCP server entry** with multiple Pinecone API keys / projects when `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`) is set.
+
+### Inline format (`PINECONE_SOURCES` / `--sources`)
+
+Semicolon-separated entries: `name:apiKey:indexName`
+
+```bash
+PINECONE_SOURCES=public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private
+```
+
+API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key.
+
+### JSON config file
+
+Set `PINECONE_CONFIG_FILE` (or `--config-file`) to a path such as [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example):
+
+```json
+{
+  "defaultSource": "public",
+  "sources": {
+    "public": { "apiKey": "${PINECONE_PUBLIC_API_KEY}", "indexName": "rag-hybrid" },
+    "private": { "apiKey": "${PINECONE_PRIVATE_API_KEY}", "indexName": "rag-private" }
+  }
+}
+```
+
+Values support `${ENV_VAR}` indirection (resolved at startup). Per-source `sparseIndexName` and `rerankModel` are optional; Alliance defaults apply when omitted.
+
+### MCP tools and routing
+
+| Tool | `source` parameter |
+| ---- | ------------------ |
+| `list_sources` | Registered only when more than one source is configured |
+| `list_namespaces`, `namespace_router` | Omit to aggregate all sources; results include `source` when tagged |
+| `query`, `count`, `query_documents`, `keyword_search`, `generate_urls`, `suggest_query_params`, `guided_query` | Omit when the namespace uniquely identifies one source; required when the same namespace exists on multiple sources |
+
+Discovery responses may include `source_errors` when one project fails but others succeed. Suggest-flow state uses compound keys `source:namespace` in multi-source mode.
+
+Single-key deployments (`PINECONE_API_KEY` + `PINECONE_INDEX_NAME` only) are unchanged — no `source` field on responses and no `list_sources` tool.
 
 ---
 
@@ -58,6 +104,8 @@ C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/all
 | `--request-timeout-ms` | `requestTimeoutMs` |
 | `--disable-suggest-flow` | `disableSuggestFlow: true` |
 | `--check-indexes` | `checkIndexes: true` |
+| `--sources` | `sources` (inline multi-source string) |
+| `--config-file` | `configFile` / `PINECONE_CONFIG_FILE` |
 | `--help` / `-h` | Print help and exit |
 | `--version` / `-v` | Print version and exit |
 

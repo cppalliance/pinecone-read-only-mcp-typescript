@@ -1,0 +1,14 @@
+{
+  "defaultSource": "public",
+  "sources": {
+    "public": {
+      "apiKey": "${PINECONE_PUBLIC_API_KEY}",
+      "indexName": "rag-hybrid"
+    },
+    "private": {
+      "apiKey": "${PINECONE_PRIVATE_API_KEY}",
+      "indexName": "rag-private",
+      "sparseIndexName": "rag-private-sparse"
+    }
+  }
+}

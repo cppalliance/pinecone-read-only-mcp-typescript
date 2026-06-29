@@ -37,12 +37,13 @@ export class PineconeIndexSession {
 
   constructor(
     private readonly apiKey: string,
-    private readonly indexName: string
+    private readonly indexName: string,
+    private readonly sparseIndexName?: string
   ) {}
 
-  /** Same as hybrid sparse index name: `{indexName}-sparse`. */
+  /** Sparse index name; defaults to `{indexName}-sparse`. */
   getSparseIndexName(): string {
-    return `${this.indexName}-sparse`;
+    return this.sparseIndexName ?? `${this.indexName}-sparse`;
   }
 
   /** Ensure Pinecone client is initialized */
