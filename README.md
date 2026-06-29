@@ -7,7 +7,11 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.25+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
-**Current version: 0.2.0** (npm `latest` after publish). Pin `@0.2.0` in install and MCP config for reproducible upgrades.
+Current version: 0.3.0 (npm `latest` after publish). Pin `@0.3.0` in install and MCP config for reproducible upgrades.
+
+## Upgrading to 0.3.0
+
+Version **0.3.0** includes breaking MCP and library changes: experimental response fields nested under `experimental`, branded `CoreServerConfig` / `AllianceServerConfig`, legacy module-facade deprecations, and core `resolveConfig` requiring an index name with suggest-flow off by default. See [docs/MIGRATION.md](docs/MIGRATION.md) for before/after examples and the [CHANGELOG](CHANGELOG.md#030---2026-06-23) **Changed** section for the full list.
 
 ## Upgrading from 0.1.x
 
@@ -29,7 +33,7 @@ While the package is **`0.y.z`**, minor releases may include breaking changes ([
 | [docs/deprecation-policy.md](docs/deprecation-policy.md) | Release & deprecation policy           |
 | [docs/CI_CD.md](docs/CI_CD.md)                           | GitHub Actions, SBOM, Docker, releases |
 | [docs/RELEASING.md](docs/RELEASING.md)                   | npm publish via GitHub Releases        |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)             | How to contribute                      |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                       | How to contribute                      |
 | [docs/SECURITY.md](docs/SECURITY.md)                     | Vulnerability reporting                |
 
 ## Error responses
@@ -65,25 +69,25 @@ For successful `query`, `query_documents`, and `guided_query` payloads, **rerank
 ### As a Package
 
 ```bash
-npm install @will-cppa/pinecone-read-only-mcp@0.2.0
+npm install @will-cppa/pinecone-read-only-mcp@0.3.0
 ```
 
 Or using yarn:
 
 ```bash
-yarn add @will-cppa/pinecone-read-only-mcp@0.2.0
+yarn add @will-cppa/pinecone-read-only-mcp@0.3.0
 ```
 
 Or using pnpm:
 
 ```bash
-pnpm add @will-cppa/pinecone-read-only-mcp@0.2.0
+pnpm add @will-cppa/pinecone-read-only-mcp@0.3.0
 ```
 
 ### Global Installation
 
 ```bash
-npm install -g @will-cppa/pinecone-read-only-mcp@0.2.0
+npm install -g @will-cppa/pinecone-read-only-mcp@0.3.0
 ```
 
 ### From Source
@@ -249,7 +253,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "pinecone-search": {
       "command": "npx",
-      "args": ["-y", "@will-cppa/pinecone-read-only-mcp@0.2.0"],
+      "args": ["-y", "@will-cppa/pinecone-read-only-mcp@0.3.0"],
       "env": {
         "PINECONE_API_KEY": "your-api-key-here",
         "PINECONE_INDEX_NAME": "your-index-name",
@@ -269,7 +273,7 @@ Or with explicit options:
       "command": "npx",
       "args": [
         "-y",
-        "@will-cppa/pinecone-read-only-mcp@0.2.0",
+        "@will-cppa/pinecone-read-only-mcp@0.3.0",
         "--api-key",
         "your-api-key-here",
         "--index-name",
@@ -302,7 +306,7 @@ For a global installation:
 Run the server using npx (no installation required):
 
 ```bash
-npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY --index-name YOUR_INDEX
+npx @will-cppa/pinecone-read-only-mcp@0.3.0 --api-key YOUR_API_KEY --index-name YOUR_INDEX
 ```
 
 Or if installed globally:
@@ -342,10 +346,10 @@ Run `pinecone-read-only-mcp --help` for the full option list.
 
 ```bash
 # install
-npm i @will-cppa/pinecone-read-only-mcp@0.2.0
+npm i @will-cppa/pinecone-read-only-mcp@0.3.0
 
 # run
-npx @will-cppa/pinecone-read-only-mcp@0.2.0 --api-key YOUR_API_KEY
+npx @will-cppa/pinecone-read-only-mcp@0.3.0 --api-key YOUR_API_KEY
 ```
 
 ### Deploy with Docker
@@ -751,14 +755,7 @@ npm run dev -- --api-key YOUR_API_KEY
 
 ### Contribution Guidelines
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Ensure all tests pass: `npm test`
-5. Ensure code quality checks pass: `npm run lint && npm run format:check && npm run typecheck`
-6. Commit your changes: `git commit -am 'Add some feature'`
-7. Push to the branch: `git push origin feature-name`
-8. Submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, dev setup, architecture overview, PR conventions, and code style. Run `npm run ci` before opening a pull request.
 
 ## Dependencies
 

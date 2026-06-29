@@ -10,7 +10,7 @@ For step-by-step upgrades, see [MIGRATION.md](./MIGRATION.md). For publish mecha
 
 ## Semantic versioning while `0.y.z`
 
-This package currently ships as **`0.y.z`**. Under [Semantic Versioning §4](https://semver.org/spec/v2.0.0.html#spec-item-4), **minor releases may include breaking changes** until the first `1.0.0` release. Consumers should **pin an exact version** (for example `@will-cppa/pinecone-read-only-mcp@0.2.0`) in `package.json`, MCP server config, and Docker tags.
+This package currently ships as **`0.y.z`**. Under [Semantic Versioning §4](https://semver.org/spec/v2.0.0.html#spec-item-4), **minor releases may include breaking changes** until the first `1.0.0` release. Consumers should **pin an exact version** (for example `@will-cppa/pinecone-read-only-mcp@0.3.0`) in `package.json`, MCP server config, and Docker tags.
 
 After **`1.0.0`**, this project intends to follow standard semver: breaking changes land only in **major** releases, and the deprecation window below becomes **binding** for removals that were previously announced as deprecated.
 
@@ -142,7 +142,7 @@ Each breaking bullet should state:
 - `old_name` on … — use `new_name` instead; removal targeted in **0.4.0** (deprecated **0.2.0**). See [MIGRATION.md](./MIGRATION.md#anchor).
 ```
 
-Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md) for PR expectations.
+Contributors: see [CONTRIBUTING.md](../CONTRIBUTING.md) for PR expectations.
 
 ## Release hygiene
 
@@ -156,6 +156,6 @@ Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md) for PR expectations.
 | -------- | ---- |
 | [MIGRATION.md](./MIGRATION.md) | Per-version upgrade how-to |
 | [CHANGELOG.md](../CHANGELOG.md) | Authoritative change list |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | PR and CHANGELOG expectations |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | PR and CHANGELOG expectations |
 | [RELEASING.md](./RELEASING.md) | npm publish via GitHub Releases |
 | [templates/breaking-change-release-notes.md](./templates/breaking-change-release-notes.md) | GitHub Release body template |
