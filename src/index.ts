@@ -16,7 +16,7 @@ import { PineconeClient } from './core/pinecone-client.js';
 import { createServer } from './core/server/server-context.js';
 import { buildSourceRegistry } from './core/server/source-registry.js';
 import { setupAllianceServer } from './alliance/setup.js';
-import { setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
+import { error as logError, redactApiKey, setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
 
 dotenv.config();
 
@@ -38,7 +38,7 @@ function buildConfigOrExit(): AllianceServerConfig {
   try {
     return resolveAllianceConfig(parsed.overrides);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = redactApiKey(err instanceof Error ? err.message : String(err));
     process.stderr.write(`Error: ${message}\n`);
     process.exit(1);
   }
@@ -130,7 +130,8 @@ async function main(): Promise<void> {
       process.exit(0);
     });
   } catch (error) {
-    process.stderr.write(`Fatal error in main(): ${(error as Error)?.stack ?? String(error)}\n`);
+    const summary = redactApiKey(error instanceof Error ? error.message : String(error));
+    logError(`Fatal error in main(): ${summary}`);
     process.exit(1);
   }
 }

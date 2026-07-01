@@ -12,6 +12,7 @@ import { performance } from 'node:perf_hooks';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { PineconeClient } from '../src/pinecone-client.js';
 import { setLogLevel } from '../src/logger.js';
+import { exitOnDemoFailure } from '../examples/lib/exit-on-failure.js';
 import { setPineconeClient } from '../src/server/client-context.js';
 import { invalidateNamespacesCache, getNamespacesWithCache } from '../src/server/namespaces-cache.js';
 import { registerGuidedQueryTool } from '../src/server/tools/guided-query-tool.js';
@@ -323,7 +324,4 @@ async function main(): Promise<void> {
   console.log(`Wrote ${baselinePath}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(exitOnDemoFailure('latency benchmark'));
