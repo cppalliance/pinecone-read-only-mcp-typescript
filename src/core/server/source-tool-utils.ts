@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getPineconeClient } from './client-context.js';
 import type { PineconeClient } from '../pinecone-client.js';
 import type { ServerContext } from './server-context.js';
-import { logToolInvocation, validationToolError } from './tool-error.js';
+import { logToolInvocation, validationToolError, type ToolError } from './tool-error.js';
 
 export const sourceParamSchema = z
   .string()
@@ -19,7 +19,19 @@ export const sourceParamSchema = z
 export type ResolveSourceFailureCode =
   | 'UNKNOWN_SOURCE'
   | 'AMBIGUOUS_NAMESPACE'
-  | 'NAMESPACE_NOT_FOUND';
+  | 'NAMESPACE_NOT_FOUND'
+  | 'PARTIAL_SOURCE_AGGREGATION';
+
+function validationFieldForSourceCode(code: ResolveSourceFailureCode): 'source' | 'namespace' {
+  switch (code) {
+    case 'NAMESPACE_NOT_FOUND':
+    case 'AMBIGUOUS_NAMESPACE':
+      return 'namespace';
+    case 'UNKNOWN_SOURCE':
+    case 'PARTIAL_SOURCE_AGGREGATION':
+      return 'source';
+  }
+}
 
 export async function resolveSourceForTool(
   ctx: ServerContext | undefined,
@@ -43,18 +55,31 @@ export async function resolveSourceForTool(
   return { ok: true, source: resolved.source, ctx };
 }
 
-export function sourceValidationError(
-  code: ResolveSourceFailureCode,
-  message: string,
-  field: 'source' | 'namespace' = 'source'
-) {
+export function sourceValidationError(code: ResolveSourceFailureCode, message: string) {
+  const field = validationFieldForSourceCode(code);
   const suggestion =
     code === 'AMBIGUOUS_NAMESPACE'
       ? 'Call list_namespaces and pass source explicitly when the namespace exists on multiple projects.'
       : code === 'UNKNOWN_SOURCE'
         ? 'Call list_sources to see configured source names.'
-        : 'Use list_namespaces to discover valid namespace and source pairs.';
+        : code === 'PARTIAL_SOURCE_AGGREGATION'
+          ? 'Pass source explicitly, or fix failing sources listed in list_namespaces source_errors and retry.'
+          : 'Use list_namespaces to discover valid namespace and source pairs.';
   return validationToolError(message, field, { suggestion });
+}
+
+/** Reject `source` when legacy tool registration has no ServerContext. */
+export function rejectSourceWithoutContext(
+  source: string | undefined,
+  ctx: ServerContext | undefined
+): ToolError | null {
+  if (source && !ctx) {
+    return validationToolError(
+      'source parameter requires ServerContext (multi-source mode).',
+      'source'
+    );
+  }
+  return null;
 }
 
 /** Pinecone client for a resolved source, or the context/default client in single-source mode. */

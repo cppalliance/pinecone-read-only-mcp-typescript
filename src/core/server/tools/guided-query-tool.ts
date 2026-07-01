@@ -166,7 +166,9 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
         }
 
         const ns = namespaces.find(
-          (n) => n.namespace === namespace || normalizeNamespace(n.namespace) === namespace
+          (n) =>
+            (n.namespace === namespace || normalizeNamespace(n.namespace) === namespace) &&
+            (selectedSource === undefined || n.source === selectedSource)
         );
         const suggestion = suggestQueryParams(ns?.metadata ?? null, queryText);
         if (!suggestion.namespace_found) {

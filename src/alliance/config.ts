@@ -50,8 +50,8 @@ export function resolveAllianceConfig(
     ALLIANCE_DEFAULT_RERANK_MODEL;
   const allianceParseOptions: ParseSourcesOptions = {
     allianceDefaults: {
-      indexName: ALLIANCE_DEFAULT_INDEX_NAME,
-      rerankModel: ALLIANCE_DEFAULT_RERANK_MODEL,
+      indexName,
+      rerankModel,
     },
   };
   const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env, allianceParseOptions);

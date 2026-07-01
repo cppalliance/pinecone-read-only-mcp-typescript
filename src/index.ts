@@ -89,7 +89,7 @@ async function main(): Promise<void> {
       const result = await ctx.checkAllIndexes();
       if (!result.ok) {
         for (const err of result.errors) {
-          process.stderr.write(`--check-indexes: ${err}\n`);
+          process.stderr.write(`--check-indexes: ${redactApiKey(err)}\n`);
         }
         process.exit(1);
       }
@@ -102,6 +102,7 @@ async function main(): Promise<void> {
           `--check-indexes: dense index "${config.indexName}" and sparse index "${config.sparseIndexName}" reachable.\n`
         );
       }
+      process.exit(0);
     }
 
     process.stderr.write(`Starting Pinecone Read-Only MCP server with stdio transport\n`);

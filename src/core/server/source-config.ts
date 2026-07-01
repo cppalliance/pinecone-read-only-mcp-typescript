@@ -194,7 +194,7 @@ export function parseSourcesConfigFile(
   return { sources, defaultSource };
 }
 
-/** Resolve sources from overrides/env/file with CLI > env > file precedence for inline sources. */
+/** Resolve sources from overrides/env/file; config file wins over inline when both are set. */
 export function resolveSourceDefinitions(
   overrides: { sources?: string; configFile?: string },
   env: NodeJS.ProcessEnv = process.env,
@@ -204,12 +204,12 @@ export function resolveSourceDefinitions(
   const configFile =
     trimOptional(overrides.configFile) ?? trimOptional(env['PINECONE_CONFIG_FILE']);
 
+  if (configFile) {
+    return parseSourcesConfigFile(configFile, env, options);
+  }
   if (inline) {
     const sources = parseInlineSources(inline, env, options);
     return { sources, defaultSource: sources[0]!.name };
-  }
-  if (configFile) {
-    return parseSourcesConfigFile(configFile, env, options);
   }
   return null;
 }

@@ -1,9 +1,13 @@
+import { redactApiKey } from '../../src/logger.js';
+
 /**
- * Exit a demo script without logging the raw error object (CodeQL: js/clear-text-logging).
+ * Exit a demo script with a redacted error detail (CodeQL: js/clear-text-logging).
  */
-export function exitOnDemoFailure(label: string): () => never {
-  return () => {
-    console.error(`${label} failed. Check credentials and index configuration.`);
-    process.exit(1);
+export function exitOnDemoFailure(label: string): (err: unknown) => void {
+  return (err: unknown) => {
+    const detail = redactApiKey(err instanceof Error ? err.message : String(err));
+    console.error(`${label} failed: ${detail}`);
+    console.error('Check credentials and index configuration.');
+    process.exitCode = 1;
   };
 }

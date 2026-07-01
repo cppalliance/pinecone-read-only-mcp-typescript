@@ -165,6 +165,7 @@ async function registerCoreToolSurface(
   registerGenerateUrlsTool(server, ctx);
   registerGuidedQueryTool(server, ctx);
 
+  ctx.getConfig();
   if (ctx.isMultiSource()) {
     registerListSourcesTool(server, ctx);
   }

@@ -199,7 +199,7 @@ export function resolveConfig(
 
   const multi = resolveSourceDefinitions(overrides, env, parseSourcesOptions);
   if (multi) {
-    const primary = multi.sources[0]!;
+    const primary = multi.sources.find((s) => s.name === multi.defaultSource) ?? multi.sources[0]!;
     if (trimOptional(env['PINECONE_API_KEY']) || trimOptional(overrides.apiKey)) {
       process.stderr.write(
         'Warning: PINECONE_SOURCES / config file is active; PINECONE_API_KEY is ignored.\n'

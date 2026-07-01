@@ -224,7 +224,10 @@ async function test() {
 }
 
 // Run the test
-test().catch(() => {
-  console.error('Fatal error during test-search. Check PINECONE_API_KEY and index configuration.');
+test().catch((error) => {
+  console.error('Fatal error during test-search.');
+  if (error instanceof Error) {
+    console.error('   Message:', redactApiKey(error.message));
+  }
   process.exit(1);
 });

@@ -7,6 +7,7 @@ import type { ServerContext } from '../server-context.js';
 import {
   getClientForResolvedSource,
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -75,6 +76,11 @@ async function executeKeywordSearch(
     }
   }
 
+  const sourceError = rejectSourceWithoutContext(source, ctx);
+  if (sourceError) {
+    return { ok: false, error: sourceError };
+  }
+
   let activeCtx = ctx;
   let activeSource: string | undefined;
   if (ctx) {
@@ -99,9 +105,9 @@ async function executeKeywordSearch(
   });
 
   const formattedResults = formatQueryResultRows(results, {
-    namespace: normalizedNamespace,
-    ...(activeSource !== undefined ? { source: activeSource } : {}),
     ctx: activeCtx,
+    namespace: normalizedNamespace,
+    source: activeSource,
   });
 
   const response: KeywordSearchSuccessResponse = {

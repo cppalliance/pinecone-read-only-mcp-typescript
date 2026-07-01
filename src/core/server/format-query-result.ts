@@ -82,7 +82,7 @@ export function formatSearchResultAsRow(
     score: Math.round(doc.score * 10000) / 10000,
     reranked: doc.reranked,
     metadata,
-    ...(options?.source !== undefined ? { source: options.source } : {}),
+    ...(options?.source && options?.ctx?.isMultiSource() ? { source: options.source } : {}),
   };
 }
 

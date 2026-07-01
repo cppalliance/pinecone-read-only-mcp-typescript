@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import type { ServerContext } from '../server-context.js';
-import { sourceParamSchema } from '../source-tool-utils.js';
+import { rejectSourceWithoutContext, sourceParamSchema } from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   lifecycleToolError,
@@ -18,6 +18,10 @@ async function executeListNamespaces(source: string | undefined, ctx?: ServerCon
   try {
     if (ctx?.disposed) {
       return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
+    }
+    const sourceError = rejectSourceWithoutContext(source, ctx);
+    if (sourceError) {
+      return jsonErrorResponse(sourceError);
     }
     if (source) {
       logToolInvocation('list_namespaces', source);

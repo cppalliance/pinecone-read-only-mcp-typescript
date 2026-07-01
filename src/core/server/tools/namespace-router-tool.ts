@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { rankNamespacesByQuery } from '../namespace-router.js';
 import type { ServerContext } from '../server-context.js';
-import { sourceParamSchema } from '../source-tool-utils.js';
+import { rejectSourceWithoutContext, sourceParamSchema } from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   lifecycleToolError,
@@ -46,6 +46,10 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
           return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
         }
         const { user_query, top_n, source } = params;
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
+        }
         if (!user_query?.trim()) {
           return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }

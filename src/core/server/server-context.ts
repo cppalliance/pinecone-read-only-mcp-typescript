@@ -23,7 +23,11 @@ export type ResolveSourceResult =
   | { ok: true; source: string }
   | {
       ok: false;
-      code: 'UNKNOWN_SOURCE' | 'AMBIGUOUS_NAMESPACE' | 'NAMESPACE_NOT_FOUND';
+      code:
+        | 'UNKNOWN_SOURCE'
+        | 'AMBIGUOUS_NAMESPACE'
+        | 'NAMESPACE_NOT_FOUND'
+        | 'PARTIAL_SOURCE_AGGREGATION';
       message: string;
     };
 
@@ -326,7 +330,17 @@ export class ServerContext<
       if (!nsNorm) {
         return { ok: false, code: 'NAMESPACE_NOT_FOUND', message: 'namespace cannot be empty.' };
       }
-      const { data } = await this.getNamespacesWithCache();
+      const cacheResult = await this.getNamespacesWithCache();
+      const sourceErrors = cacheResult.source_errors;
+      if (sourceErrors && Object.keys(sourceErrors).length > 0) {
+        return {
+          ok: false,
+          code: 'PARTIAL_SOURCE_AGGREGATION',
+          message:
+            'Namespace discovery is incomplete because one or more sources failed. Pass source explicitly or retry after resolving source_errors.',
+        };
+      }
+      const { data } = cacheResult;
       const matches = data.filter((n) => normalizeNamespace(n.namespace) === nsNorm);
       if (matches.length === 1) {
         return { ok: true, source: matches[0]!.source ?? registry.getDefaultName() };
@@ -410,12 +424,46 @@ export class ServerContext<
     this.urlGenerators.set(normalizedNamespace, generator);
   }
 
-  unregisterUrlGenerator(namespace: string): boolean {
-    return this.urlGenerators.delete(namespace.trim());
+  unregisterUrlGenerator(namespace: string, source?: string): boolean {
+    const trimmed = namespace.trim();
+    if (!this.isMultiSource()) {
+      return this.urlGenerators.delete(trimmed);
+    }
+    const sources =
+      this.sourceRegistry?.listSources() ??
+      this.configValue?.sources?.map((entry) => entry.name) ??
+      [];
+    if (source) {
+      return this.urlGenerators.delete(urlRegistryKey(trimmed, source, true));
+    }
+    let removed = false;
+    for (const src of sources) {
+      if (this.urlGenerators.delete(urlRegistryKey(trimmed, src, true))) {
+        removed = true;
+      }
+    }
+    return removed || this.urlGenerators.delete(trimmed);
   }
 
-  hasUrlGenerator(namespace: string): boolean {
-    return this.urlGenerators.has(namespace.trim());
+  hasUrlGenerator(namespace: string, source?: string): boolean {
+    const trimmed = namespace.trim();
+    if (!this.isMultiSource()) {
+      return this.urlGenerators.has(trimmed);
+    }
+    if (source) {
+      return (
+        this.urlGenerators.has(urlRegistryKey(trimmed, source, true)) ||
+        this.urlGenerators.has(trimmed)
+      );
+    }
+    const sources =
+      this.sourceRegistry?.listSources() ??
+      this.configValue?.sources?.map((entry) => entry.name) ??
+      [];
+    return (
+      sources.some((src) => this.urlGenerators.has(urlRegistryKey(trimmed, src, true))) ||
+      this.urlGenerators.has(trimmed)
+    );
   }
 
   generateUrlForNamespace(

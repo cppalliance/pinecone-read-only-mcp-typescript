@@ -44,7 +44,23 @@ describe('guided_query tool (multi-source)', () => {
     expect(query).toHaveBeenCalledOnce();
   });
 
-  it('returns VALIDATION on source when namespace exists on multiple sources', async () => {
+  it('returns VALIDATION on namespace when namespace is missing on all sources', async () => {
+    const { ctx } = createMultiSourceTestContext();
+    const server = createMockServer();
+    registerGuidedQueryTool(server as never, ctx);
+    const err = assertToolErrorCode(
+      await server.getHandler('guided_query')!({
+        user_query: 'contracts',
+        namespace: 'missing-ns',
+        preferred_tool: 'fast',
+        enrich_urls: false,
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('namespace');
+  });
+
+  it('returns VALIDATION on namespace when namespace exists on multiple sources', async () => {
     const { ctx } = createMultiSourceTestContext();
     const server = createMockServer();
     registerGuidedQueryTool(server as never, ctx);
@@ -57,7 +73,7 @@ describe('guided_query tool (multi-source)', () => {
       }),
       'VALIDATION'
     );
-    expect(err.field).toBe('source');
+    expect(err.field).toBe('namespace');
     expect(err.message).toMatch(/multiple sources/i);
   });
 });

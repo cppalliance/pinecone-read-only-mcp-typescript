@@ -6,6 +6,7 @@ import {
   parseInlineSources,
   parseSourcesConfigFile,
   resolveEnvIndirection,
+  resolveSourceDefinitions,
 } from './source-config.js';
 import { resolveConfig } from '../config.js';
 
@@ -105,5 +106,68 @@ describe('source-config', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it('resolveConfig uses defaultSource for top-level index fields', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_2',
+        sources: {
+          api_key_1: { apiKey: 'k1', indexName: 'index_name_1' },
+          api_key_2: { apiKey: 'k2', indexName: 'index_name_2' },
+        },
+      })
+    );
+    vi.stubEnv('PINECONE_CONFIG_FILE', filePath);
+    try {
+      const cfg = resolveConfig({});
+      expect(cfg.defaultSource).toBe('api_key_2');
+      expect(cfg.indexName).toBe('index_name_2');
+      expect(cfg.apiKey).toBe('k2');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('resolveSourceDefinitions prefers config file over inline env', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'from_file',
+        sources: {
+          from_file: { apiKey: 'file-key', indexName: 'file-index' },
+        },
+      })
+    );
+    const env = {
+      PINECONE_SOURCES: 'from_inline:sk:inline-index',
+      PINECONE_CONFIG_FILE: filePath,
+    };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.defaultSource).toBe('from_file');
+    expect(parsed?.sources[0]?.indexName).toBe('file-index');
+  });
+
+  it('resolveSourceDefinitions prefers overrides.configFile over env PINECONE_SOURCES', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'from_override',
+        sources: {
+          from_override: { apiKey: 'override-key', indexName: 'override-index' },
+        },
+      })
+    );
+    const env = { PINECONE_SOURCES: 'from_env:sk:env-index' };
+    const parsed = resolveSourceDefinitions({ configFile: filePath }, env);
+    expect(parsed?.defaultSource).toBe('from_override');
+    expect(parsed?.sources[0]?.indexName).toBe('override-index');
   });
 });
