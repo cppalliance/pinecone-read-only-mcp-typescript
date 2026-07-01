@@ -1,5 +1,4 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import type { ServerContext } from '../server-context.js';
 import { sourceParamSchema } from '../source-tool-utils.js';
