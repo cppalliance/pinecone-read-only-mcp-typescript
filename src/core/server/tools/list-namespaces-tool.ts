@@ -2,7 +2,12 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getNamespacesWithCache } from '../namespaces-cache.js';
 import type { ServerContext } from '../server-context.js';
 import { sourceParamSchema } from '../source-tool-utils.js';
-import { classifyToolCatchError, lifecycleToolError, logToolError, logToolInvocation } from '../tool-error.js';
+import {
+  classifyToolCatchError,
+  lifecycleToolError,
+  logToolError,
+  logToolInvocation,
+} from '../tool-error.js';
 import {
   listNamespacesResponseSchema,
   type ListNamespacesSuccessResponse,
@@ -17,10 +22,11 @@ async function executeListNamespaces(source: string | undefined, ctx?: ServerCon
     if (source) {
       logToolInvocation('list_namespaces', source);
     }
-    const cacheResult = ctx ? await ctx.getNamespacesWithCache(source) : await getNamespacesWithCache();
+    const cacheResult = ctx
+      ? await ctx.getNamespacesWithCache(source)
+      : await getNamespacesWithCache();
     const { data: namespacesInfo, cache_hit, expires_at } = cacheResult;
-    const rawSourceErrors =
-      'source_errors' in cacheResult ? cacheResult.source_errors : undefined;
+    const rawSourceErrors = 'source_errors' in cacheResult ? cacheResult.source_errors : undefined;
     const source_errors =
       rawSourceErrors !== undefined &&
       rawSourceErrors !== null &&

@@ -68,10 +68,7 @@ export type { UrlGenerationResult, UrlGenerator, UrlGeneratorFn } from './server
 export { resolveConfig, trimOptional } from './config.js';
 export type { SourceDefinition } from './server/source-config.js';
 export { SourceRegistry, buildSourceRegistry } from './server/source-registry.js';
-export type {
-  AggregatedCacheResult,
-  PerSourceCacheResult,
-} from './server/source-registry.js';
+export type { AggregatedCacheResult, PerSourceCacheResult } from './server/source-registry.js';
 export type {
   ServerConfig,
   ServerConfigBase,

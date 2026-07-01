@@ -9,9 +9,9 @@ const sources: SourceDefinition[] = [
 
 function mockClient(name: string) {
   return {
-    listNamespacesWithMetadata: vi.fn().mockResolvedValue([
-      { namespace: 'wg21', recordCount: 10, metadata: { title: 'string' } },
-    ]),
+    listNamespacesWithMetadata: vi
+      .fn()
+      .mockResolvedValue([{ namespace: 'wg21', recordCount: 10, metadata: { title: 'string' } }]),
     checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
     getSparseIndexName: () => `${name}-sparse`,
   };

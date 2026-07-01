@@ -287,11 +287,11 @@ export class ServerContext<
     return this.client;
   }
 
-  async resolveSource(
-    source?: string,
-    namespace?: string
-  ): Promise<ResolveSourceResult> {
-    if (!this.isMultiSource() && !(this.getConfig().sources && this.getConfig().sources!.length > 0)) {
+  async resolveSource(source?: string, namespace?: string): Promise<ResolveSourceResult> {
+    if (
+      !this.isMultiSource() &&
+      !(this.getConfig().sources && this.getConfig().sources!.length > 0)
+    ) {
       return { ok: true, source: this.getDefaultSourceName() };
     }
     const registry = this.sourceRegistry ?? this.ensureSourceRegistry();
@@ -456,11 +456,7 @@ export class ServerContext<
     }
   }
 
-  markSuggested(
-    namespace: string,
-    state: Omit<FlowState, 'updatedAt'>,
-    source?: string
-  ): void {
+  markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>, source?: string): void {
     const key = normalizeNamespace(namespace);
     if (!key) {
       throw new Error('markSuggested: namespace must not be empty after trim');
@@ -539,7 +535,10 @@ export class ServerContext<
     expires_at: number;
     source_errors?: Record<string, string>;
   }> {
-    if (this.isMultiSource() || (this.getConfig().sources && this.getConfig().sources!.length > 0)) {
+    if (
+      this.isMultiSource() ||
+      (this.getConfig().sources && this.getConfig().sources!.length > 0)
+    ) {
       const registry = this.sourceRegistry ?? this.ensureSourceRegistry();
       if (source) {
         const result = await registry.getNamespacesWithCache(source);

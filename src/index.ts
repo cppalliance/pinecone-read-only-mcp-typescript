@@ -101,7 +101,9 @@ async function main(): Promise<void> {
     process.stderr.write(`Starting Pinecone Read-Only MCP server with stdio transport\n`);
     if (config.sources && config.sources.length > 0) {
       const names = config.sources.map((s) => s.name).join(', ');
-      process.stderr.write(`Multi-source mode: [${names}] (default: ${config.defaultSource ?? config.sources[0]!.name})\n`);
+      process.stderr.write(
+        `Multi-source mode: [${names}] (default: ${config.defaultSource ?? config.sources[0]!.name})\n`
+      );
     } else {
       process.stderr.write(
         `Using Pinecone index: ${config.indexName} (sparse: ${config.sparseIndexName})\n`

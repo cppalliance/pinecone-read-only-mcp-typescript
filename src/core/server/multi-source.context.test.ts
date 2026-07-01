@@ -49,6 +49,8 @@ describe('multi-source ServerContext', () => {
       'private'
     );
     expect(ctx.generateUrlForNamespace('shared', {}, 'public').url).toBe('https://public.example');
-    expect(ctx.generateUrlForNamespace('shared', {}, 'private').url).toBe('https://private.example');
+    expect(ctx.generateUrlForNamespace('shared', {}, 'private').url).toBe(
+      'https://private.example'
+    );
   });
 });

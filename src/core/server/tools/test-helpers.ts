@@ -215,19 +215,11 @@ export function createMultiSourceTestContext(options?: {
   const namespacesBySource =
     options?.namespacesBySource ??
     Object.fromEntries(
-      sources.map((s, i) => [
-        s.name,
-        i === 0 ? ['wg21', 'shared'] : ['shared', 'internal'],
-      ])
+      sources.map((s, i) => [s.name, i === 0 ? ['wg21', 'shared'] : ['shared', 'internal']])
     );
   const clients =
     options?.clients ??
-    new Map(
-      sources.map((s) => [
-        s.name,
-        makeMockPineconeClient(namespacesBySource[s.name] ?? []),
-      ])
-    );
+    new Map(sources.map((s) => [s.name, makeMockPineconeClient(namespacesBySource[s.name] ?? [])]));
   const registry = buildSourceRegistry({
     sources,
     defaultSource,
@@ -236,9 +228,7 @@ export function createMultiSourceTestContext(options?: {
     requestTimeoutMs: 15_000,
     clients: clients as unknown as Map<string, PineconeClient>,
   });
-  const inlineSources = sources
-    .map((s) => `${s.name}:${s.apiKey}:${s.indexName}`)
-    .join(';');
+  const inlineSources = sources.map((s) => `${s.name}:${s.apiKey}:${s.indexName}`).join(';');
   const config = resolveConfig({
     sources: inlineSources,
     disableSuggestFlow: false,

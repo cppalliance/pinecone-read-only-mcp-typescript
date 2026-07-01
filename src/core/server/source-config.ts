@@ -111,15 +111,15 @@ export function parseInlineSources(
     const apiKey = parts.slice(1, -1).join(':').trim();
     const indexName = parts[parts.length - 1]?.trim() ?? '';
     if (!name || !apiKey || !indexName) {
-      throw new Error(`Invalid PINECONE_SOURCES segment "${segment}": name, apiKey, and indexName are required.`);
+      throw new Error(
+        `Invalid PINECONE_SOURCES segment "${segment}": name, apiKey, and indexName are required.`
+      );
     }
     if (seen.has(name)) {
       throw new Error(`Duplicate source name "${name}" in PINECONE_SOURCES.`);
     }
     seen.add(name);
-    sources.push(
-      normalizeSourceEntry(name, { apiKey, indexName }, env, options?.allianceDefaults)
-    );
+    sources.push(normalizeSourceEntry(name, { apiKey, indexName }, env, options?.allianceDefaults));
   }
   return sources;
 }
@@ -175,7 +175,9 @@ export function parseSourcesConfigFile(
         {
           apiKey: String(cfg.apiKey ?? ''),
           indexName: String(cfg.indexName ?? ''),
-          ...(cfg.sparseIndexName !== undefined ? { sparseIndexName: String(cfg.sparseIndexName) } : {}),
+          ...(cfg.sparseIndexName !== undefined
+            ? { sparseIndexName: String(cfg.sparseIndexName) }
+            : {}),
           ...(cfg.rerankModel !== undefined ? { rerankModel: String(cfg.rerankModel) } : {}),
         },
         env,
@@ -198,8 +200,7 @@ export function resolveSourceDefinitions(
   env: NodeJS.ProcessEnv = process.env,
   options?: ParseSourcesOptions
 ): { sources: SourceDefinition[]; defaultSource: string } | null {
-  const inline =
-    trimOptional(overrides.sources) ?? trimOptional(env['PINECONE_SOURCES']);
+  const inline = trimOptional(overrides.sources) ?? trimOptional(env['PINECONE_SOURCES']);
   const configFile =
     trimOptional(overrides.configFile) ?? trimOptional(env['PINECONE_CONFIG_FILE']);
 

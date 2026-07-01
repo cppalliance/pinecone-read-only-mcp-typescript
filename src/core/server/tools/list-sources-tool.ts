@@ -1,14 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ServerContext } from '../server-context.js';
-import {
-  classifyToolCatchError,
-  lifecycleToolError,
-  logToolError,
-} from '../tool-error.js';
-import {
-  listSourcesResponseSchema,
-  type ListSourcesResponse,
-} from '../response-schemas.js';
+import { classifyToolCatchError, lifecycleToolError, logToolError } from '../tool-error.js';
+import { listSourcesResponseSchema, type ListSourcesResponse } from '../response-schemas.js';
 import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 /** Register list_sources when multiple Pinecone projects are configured. */

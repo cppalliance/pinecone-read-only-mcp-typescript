@@ -54,11 +54,7 @@ export function resolveAllianceConfig(
       rerankModel: ALLIANCE_DEFAULT_RERANK_MODEL,
     },
   };
-  const cfg = resolveConfig(
-    { ...overrides, indexName, rerankModel },
-    env,
-    allianceParseOptions
-  );
+  const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env, allianceParseOptions);
   const disableSuggestFlow =
     overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], false);
   return brandAllianceConfig({ ...cfg, disableSuggestFlow });

@@ -20,10 +20,7 @@ describe('source-config', () => {
       K1: 'api-1',
       K2: 'api-2',
     };
-    const sources = parseInlineSources(
-      'public:${K1}:rag-hybrid;private:${K2}:rag-private',
-      env
-    );
+    const sources = parseInlineSources('public:${K1}:rag-hybrid;private:${K2}:rag-private', env);
     expect(sources).toHaveLength(2);
     expect(sources[0]).toMatchObject({
       name: 'public',
@@ -35,9 +32,9 @@ describe('source-config', () => {
   });
 
   it('throws on duplicate source name in inline string', () => {
-    expect(() =>
-      parseInlineSources('public:sk-a:idx-a;public:sk-b:idx-b', {})
-    ).toThrow(/Duplicate source name "public"/);
+    expect(() => parseInlineSources('public:sk-a:idx-a;public:sk-b:idx-b', {})).toThrow(
+      /Duplicate source name "public"/
+    );
   });
 
   it('parseSourcesConfigFile resolves env indirection and defaultSource', () => {
