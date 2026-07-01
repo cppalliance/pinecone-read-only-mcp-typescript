@@ -67,9 +67,9 @@ describe('list_namespaces tool handler (ServerContext instance path)', () => {
 
 describe('list_namespaces tool handler (multi-source)', () => {
   it('tags namespaces with source and propagates source_errors on partial failure', async () => {
-    const publicClient = makeMockPineconeClient(['wg21']);
-    const privateClient = {
-      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('private unreachable')),
+    const client1 = makeMockPineconeClient(['wg21']);
+    const client2 = {
+      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('api_key_2 unreachable')),
       query: vi.fn(),
       count: vi.fn(),
       keywordSearch: vi.fn(),
@@ -77,8 +77,8 @@ describe('list_namespaces tool handler (multi-source)', () => {
       getSparseIndexName: () => 'sparse',
     };
     const clients = new Map([
-      ['public', publicClient],
-      ['private', privateClient],
+      ['api_key_1', client1],
+      ['api_key_2', client2],
     ]);
     const { ctx } = createMultiSourceTestContext({ clients });
 
@@ -88,8 +88,8 @@ describe('list_namespaces tool handler (multi-source)', () => {
     expectMatchesResponseSchema(listNamespacesResponseSchema, body);
     const namespaces = body['namespaces'] as Array<{ name: string; source?: string }>;
     expect(namespaces).toHaveLength(1);
-    expect(namespaces[0]).toMatchObject({ name: 'wg21', source: 'public' });
-    expect(body['source_errors']).toEqual({ private: 'private unreachable' });
+    expect(namespaces[0]).toMatchObject({ name: 'wg21', source: 'api_key_1' });
+    expect(body['source_errors']).toEqual({ api_key_2: 'api_key_2 unreachable' });
     expect(body['cache_hit']).toBe(false);
   });
 });

@@ -170,8 +170,8 @@ export function expectMatchesResponseSchema<T>(schema: z.ZodType<T>, body: unkno
 
 /** Default two-source definitions for multi-source tests (overlapping `shared` namespace). */
 export const DEFAULT_MULTI_SOURCE_DEFINITIONS: SourceDefinition[] = [
-  { name: 'public', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
-  { name: 'private', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
+  { name: 'api_key_1', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
+  { name: 'api_key_2', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
 ];
 
 /** Minimal mock {@link PineconeClient} with configurable namespace list. */

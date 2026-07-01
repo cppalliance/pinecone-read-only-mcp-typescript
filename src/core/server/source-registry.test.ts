@@ -3,8 +3,8 @@ import { buildSourceRegistry } from './source-registry.js';
 import type { SourceDefinition } from './source-config.js';
 
 const sources: SourceDefinition[] = [
-  { name: 'public', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
-  { name: 'private', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
+  { name: 'api_key_1', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
+  { name: 'api_key_2', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
 ];
 
 function mockClient(name: string) {
@@ -20,12 +20,12 @@ function mockClient(name: string) {
 describe('SourceRegistry', () => {
   it('aggregates namespaces from all sources', async () => {
     const clients = new Map([
-      ['public', mockClient('public') as never],
-      ['private', mockClient('private') as never],
+      ['api_key_1', mockClient('api_key_1') as never],
+      ['api_key_2', mockClient('api_key_2') as never],
     ]);
     const registry = buildSourceRegistry({
       sources,
-      defaultSource: 'public',
+      defaultSource: 'api_key_1',
       cacheTtlMs: 60_000,
       defaultTopK: 10,
       requestTimeoutMs: 15_000,
@@ -33,44 +33,44 @@ describe('SourceRegistry', () => {
     });
     const result = await registry.getAllNamespacesWithCache();
     expect(result.data).toHaveLength(2);
-    expect(result.data.map((n) => n.source).sort()).toEqual(['private', 'public']);
+    expect(result.data.map((n) => n.source).sort()).toEqual(['api_key_1', 'api_key_2']);
   });
 
   it('isolates per-source namespace caches', async () => {
-    const publicClient = mockClient('public');
-    const privateClient = mockClient('private');
+    const client1 = mockClient('api_key_1');
+    const client2 = mockClient('api_key_2');
     const clients = new Map([
-      ['public', publicClient as never],
-      ['private', privateClient as never],
+      ['api_key_1', client1 as never],
+      ['api_key_2', client2 as never],
     ]);
     const registry = buildSourceRegistry({
       sources,
-      defaultSource: 'public',
+      defaultSource: 'api_key_1',
       cacheTtlMs: 60_000,
       defaultTopK: 10,
       requestTimeoutMs: 15_000,
       clients,
     });
-    await registry.getNamespacesWithCache('public');
-    await registry.getNamespacesWithCache('private');
-    expect(publicClient.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
-    expect(privateClient.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
+    await registry.getNamespacesWithCache('api_key_1');
+    await registry.getNamespacesWithCache('api_key_2');
+    expect(client1.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
+    expect(client2.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
   });
 
   it('returns partial namespaces and source_errors when one source fails', async () => {
-    const publicClient = mockClient('public');
-    const privateClient = {
-      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('private unreachable')),
+    const client1 = mockClient('api_key_1');
+    const client2 = {
+      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('api_key_2 unreachable')),
       checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
-      getSparseIndexName: () => 'private-sparse',
+      getSparseIndexName: () => 'api_key_2-sparse',
     };
     const clients = new Map([
-      ['public', publicClient as never],
-      ['private', privateClient as never],
+      ['api_key_1', client1 as never],
+      ['api_key_2', client2 as never],
     ]);
     const registry = buildSourceRegistry({
       sources,
-      defaultSource: 'public',
+      defaultSource: 'api_key_1',
       cacheTtlMs: 60_000,
       defaultTopK: 10,
       requestTimeoutMs: 15_000,
@@ -78,8 +78,8 @@ describe('SourceRegistry', () => {
     });
     const result = await registry.getAllNamespacesWithCache();
     expect(result.data).toHaveLength(1);
-    expect(result.data[0]?.source).toBe('public');
-    expect(result.source_errors).toEqual({ private: 'private unreachable' });
+    expect(result.data[0]?.source).toBe('api_key_1');
+    expect(result.source_errors).toEqual({ api_key_2: 'api_key_2 unreachable' });
     expect(result.cache_hit).toBe(false);
   });
 });

@@ -14,14 +14,14 @@ import {
 describe('guided_query tool (multi-source)', () => {
   it('sets selected_source in decision_trace when namespace is auto-routed', async () => {
     const query = vi.fn().mockResolvedValue(makeHybridQueryResult());
-    const publicClient = makeMockPineconeClient(['papers'], { query });
-    const privateClient = makeMockPineconeClient(['internal']);
+    const client1 = makeMockPineconeClient(['papers'], { query });
+    const client2 = makeMockPineconeClient(['internal']);
     const clients = new Map([
-      ['public', publicClient],
-      ['private', privateClient],
+      ['api_key_1', client1],
+      ['api_key_2', client2],
     ]);
     const { ctx } = createMultiSourceTestContext({
-      namespacesBySource: { public: ['papers'], private: ['internal'] },
+      namespacesBySource: { api_key_1: ['papers'], api_key_2: ['internal'] },
       clients,
     });
 
@@ -39,7 +39,7 @@ describe('guided_query tool (multi-source)', () => {
       string,
       unknown
     >;
-    expect(trace['selected_source']).toBe('public');
+    expect(trace['selected_source']).toBe('api_key_1');
     expect(trace['selected_namespace']).toBe('papers');
     expect(query).toHaveBeenCalledOnce();
   });

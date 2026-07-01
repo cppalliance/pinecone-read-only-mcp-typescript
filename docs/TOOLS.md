@@ -103,7 +103,7 @@ Registered only when more than one Pinecone source is configured.
 **Example (multi-source, one project):**
 
 ```json
-{ "source": "public" }
+{ "source": "api_key_1" }
 ```
 
 ---

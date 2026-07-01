@@ -54,7 +54,7 @@ Use **one MCP server entry** with multiple Pinecone API keys / projects when `PI
 Semicolon-separated entries: `name:apiKey:indexName`
 
 ```bash
-PINECONE_SOURCES=public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private
+PINECONE_SOURCES=api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECONE_API_KEY_2}:index_name_2
 ```
 
 API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key.
@@ -65,10 +65,10 @@ Set `PINECONE_CONFIG_FILE` (or `--config-file`) to a path such as [examples/mult
 
 ```json
 {
-  "defaultSource": "public",
+  "defaultSource": "api_key_1",
   "sources": {
-    "public": { "apiKey": "${PINECONE_PUBLIC_API_KEY}", "indexName": "rag-hybrid" },
-    "private": { "apiKey": "${PINECONE_PRIVATE_API_KEY}", "indexName": "rag-private" }
+    "api_key_1": { "apiKey": "${PINECONE_API_KEY_1}", "indexName": "index_name_1" },
+    "api_key_2": { "apiKey": "${PINECONE_API_KEY_2}", "indexName": "index_name_2" }
   }
 }
 ```
@@ -113,7 +113,7 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
 }
 ```
 
-**Internal MCP config (merged public + private):**
+**Internal MCP config (merged sources):**
 
 ```json
 {
@@ -122,7 +122,9 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
       "command": "npx",
       "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
       "env": {
-        "PINECONE_SOURCES": "public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private"
+        "PINECONE_SOURCES": "api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECONE_API_KEY_2}:index_name_2",
+        "PINECONE_API_KEY_1": "pcsk_...",
+        "PINECONE_API_KEY_2": "pcsk_..."
       }
     }
   }

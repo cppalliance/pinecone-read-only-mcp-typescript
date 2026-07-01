@@ -176,7 +176,7 @@ When `PINECONE_SOURCES` or a config file is active, legacy module facades (`getN
 **After (single MCP server):**
 
 ```bash
-PINECONE_SOURCES=public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private
+PINECONE_SOURCES=api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECONE_API_KEY_2}:index_name_2
 ```
 
 Or point `PINECONE_CONFIG_FILE` at a JSON file (see [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example)).

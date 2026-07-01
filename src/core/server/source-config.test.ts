@@ -11,8 +11,8 @@ import { resolveConfig } from '../config.js';
 
 describe('source-config', () => {
   it('resolves env indirection', () => {
-    const env = { PINECONE_PUBLIC_API_KEY: 'key-public' };
-    expect(resolveEnvIndirection('${PINECONE_PUBLIC_API_KEY}', env)).toBe('key-public');
+    const env = { PINECONE_API_KEY_1: 'key-one' };
+    expect(resolveEnvIndirection('${PINECONE_API_KEY_1}', env)).toBe('key-one');
   });
 
   it('parses inline sources', () => {
@@ -20,20 +20,23 @@ describe('source-config', () => {
       K1: 'api-1',
       K2: 'api-2',
     };
-    const sources = parseInlineSources('public:${K1}:rag-hybrid;private:${K2}:rag-private', env);
+    const sources = parseInlineSources(
+      'api_key_1:${K1}:index_name_1;api_key_2:${K2}:index_name_2',
+      env
+    );
     expect(sources).toHaveLength(2);
     expect(sources[0]).toMatchObject({
-      name: 'public',
+      name: 'api_key_1',
       apiKey: 'api-1',
-      indexName: 'rag-hybrid',
-      sparseIndexName: 'rag-hybrid-sparse',
+      indexName: 'index_name_1',
+      sparseIndexName: 'index_name_1-sparse',
     });
-    expect(sources[1]?.name).toBe('private');
+    expect(sources[1]?.name).toBe('api_key_2');
   });
 
   it('throws on duplicate source name in inline string', () => {
-    expect(() => parseInlineSources('public:sk-a:idx-a;public:sk-b:idx-b', {})).toThrow(
-      /Duplicate source name "public"/
+    expect(() => parseInlineSources('api_key_1:sk-a:idx-a;api_key_1:sk-b:idx-b', {})).toThrow(
+      /Duplicate source name "api_key_1"/
     );
   });
 
@@ -43,22 +46,22 @@ describe('source-config', () => {
     writeFileSync(
       filePath,
       JSON.stringify({
-        defaultSource: 'private',
+        defaultSource: 'api_key_2',
         sources: {
-          public: { apiKey: '${K1}', indexName: 'rag-hybrid' },
-          private: { apiKey: '${K2}', indexName: 'rag-private' },
+          api_key_1: { apiKey: '${K1}', indexName: 'index_name_1' },
+          api_key_2: { apiKey: '${K2}', indexName: 'index_name_2' },
         },
       })
     );
     const env = { K1: 'api-1', K2: 'api-2' };
     const parsed = parseSourcesConfigFile(filePath, env);
-    expect(parsed.defaultSource).toBe('private');
+    expect(parsed.defaultSource).toBe('api_key_2');
     expect(parsed.sources).toHaveLength(2);
-    const pub = parsed.sources.find((s) => s.name === 'public');
-    expect(pub).toMatchObject({
+    const first = parsed.sources.find((s) => s.name === 'api_key_1');
+    expect(first).toMatchObject({
       apiKey: 'api-1',
-      indexName: 'rag-hybrid',
-      sparseIndexName: 'rag-hybrid-sparse',
+      indexName: 'index_name_1',
+      sparseIndexName: 'index_name_1-sparse',
     });
   });
 
@@ -70,7 +73,7 @@ describe('source-config', () => {
       JSON.stringify({
         defaultSource: 'missing',
         sources: {
-          public: { apiKey: 'k', indexName: 'idx' },
+          api_key_1: { apiKey: 'k', indexName: 'idx' },
         },
       })
     );
@@ -78,12 +81,12 @@ describe('source-config', () => {
   });
 
   it('resolveConfig uses PINECONE_SOURCES when set', () => {
-    vi.stubEnv('PINECONE_SOURCES', 'public:sk-test:my-index');
+    vi.stubEnv('PINECONE_SOURCES', 'api_key_1:sk-test:my-index');
     vi.stubEnv('PINECONE_API_KEY', 'ignored');
     try {
       const cfg = resolveConfig({});
       expect(cfg.sources).toHaveLength(1);
-      expect(cfg.sources?.[0]?.name).toBe('public');
+      expect(cfg.sources?.[0]?.name).toBe('api_key_1');
       expect(cfg.apiKey).toBe('sk-test');
     } finally {
       vi.unstubAllEnvs();
@@ -91,7 +94,7 @@ describe('source-config', () => {
   });
 
   it('resolveConfig prefers PINECONE_SOURCES over PINECONE_API_KEY', () => {
-    vi.stubEnv('PINECONE_SOURCES', 'public:from-sources:my-index');
+    vi.stubEnv('PINECONE_SOURCES', 'api_key_1:from-sources:my-index');
     vi.stubEnv('PINECONE_API_KEY', 'from-single-key');
     vi.stubEnv('PINECONE_INDEX_NAME', 'single-index');
     try {
