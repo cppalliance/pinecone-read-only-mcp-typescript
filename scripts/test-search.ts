@@ -12,6 +12,7 @@
  */
 
 import { PineconeClient } from '../src/pinecone-client.js';
+import { redactApiKey } from '../src/logger.js';
 
 async function test() {
   const apiKey = process.env.PINECONE_API_KEY || process.argv[2];
@@ -214,9 +215,9 @@ async function test() {
     }
     console.log(`  Reranking overhead:   ${duration2 - duration1}ms`);
   } catch (error) {
-    console.error('\n❌ Error during testing:', error);
+    console.error('\n❌ Error during testing.');
     if (error instanceof Error) {
-      console.error('   Message:', error.message);
+      console.error('   Message:', redactApiKey(error.message));
     }
     process.exit(1);
   }
@@ -224,6 +225,9 @@ async function test() {
 
 // Run the test
 test().catch((error) => {
-  console.error('Fatal error:', error);
+  console.error('Fatal error during test-search.');
+  if (error instanceof Error) {
+    console.error('   Message:', redactApiKey(error.message));
+  }
   process.exit(1);
 });

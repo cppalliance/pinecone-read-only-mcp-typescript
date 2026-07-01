@@ -73,9 +73,9 @@ export function registerUrlGenerator(namespace: string, generator: UrlGeneratorF
  * {@link createServer} instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.unregisterUrlGenerator
  */
-export function unregisterUrlGenerator(namespace: string): boolean {
+export function unregisterUrlGenerator(namespace: string, source?: string): boolean {
   warnLegacyFacade('unregisterUrlGenerator');
-  return resolveDefaultServerContext().unregisterUrlGenerator(namespace);
+  return resolveDefaultServerContext().unregisterUrlGenerator(namespace, source);
 }
 
 /**
@@ -86,9 +86,9 @@ export function unregisterUrlGenerator(namespace: string): boolean {
  * instead. See docs/MIGRATION.md#030-legacy-module-facade-deprecations.
  * @see ServerContext.hasUrlGenerator
  */
-export function hasUrlGenerator(namespace: string): boolean {
+export function hasUrlGenerator(namespace: string, source?: string): boolean {
   warnLegacyFacade('hasUrlGenerator');
-  return resolveDefaultServerContext().hasUrlGenerator(namespace);
+  return resolveDefaultServerContext().hasUrlGenerator(namespace, source);
 }
 
 /**

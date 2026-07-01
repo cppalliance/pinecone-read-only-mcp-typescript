@@ -36,7 +36,11 @@ export class PineconeClient {
    * built via {@link resolveConfig} / CLI); this class does not read `process.env`.
    */
   constructor(config: PineconeClientConfig) {
-    this.indexSession = new PineconeIndexSession(config.apiKey, config.indexName);
+    this.indexSession = new PineconeIndexSession(
+      config.apiKey,
+      config.indexName,
+      config.sparseIndexName
+    );
     const normalizedRerankModel = config.rerankModel?.trim();
     this.rerankModel = normalizedRerankModel ? normalizedRerankModel : undefined;
     this.defaultTopK = config.defaultTopK ?? DEFAULT_TOP_K;

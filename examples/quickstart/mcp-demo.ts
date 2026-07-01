@@ -13,6 +13,7 @@ import {
   resolveConfig,
   setupCoreServer,
 } from '@will-cppa/pinecone-read-only-mcp';
+import { exitOnDemoFailure } from '../lib/exit-on-failure.js';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLinkedTransports } from '../mcp-linked-transport.js';
@@ -130,7 +131,4 @@ main()
   .then(() => {
     process.exit(0);
   })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  .catch(exitOnDemoFailure('mcp-demo'));

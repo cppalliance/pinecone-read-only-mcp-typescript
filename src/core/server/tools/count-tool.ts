@@ -1,10 +1,16 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
 import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
+import {
+  getClientForResolvedSource,
+  optionalSourceField,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   flowGateToolError,
@@ -19,6 +25,7 @@ type CountExecParams = {
   namespace: string;
   query_text: string;
   metadata_filter?: Record<string, unknown>;
+  source?: string;
 };
 
 async function executeCount(params: CountExecParams, ctx?: ServerContext) {
@@ -26,7 +33,7 @@ async function executeCount(params: CountExecParams, ctx?: ServerContext) {
     if (ctx?.disposed) {
       return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
     }
-    const { namespace, query_text, metadata_filter } = params;
+    const { namespace, query_text, metadata_filter, source } = params;
     const nsNorm = normalizeNamespace(namespace);
     if (!nsNorm) {
       return jsonErrorResponse(
@@ -44,11 +51,24 @@ async function executeCount(params: CountExecParams, ctx?: ServerContext) {
         return jsonErrorResponse(validationToolError(err.message, err.field));
       }
     }
-    const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
+    let activeCtx = ctx;
+    let activeSource: string | undefined;
+    if (ctx) {
+      const resolved = await resolveSourceForTool(ctx, source, nsNorm);
+      if (!resolved.ok) {
+        return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+      }
+      activeCtx = resolved.ctx;
+      activeSource = resolved.source;
+    }
+
+    const flowCheck = activeCtx
+      ? activeCtx.requireSuggested(nsNorm, activeSource)
+      : requireSuggested(nsNorm);
     if (!flowCheck.ok) {
       return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
     }
-    const client = ctx ? ctx.getClient() : getPineconeClient();
+    const client = getClientForResolvedSource(activeCtx, activeSource, 'count');
     const { count, truncated } = await client.count({
       query: query_text.trim(),
       namespace: nsNorm,
@@ -59,6 +79,7 @@ async function executeCount(params: CountExecParams, ctx?: ServerContext) {
       count,
       truncated,
       namespace: nsNorm,
+      ...optionalSourceField(activeCtx, activeSource ?? ''),
       metadata_filter,
     };
     return validatedJsonResponse(countResponseSchema, response);
@@ -96,6 +117,7 @@ export function registerCountTool(server: McpServer, ctx?: ServerContext): void 
           .describe(
             'Optional metadata filter. Use exact field names from list_namespaces. E.g. {"author": {"$in": ["Alex Doe", "A. Doe"]}} to count by author.'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => executeCount(params, ctx)

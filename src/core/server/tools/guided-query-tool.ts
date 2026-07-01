@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../../constants.js';
 import { guidedRerankStatus } from '../../rerank-trace.js';
-import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { rankNamespacesByQuery } from '../namespace-router.js';
@@ -10,6 +9,13 @@ import { getNamespacesWithCache } from '../namespaces-cache.js';
 import { normalizeNamespace } from '../namespace-utils.js';
 import { suggestQueryParams } from '../query-suggestion.js';
 import type { ServerContext } from '../server-context.js';
+import {
+  getClientForResolvedSource,
+  optionalSourceField,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
 import {
   buildGuidedQueryExperimental,
   buildQueryExperimental,
@@ -82,6 +88,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           .describe(
             'If true, enrich result URLs using the namespace URL generator when metadata.url is missing (if supported for that namespace).'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -96,6 +103,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           top_k,
           preferred_tool,
           enrich_urls,
+          source: inputSource,
         } = params;
 
         if (!user_query?.trim()) {
@@ -111,19 +119,34 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
 
         const queryText = user_query.trim();
         const { data: namespaces, cache_hit } = ctx
-          ? await ctx.getNamespacesWithCache()
+          ? await ctx.getNamespacesWithCache(inputSource)
           : await getNamespacesWithCache();
         const ranked = rankNamespacesByQuery(queryText, namespaces, 3);
 
         let namespace: string | null = null;
+        let selectedSource: string | undefined;
         if (inputNamespace !== undefined) {
           namespace = normalizeNamespace(inputNamespace);
           if (!namespace) {
             return jsonErrorResponse(validationToolError('namespace cannot be empty', 'namespace'));
           }
+          if (ctx?.isMultiSource() || inputSource) {
+            const resolved = await resolveSourceForTool(ctx, inputSource, namespace);
+            if (!resolved.ok) {
+              return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+            }
+            selectedSource = resolved.source;
+          }
         } else {
-          const top = ranked[0]?.namespace;
-          namespace = top ? normalizeNamespace(top) : null;
+          const top = ranked[0];
+          namespace = top ? normalizeNamespace(top.namespace) : null;
+          selectedSource = top?.source;
+          if (namespace && !selectedSource && ctx) {
+            const resolved = await ctx.resolveSource(inputSource, namespace);
+            if (resolved.ok) {
+              selectedSource = resolved.source;
+            }
+          }
         }
         /*
          * ToolError mapping: empty index / no routable namespace is backend/data state
@@ -143,7 +166,9 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
         }
 
         const ns = namespaces.find(
-          (n) => n.namespace === namespace || normalizeNamespace(n.namespace) === namespace
+          (n) =>
+            (n.namespace === namespace || normalizeNamespace(n.namespace) === namespace) &&
+            (selectedSource === undefined || n.source === selectedSource)
         );
         const suggestion = suggestQueryParams(ns?.metadata ?? null, queryText);
         if (!suggestion.namespace_found) {
@@ -160,7 +185,17 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
         }
 
         const selectedTool: GuidedToolName = resolveGuidedToolName(preferred_tool, suggestion);
-        if (ctx) {
+        if (ctx && selectedSource) {
+          ctx.markSuggested(
+            namespace,
+            {
+              recommended_tool: selectedTool,
+              suggested_fields: suggestion.suggested_fields,
+              user_query: queryText,
+            },
+            selectedSource
+          );
+        } else if (ctx) {
           ctx.markSuggested(namespace, {
             recommended_tool: selectedTool,
             suggested_fields: suggestion.suggested_fields,
@@ -174,13 +209,14 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           });
         }
 
-        const client = ctx ? ctx.getClient() : getPineconeClient();
+        const client = getClientForResolvedSource(ctx, selectedSource, 'guided_query');
         const enrichUrls = enrich_urls ?? true;
         const baseTrace = {
           cache_hit,
           input_namespace: inputNamespace ?? null,
           routed_namespace: ranked[0]?.namespace ?? null,
           selected_namespace: namespace,
+          ...(selectedSource !== undefined ? { selected_source: selectedSource } : {}),
           ranked_namespaces: ranked,
           suggested_fields: suggestion.suggested_fields,
           suggested_tool: suggestion.recommended_tool,
@@ -204,6 +240,7 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
             result: {
               tool: 'count',
               namespace,
+              ...optionalSourceField(ctx, selectedSource ?? ''),
               query: queryText,
               ...(metadata_filter !== undefined ? { metadata_filter } : {}),
               count,
@@ -239,12 +276,14 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           namespace,
           enrichUrls: enrichUrls,
           ctx,
+          ...(selectedSource !== undefined ? { source: selectedSource } : {}),
         });
         const result: QueryResponse = {
           status: 'success',
           mode,
           query: queryText,
           namespace,
+          ...optionalSourceField(ctx, selectedSource ?? ''),
           metadata_filter: metadata_filter,
           result_count: formattedResults.length,
           ...(fields?.length ? { fields } : {}),

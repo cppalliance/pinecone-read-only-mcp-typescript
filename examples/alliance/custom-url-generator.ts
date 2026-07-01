@@ -20,6 +20,7 @@ import {
   type UrlGenerationResult,
 } from '@will-cppa/pinecone-read-only-mcp';
 import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import { exitOnDemoFailure } from '../lib/exit-on-failure.js';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -64,7 +65,4 @@ async function main(): Promise<void> {
   console.log('Custom URL generator registered for namespace "product-docs".');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(exitOnDemoFailure('custom-url-generator'));

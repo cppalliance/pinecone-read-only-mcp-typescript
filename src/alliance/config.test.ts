@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   ALLIANCE_DEFAULT_INDEX_NAME,
@@ -54,5 +57,26 @@ describe('resolveAllianceConfig', () => {
       { PINECONE_API_KEY: 'sk-test', PINECONE_INDEX_NAME: 'custom-index' }
     );
     expect(cfg.indexName).toBe('custom-index');
+  });
+
+  it('applies resolved Alliance index default to multi-source entries missing indexName', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-alliance-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { apiKey: 'k1', indexName: 'explicit-index' },
+          api_key_2: { apiKey: 'k2' },
+        },
+      })
+    );
+    const cfg = resolveAllianceConfig(
+      { configFile: filePath, indexName: 'cli-default-index' },
+      { PINECONE_API_KEY: 'ignored' }
+    );
+    const second = cfg.sources?.find((s) => s.name === 'api_key_2');
+    expect(second?.indexName).toBe('cli-default-index');
   });
 });

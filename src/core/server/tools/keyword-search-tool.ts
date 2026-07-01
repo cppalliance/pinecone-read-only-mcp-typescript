@@ -1,16 +1,23 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { MAX_TOP_K, MIN_TOP_K } from '../../../constants.js';
-import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
-import type { ServerContext } from '../server-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
-import type { ToolError } from '../tool-error.js';
+import type { ServerContext } from '../server-context.js';
+import {
+  getClientForResolvedSource,
+  optionalSourceField,
+  rejectSourceWithoutContext,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   lifecycleToolError,
   logToolError,
   validationToolError,
+  type ToolError,
 } from '../tool-error.js';
 import {
   keywordSearchSuccessResponseSchema,
@@ -33,13 +40,14 @@ async function executeKeywordSearch(
     top_k: number;
     metadata_filter?: Record<string, unknown>;
     fields?: string[];
+    source?: string;
   },
   ctx?: ServerContext
 ): Promise<KeywordSearchExecResult> {
   if (ctx?.disposed) {
     return { ok: false, error: lifecycleToolError('ServerContext has been disposed') };
   }
-  const { query_text, namespace, top_k, metadata_filter, fields } = params;
+  const { query_text, namespace, top_k, metadata_filter, fields, source } = params;
 
   const normalizedQuery = query_text.trim();
   const normalizedNamespace = namespace?.trim() ?? '';
@@ -68,7 +76,26 @@ async function executeKeywordSearch(
     }
   }
 
-  const client = ctx ? ctx.getClient() : getPineconeClient();
+  const sourceError = rejectSourceWithoutContext(source, ctx);
+  if (sourceError) {
+    return { ok: false, error: sourceError };
+  }
+
+  let activeCtx = ctx;
+  let activeSource: string | undefined;
+  if (ctx) {
+    const resolved = await resolveSourceForTool(ctx, source, normalizedNamespace);
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error: sourceValidationError(resolved.code, resolved.message),
+      };
+    }
+    activeCtx = resolved.ctx;
+    activeSource = resolved.source;
+  }
+
+  const client = getClientForResolvedSource(activeCtx, activeSource, 'keyword_search');
   const results = await client.keywordSearch({
     query: normalizedQuery,
     namespace: normalizedNamespace,
@@ -78,14 +105,16 @@ async function executeKeywordSearch(
   });
 
   const formattedResults = formatQueryResultRows(results, {
+    ctx: activeCtx,
     namespace: normalizedNamespace,
-    ctx,
+    source: activeSource,
   });
 
   const response: KeywordSearchSuccessResponse = {
     status: 'success',
     query: normalizedQuery,
     namespace: normalizedNamespace,
+    ...(activeCtx && activeSource ? optionalSourceField(activeCtx, activeSource) : {}),
     index: client.getSparseIndexName(),
     metadata_filter: metadata_filter,
     result_count: formattedResults.length,
@@ -130,6 +159,7 @@ export function registerKeywordSearchTool(server: McpServer, ctx?: ServerContext
           .describe(
             'Optional field names to return. Omit for all fields; use suggest_query_params for suggestions.'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -141,6 +171,7 @@ export function registerKeywordSearchTool(server: McpServer, ctx?: ServerContext
             top_k: params.top_k,
             metadata_filter: params.metadata_filter,
             fields: params.fields,
+            source: params.source,
           },
           ctx
         );

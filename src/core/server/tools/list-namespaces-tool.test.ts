@@ -56,6 +56,16 @@ describe('list_namespaces tool handler', () => {
     expect(body.count).toBe(1);
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerListNamespacesTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('list_namespaces')!({ source: 'api_key_1' }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+  });
+
   it('returns error payload when getNamespacesWithCache throws', async () => {
     mockedGetNamespaces.mockRejectedValue(new Error('network down'));
 
