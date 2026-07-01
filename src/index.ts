@@ -16,7 +16,13 @@ import { PineconeClient } from './core/pinecone-client.js';
 import { createServer } from './core/server/server-context.js';
 import { buildSourceRegistry } from './core/server/source-registry.js';
 import { setupAllianceServer } from './alliance/setup.js';
-import { error as logError, redactApiKey, setLogFormat, setLogLevel, warn as logWarn } from './logger.js';
+import {
+  error as logError,
+  redactApiKey,
+  setLogFormat,
+  setLogLevel,
+  warn as logWarn,
+} from './logger.js';
 
 dotenv.config();
 
