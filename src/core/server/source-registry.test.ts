@@ -56,4 +56,30 @@ describe('SourceRegistry', () => {
     expect(publicClient.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
     expect(privateClient.listNamespacesWithMetadata).toHaveBeenCalledTimes(1);
   });
+
+  it('returns partial namespaces and source_errors when one source fails', async () => {
+    const publicClient = mockClient('public');
+    const privateClient = {
+      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('private unreachable')),
+      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+      getSparseIndexName: () => 'private-sparse',
+    };
+    const clients = new Map([
+      ['public', publicClient as never],
+      ['private', privateClient as never],
+    ]);
+    const registry = buildSourceRegistry({
+      sources,
+      defaultSource: 'public',
+      cacheTtlMs: 60_000,
+      defaultTopK: 10,
+      requestTimeoutMs: 15_000,
+      clients,
+    });
+    const result = await registry.getAllNamespacesWithCache();
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.source).toBe('public');
+    expect(result.source_errors).toEqual({ private: 'private unreachable' });
+    expect(result.cache_hit).toBe(false);
+  });
 });

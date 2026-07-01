@@ -87,6 +87,67 @@ Discovery responses may include `source_errors` when one project fails but other
 
 Single-key deployments (`PINECONE_API_KEY` + `PINECONE_INDEX_NAME` only) are unchanged — no `source` field on responses and no `list_sources` tool.
 
+### Deployment profiles
+
+Multi-source mode supports two operational profiles. **Never** ship a merged internal config through the same channel used for external partners.
+
+| Profile | Who | Config | Risk if mis-shared |
+| ------- | --- | ------ | ------------------ |
+| **External (public-only)** | External companies, public MCP distribution | `PINECONE_API_KEY` + `PINECONE_INDEX_NAME`, or `PINECONE_SOURCES` with **one** entry | Low — single public key only |
+| **Internal (merged)** | Staff machines with access to private data | `PINECONE_SOURCES` or JSON config with **two+** entries | **High** — private API key and private namespace names exposed |
+
+**External MCP config (unchanged):**
+
+```json
+{
+  "mcpServers": {
+    "pinecone-search": {
+      "command": "npx",
+      "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
+      "env": {
+        "PINECONE_API_KEY": "your-public-key",
+        "PINECONE_INDEX_NAME": "rag-hybrid"
+      }
+    }
+  }
+}
+```
+
+**Internal MCP config (merged public + private):**
+
+```json
+{
+  "mcpServers": {
+    "pinecone-search": {
+      "command": "npx",
+      "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
+      "env": {
+        "PINECONE_SOURCES": "public:${PINECONE_PUBLIC_API_KEY}:rag-hybrid;private:${PINECONE_PRIVATE_API_KEY}:rag-private"
+      }
+    }
+  }
+}
+```
+
+Prefer `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over inline API keys in `PINECONE_SOURCES`. See [SECURITY.md](./SECURITY.md).
+
+### Architecture decision
+
+**Chosen:** Option A — multi-source server with optional `source` parameter on tools (`SourceRegistry` + `PINECONE_SOURCES` / JSON config).
+
+**Rejected:**
+
+- **Option B (Cursor routing rules only):** Does not fix the UX problem when users forget which MCP entry to use; no code changes.
+- **Option C (thin proxy MCP):** Extra package and latency; duplicates routing logic already in `ServerContext`.
+
+**Rationale:** Pinecone SDK v8 supports multiple `Pinecone({ apiKey })` instances per process; MCP has no barrier to aggregating backends. Security is enforced by **deployment profiles** (public-only vs merged config), not per-query MCP authorization. All multi-source results include `source` for LLM provenance.
+
+**Execution semantics:** Discovery tools aggregate all sources when `source` is omitted. Execution tools (`query`, `count`, etc.) call `resolveSource`: infer source when the namespace exists on exactly one project; return `VALIDATION` when ambiguous. They do **not** fan out one query to all sources. `guided_query` without `namespace` routes via the aggregated namespace list and sets `selected_source` in `decision_trace`.
+
+**Audit logging:** When a tool resolves a specific source, stderr logs `toolname [source=name]` at INFO (execution tools and discovery tools that pass an explicit `source` filter). Aggregated discovery without `source` does not log per-source lines.
+
+See also [TOOLS.md § Multi-source mode](./TOOLS.md#multi-source-mode).
+
 ---
 
 ## CLI flags (`parseCli` / `src/cli.ts`)

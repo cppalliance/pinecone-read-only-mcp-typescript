@@ -1,8 +1,11 @@
 import type { z } from 'zod';
+import { vi } from 'vitest';
 import type { HybridQueryResult, SearchResult } from '../../../types.js';
 import { resolveConfig } from '../../config.js';
 import type { PineconeClient } from '../../pinecone-client.js';
 import type { ConfigOverrides, CoreServerConfig } from '../../config.js';
+import type { SourceDefinition } from '../source-config.js';
+import { buildSourceRegistry } from '../source-registry.js';
 import {
   ServerContext,
   teardownDefaultServerContext,
@@ -163,4 +166,84 @@ export function createTestServerContext(options?: {
 /** Assert tool success JSON matches the exported Zod response schema (schema-response alignment). */
 export function expectMatchesResponseSchema<T>(schema: z.ZodType<T>, body: unknown): T {
   return schema.parse(body);
+}
+
+/** Default two-source definitions for multi-source tests (overlapping `shared` namespace). */
+export const DEFAULT_MULTI_SOURCE_DEFINITIONS: SourceDefinition[] = [
+  { name: 'public', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
+  { name: 'private', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
+];
+
+/** Minimal mock {@link PineconeClient} with configurable namespace list. */
+export function makeMockPineconeClient(
+  namespaces: string[],
+  options?: { query?: ReturnType<typeof vi.fn> }
+) {
+  return {
+    listNamespacesWithMetadata: vi.fn().mockResolvedValue(
+      namespaces.map((namespace) => ({
+        namespace,
+        recordCount: 1,
+        metadata: { title: 'string' },
+      }))
+    ),
+    query: options?.query ?? vi.fn(),
+    count: vi.fn().mockResolvedValue({ count: 0, truncated: false }),
+    keywordSearch: vi.fn().mockResolvedValue([]),
+    checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+    getSparseIndexName: () => 'sparse',
+  };
+}
+
+export type MultiSourceTestContext = {
+  ctx: CoreServerContext;
+  clients: Map<string, ReturnType<typeof makeMockPineconeClient>>;
+  sources: SourceDefinition[];
+  registry: ReturnType<typeof buildSourceRegistry>;
+};
+
+/** Build an isolated multi-source {@link ServerContext} with injectable per-source mock clients. */
+export function createMultiSourceTestContext(options?: {
+  sources?: SourceDefinition[];
+  namespacesBySource?: Record<string, string[]>;
+  clients?: Map<string, ReturnType<typeof makeMockPineconeClient>>;
+  defaultSource?: string;
+  config?: ConfigOverrides;
+}): MultiSourceTestContext {
+  const sources = options?.sources ?? DEFAULT_MULTI_SOURCE_DEFINITIONS;
+  const defaultSource = options?.defaultSource ?? sources[0]!.name;
+  const namespacesBySource =
+    options?.namespacesBySource ??
+    Object.fromEntries(
+      sources.map((s, i) => [
+        s.name,
+        i === 0 ? ['wg21', 'shared'] : ['shared', 'internal'],
+      ])
+    );
+  const clients =
+    options?.clients ??
+    new Map(
+      sources.map((s) => [
+        s.name,
+        makeMockPineconeClient(namespacesBySource[s.name] ?? []),
+      ])
+    );
+  const registry = buildSourceRegistry({
+    sources,
+    defaultSource,
+    cacheTtlMs: 60_000,
+    defaultTopK: 10,
+    requestTimeoutMs: 15_000,
+    clients: clients as unknown as Map<string, PineconeClient>,
+  });
+  const inlineSources = sources
+    .map((s) => `${s.name}:${s.apiKey}:${s.indexName}`)
+    .join(';');
+  const config = resolveConfig({
+    sources: inlineSources,
+    disableSuggestFlow: false,
+    ...options?.config,
+  });
+  const ctx = new ServerContext(config, { sourceRegistry: registry });
+  return { ctx, clients, sources, registry };
 }

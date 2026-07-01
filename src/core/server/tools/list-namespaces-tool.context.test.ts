@@ -3,8 +3,10 @@ import { registerListNamespacesTool } from './list-namespaces-tool.js';
 import { listNamespacesResponseSchema } from '../response-schemas.js';
 import {
   createMockServer,
+  createMultiSourceTestContext,
   createTestServerContext,
   expectMatchesResponseSchema,
+  makeMockPineconeClient,
   parseToolJson,
 } from './test-helpers.js';
 
@@ -60,5 +62,34 @@ describe('list_namespaces tool handler (ServerContext instance path)', () => {
     const body = parseToolJson(raw);
     expect(body['cache_hit']).toBe(true);
     expect(listNamespacesWithMetadata).toHaveBeenCalledOnce();
+  });
+});
+
+describe('list_namespaces tool handler (multi-source)', () => {
+  it('tags namespaces with source and propagates source_errors on partial failure', async () => {
+    const publicClient = makeMockPineconeClient(['wg21']);
+    const privateClient = {
+      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('private unreachable')),
+      query: vi.fn(),
+      count: vi.fn(),
+      keywordSearch: vi.fn(),
+      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+      getSparseIndexName: () => 'sparse',
+    };
+    const clients = new Map([
+      ['public', publicClient],
+      ['private', privateClient],
+    ]);
+    const { ctx } = createMultiSourceTestContext({ clients });
+
+    const server = createMockServer();
+    registerListNamespacesTool(server as never, ctx);
+    const body = parseToolJson(await server.getHandler('list_namespaces')!({}));
+    expectMatchesResponseSchema(listNamespacesResponseSchema, body);
+    const namespaces = body['namespaces'] as Array<{ name: string; source?: string }>;
+    expect(namespaces).toHaveLength(1);
+    expect(namespaces[0]).toMatchObject({ name: 'wg21', source: 'public' });
+    expect(body['source_errors']).toEqual({ private: 'private unreachable' });
+    expect(body['cache_hit']).toBe(false);
   });
 });

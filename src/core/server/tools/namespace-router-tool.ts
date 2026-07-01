@@ -8,6 +8,7 @@ import {
   classifyToolCatchError,
   lifecycleToolError,
   logToolError,
+  logToolInvocation,
   validationToolError,
 } from '../tool-error.js';
 import {
@@ -47,6 +48,9 @@ export function registerNamespaceRouterTool(server: McpServer, ctx?: ServerConte
         const { user_query, top_n, source } = params;
         if (!user_query?.trim()) {
           return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
+        }
+        if (source) {
+          logToolInvocation('namespace_router', source);
         }
         const { data, cache_hit } = ctx
           ? await ctx.getNamespacesWithCache(source)

@@ -10,7 +10,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Added
 
-- **Multi-source mode:** configure multiple Pinecone API keys / indexes in one MCP server via `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`). New `list_sources` tool (when more than one source is configured). Optional `source` parameter on discovery and query tools; `list_namespaces` aggregates across sources and tags each namespace with `source`. See [CONFIGURATION.md](docs/CONFIGURATION.md#multi-source-mode).
+- **Multi-source mode:** configure multiple Pinecone API keys / indexes in one MCP server via `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`). New `list_sources` tool (when more than one source is configured). Optional `source` parameter on discovery and query tools; `list_namespaces` aggregates across sources and tags each namespace with `source`. See [CONFIGURATION.md](docs/CONFIGURATION.md#multi-source-mode), [TOOLS.md](docs/TOOLS.md#multi-source-mode), and deployment profiles in [CONFIGURATION.md](docs/CONFIGURATION.md#deployment-profiles).
 
 ### Changed
 
