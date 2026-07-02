@@ -175,10 +175,8 @@ export function parseSourcesConfigFile(
         {
           apiKey: String(cfg.apiKey ?? ''),
           indexName: String(cfg.indexName ?? ''),
-          ...(cfg.sparseIndexName !== undefined
-            ? { sparseIndexName: String(cfg.sparseIndexName) }
-            : {}),
-          ...(cfg.rerankModel !== undefined ? { rerankModel: String(cfg.rerankModel) } : {}),
+          ...(cfg.sparseIndexName != null ? { sparseIndexName: String(cfg.sparseIndexName) } : {}),
+          ...(cfg.rerankModel != null ? { rerankModel: String(cfg.rerankModel) } : {}),
         },
         env,
         options?.allianceDefaults

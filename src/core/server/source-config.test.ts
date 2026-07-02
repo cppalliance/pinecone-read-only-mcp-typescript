@@ -66,6 +66,29 @@ describe('source-config', () => {
     });
   });
 
+  it('parseSourcesConfigFile treats null sparseIndexName and rerankModel as omitted', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'null-sparse.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: {
+            apiKey: 'k',
+            indexName: 'index_name_1',
+            sparseIndexName: null,
+            rerankModel: null,
+          },
+        },
+      })
+    );
+    const parsed = parseSourcesConfigFile(filePath, {});
+    const first = parsed.sources.find((s) => s.name === 'api_key_1');
+    expect(first?.sparseIndexName).toBe('index_name_1-sparse');
+    expect(first?.rerankModel).toBeUndefined();
+  });
+
   it('throws when defaultSource is not a configured source name', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
     const filePath = join(dir, 'bad-default.json');

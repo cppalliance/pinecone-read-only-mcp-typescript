@@ -54,6 +54,21 @@ describe('query_documents tool handler', () => {
     vi.restoreAllMocks();
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerQueryDocumentsTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('query_documents')!({
+        query_text: 'semantic question',
+        namespace: 'wg21',
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+    expect(mockedGetClient().query).not.toHaveBeenCalled();
+  });
+
   it('happy path: queries chunks, reassembles, and returns documents', async () => {
     const server = createMockServer();
     registerQueryDocumentsTool(server as never);

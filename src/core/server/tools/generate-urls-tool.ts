@@ -4,6 +4,7 @@ import { normalizeNamespace } from '../namespace-utils.js';
 import type { ServerContext } from '../server-context.js';
 import { generateUrlForNamespace } from '../url-registry.js';
 import {
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -62,6 +63,10 @@ export function registerGenerateUrlsTool(server: McpServer, ctx?: ServerContext)
               suggestion: 'Use a namespace name from list_namespaces (trimmed).',
             })
           );
+        }
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
         }
         let activeCtx = ctx;
         let activeSource: string | undefined;

@@ -7,6 +7,7 @@ import { requireSuggested } from '../suggestion-flow.js';
 import {
   getClientForResolvedSource,
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -50,6 +51,10 @@ async function executeCount(params: CountExecParams, ctx?: ServerContext) {
       if (err) {
         return jsonErrorResponse(validationToolError(err.message, err.field));
       }
+    }
+    const sourceError = rejectSourceWithoutContext(source, ctx);
+    if (sourceError) {
+      return jsonErrorResponse(sourceError);
     }
     let activeCtx = ctx;
     let activeSource: string | undefined;

@@ -216,9 +216,8 @@ async function test() {
     console.log(`  Reranking overhead:   ${duration2 - duration1}ms`);
   } catch (error) {
     console.error('\n❌ Error during testing.');
-    if (error instanceof Error) {
-      console.error('   Message:', redactApiKey(error.message));
-    }
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('   Message:', redactApiKey(message));
     process.exit(1);
   }
 }
@@ -226,8 +225,7 @@ async function test() {
 // Run the test
 test().catch((error) => {
   console.error('Fatal error during test-search.');
-  if (error instanceof Error) {
-    console.error('   Message:', redactApiKey(error.message));
-  }
+  const message = error instanceof Error ? error.message : String(error);
+  console.error('   Message:', redactApiKey(message));
   process.exit(1);
 });

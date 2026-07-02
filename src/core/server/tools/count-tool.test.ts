@@ -46,6 +46,21 @@ describe('count tool handler', () => {
     expect(err.field).toBe('namespace');
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerCountTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('count')!({
+        namespace: 'wg21',
+        query_text: 'doc',
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+    expect(mockedGetClient().count).not.toHaveBeenCalled();
+  });
+
   it('returns VALIDATION when query_text is empty', async () => {
     const server = createMockServer();
     registerCountTool(server as never);

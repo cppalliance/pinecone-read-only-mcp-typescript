@@ -19,7 +19,7 @@ Success payloads separate **stable** fields (safe across minor bumps after `1.0.
 | `guided_query` | `status`, `result` (count or query-shaped stable fields) | `experimental.decision_trace` (includes optional `selected_source`); query-path `result.experimental` degradation fields |
 | `generate_urls` | `status`, `namespace`, `count`, `results`, optional `source` | _(none)_ |
 
-Multi-source-only stable fields (`source` on namespace rows, `source_errors`, `recommended_source`, `selected_source`) are **omitted** in single-key deployments.
+Multi-source-only stable fields (`source` on namespace rows, `source_errors`, `recommended_source`) are **omitted** in single-key deployments. `selected_source` appears only under `guided_query` → `experimental.decision_trace` (experimental, not stable).
 
 Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 

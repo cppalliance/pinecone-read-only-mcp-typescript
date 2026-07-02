@@ -78,6 +78,22 @@ describe('query tool handler (preset-driven)', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerQueryTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('query')!({
+        query_text: 'hello',
+        namespace: 'wg21',
+        top_k: 5,
+        preset: 'full',
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+  });
+
   it('query (preset=full): happy path calls client.query and returns formatted rows', async () => {
     const server = createMockServer();
     registerQueryTool(server as never);

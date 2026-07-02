@@ -7,6 +7,7 @@ import type { ServerContext } from '../../core/server/server-context.js';
 import { markSuggested } from '../../core/server/suggestion-flow.js';
 import {
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -63,6 +64,11 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
               suggestion: 'Use a namespace name from list_namespaces (trimmed).',
             })
           );
+        }
+
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
         }
 
         let activeCtx = ctx;

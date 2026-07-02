@@ -12,6 +12,7 @@ import type { ServerContext } from '../server-context.js';
 import {
   getClientForResolvedSource,
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -115,6 +116,11 @@ export function registerGuidedQueryTool(server: McpServer, ctx?: ServerContext):
           if (err) {
             return jsonErrorResponse(validationToolError(err.message, err.field));
           }
+        }
+
+        const sourceError = rejectSourceWithoutContext(inputSource, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
         }
 
         const queryText = user_query.trim();

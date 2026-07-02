@@ -9,6 +9,7 @@ import { requireSuggested } from '../suggestion-flow.js';
 import {
   getClientForResolvedSource,
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -68,6 +69,11 @@ async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
           suggestion: 'Use a namespace name from list_namespaces (trimmed).',
         })
       );
+    }
+
+    const sourceError = rejectSourceWithoutContext(source, ctx);
+    if (sourceError) {
+      return jsonErrorResponse(sourceError);
     }
 
     let activeCtx = ctx;

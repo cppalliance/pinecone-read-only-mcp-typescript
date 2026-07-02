@@ -13,6 +13,7 @@ import { requireSuggested } from '../suggestion-flow.js';
 import {
   getClientForResolvedSource,
   optionalSourceField,
+  rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
@@ -117,6 +118,11 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
               suggestion: 'Use a namespace name from list_namespaces (trimmed).',
             })
           );
+        }
+
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
         }
 
         let activeCtx = ctx;

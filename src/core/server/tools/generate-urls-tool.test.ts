@@ -19,6 +19,20 @@ describe('generate_urls tool handler', () => {
     expect(err.field).toBe('namespace');
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerGenerateUrlsTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('generate_urls')!({
+        namespace: 'mailing',
+        records: [{ document_number: 'P1234' }],
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+  });
+
   it('returns PINECONE_ERROR when generateUrlForNamespace throws', async () => {
     vi.spyOn(urlRegistry, 'generateUrlForNamespace').mockImplementation(() => {
       throw new Error('generator boom');

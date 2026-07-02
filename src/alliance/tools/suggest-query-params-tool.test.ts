@@ -69,6 +69,21 @@ describe('suggest_query_params tool handler', () => {
     expect(mockedMarkSuggested).not.toHaveBeenCalled();
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerSuggestQueryParamsTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('suggest_query_params')!({
+        namespace: 'wg21',
+        user_query: 'hello',
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+    expect(mockedGetNamespaces).not.toHaveBeenCalled();
+  });
+
   it('marks suggestion flow and returns success when namespace exists in cache', async () => {
     mockedGetNamespaces.mockResolvedValue({
       data: [makeNamespaceCacheEntry('wg21')],
