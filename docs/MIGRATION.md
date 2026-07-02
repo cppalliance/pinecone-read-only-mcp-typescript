@@ -169,7 +169,7 @@ See [deprecation-policy.md § Active deprecations](./deprecation-policy.md#activ
 
 When `PINECONE_SOURCES` or a config file is active, legacy module facades (`getNamespacesWithCache`, `registerUrlGenerator`, `markSuggested`, `requireSuggested`, etc.) operate on the **default source only** (first inline source, or `defaultSource` from JSON). They do not aggregate across projects. Prefer an explicit `ServerContext` built with `sourceRegistry` from `buildSourceRegistry()` for multi-tenant or multi-project embedding.
 
-## Unreleased: Multi-source Pinecone projects
+## 0.4.0: Multi-source Pinecone projects
 
 **Who is affected:** Operators running separate MCP entries per Pinecone project, or library embedders needing multiple indexes.
 
@@ -372,7 +372,7 @@ Core `resolveConfig` throws `Missing Pinecone index name: …` when the index is
 
 ---
 
-## Unreleased: Branded ServerConfig types
+## 0.4.0: Branded ServerConfig types
 
 **Rationale:** `resolveConfig()` and `resolveAllianceConfig()` produced structurally identical configs. Passing Alliance-resolved config or context into `setupCoreServer()` compiled but silently changed suggest-flow gate behavior (and related defaults).
 

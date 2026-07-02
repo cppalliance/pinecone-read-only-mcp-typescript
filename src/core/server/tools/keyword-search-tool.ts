@@ -30,8 +30,7 @@ import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 export type { KeywordSearchResponse };
 
 type KeywordSearchExecResult =
-  | { ok: true; body: KeywordSearchSuccessResponse }
-  | { ok: false; error: ToolError };
+  { ok: true; body: KeywordSearchSuccessResponse } | { ok: false; error: ToolError };
 
 async function executeKeywordSearch(
   params: {
