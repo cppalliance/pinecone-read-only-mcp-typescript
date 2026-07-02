@@ -1,12 +1,19 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FAST_QUERY_FIELDS, MAX_TOP_K, MIN_TOP_K } from '../../../constants.js';
-import { getPineconeClient } from '../client-context.js';
 import { formatQueryResultRows } from '../format-query-result.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
 import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
+import {
+  getClientForResolvedSource,
+  optionalSourceField,
+  rejectSourceWithoutContext,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   flowGateToolError,
@@ -31,11 +38,13 @@ type QueryExecParams = {
   metadata_filter?: Record<string, unknown>;
   fields?: string[];
   mode: QueryMode;
+  source?: string;
 };
 
 /** Run the query tool: validate flow, call Pinecone, format and return results. */
 async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
-  const { query_text, namespace, top_k, use_reranking, metadata_filter, fields, mode } = params;
+  const { query_text, namespace, top_k, use_reranking, metadata_filter, fields, mode, source } =
+    params;
   try {
     if (ctx?.disposed) {
       return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
@@ -62,12 +71,30 @@ async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
       );
     }
 
-    const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
+    const sourceError = rejectSourceWithoutContext(source, ctx);
+    if (sourceError) {
+      return jsonErrorResponse(sourceError);
+    }
+
+    let activeCtx = ctx;
+    let activeSource: string | undefined;
+    if (ctx) {
+      const resolved = await resolveSourceForTool(ctx, source, nsNorm);
+      if (!resolved.ok) {
+        return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+      }
+      activeCtx = resolved.ctx;
+      activeSource = resolved.source;
+    }
+
+    const flowCheck = activeCtx
+      ? activeCtx.requireSuggested(nsNorm, activeSource)
+      : requireSuggested(nsNorm);
     if (!flowCheck.ok) {
       return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
     }
 
-    const client = ctx ? ctx.getClient() : getPineconeClient();
+    const client = getClientForResolvedSource(activeCtx, activeSource, 'query');
     const queryOutcome = await client.query({
       query: query_text.trim(),
       topK: top_k,
@@ -77,13 +104,18 @@ async function executeQuery(params: QueryExecParams, ctx?: ServerContext) {
       fields: fields?.length ? fields : undefined,
     });
 
-    const formattedResults = formatQueryResultRows(queryOutcome.results, { ctx });
+    const formattedResults = formatQueryResultRows(queryOutcome.results, {
+      ctx: activeCtx,
+      namespace: nsNorm,
+      source: activeSource,
+    });
 
     const response: QuerySuccessResponse = {
       status: 'success',
       mode,
       query: query_text,
       namespace: nsNorm,
+      ...optionalSourceField(activeCtx, activeSource ?? ''),
       metadata_filter: metadata_filter,
       result_count: formattedResults.length,
       results: formattedResults,
@@ -122,6 +154,7 @@ const baseSchema = {
     .describe(
       'Optional field names to return from Pinecone. Use suggest_query_params suggested_fields for better performance.'
     ),
+  source: sourceParamSchema,
 };
 
 /**
@@ -180,6 +213,7 @@ export function registerQueryTool(server: McpServer, ctx?: ServerContext): void 
           metadata_filter: params.metadata_filter,
           fields,
           mode,
+          source: params.source,
         },
         ctx
       );

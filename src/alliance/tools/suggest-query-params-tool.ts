@@ -6,6 +6,13 @@ import { suggestQueryParams } from '../../core/server/query-suggestion.js';
 import type { ServerContext } from '../../core/server/server-context.js';
 import { markSuggested } from '../../core/server/suggestion-flow.js';
 import {
+  optionalSourceField,
+  rejectSourceWithoutContext,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../../core/server/source-tool-utils.js';
+import {
   classifyToolCatchError,
   lifecycleToolError,
   logToolError,
@@ -38,6 +45,7 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
           .describe(
             'The user\'s natural language question or intent (e.g. "list documents by author X with titles and links", "how many records match Y?", "what do the docs say about Z?").'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -45,7 +53,7 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
         if (ctx?.disposed) {
           return jsonErrorResponse(lifecycleToolError('ServerContext has been disposed'));
         }
-        const { namespace, user_query } = params;
+        const { namespace, user_query, source } = params;
         if (!user_query?.trim()) {
           return jsonErrorResponse(validationToolError('user_query cannot be empty', 'user_query'));
         }
@@ -57,8 +65,25 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
             })
           );
         }
-        const { data: namespacesInfo, cache_hit } = ctx
-          ? await ctx.getNamespacesWithCache()
+
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
+        }
+
+        let activeCtx = ctx;
+        let activeSource: string | undefined;
+        if (ctx?.isMultiSource()) {
+          const resolved = await resolveSourceForTool(ctx, source, nsNorm);
+          if (!resolved.ok) {
+            return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+          }
+          activeCtx = resolved.ctx;
+          activeSource = resolved.source;
+        }
+
+        const { data: namespacesInfo, cache_hit } = activeCtx
+          ? await activeCtx.getNamespacesWithCache(activeSource)
           : await getNamespacesWithCache();
         const ns = namespacesInfo.find(
           (n) => n.namespace === nsNorm || normalizeNamespace(n.namespace) === nsNorm
@@ -66,12 +91,16 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
         const metadataFields = ns?.metadata ?? null;
         const result = suggestQueryParams(metadataFields, user_query.trim());
         if (result.namespace_found) {
-          if (ctx) {
-            ctx.markSuggested(nsNorm, {
-              recommended_tool: result.recommended_tool,
-              suggested_fields: result.suggested_fields,
-              user_query: user_query.trim(),
-            });
+          if (activeCtx) {
+            activeCtx.markSuggested(
+              nsNorm,
+              {
+                recommended_tool: result.recommended_tool,
+                suggested_fields: result.suggested_fields,
+                user_query: user_query.trim(),
+              },
+              activeCtx.isMultiSource() ? activeSource : undefined
+            );
           } else {
             markSuggested(nsNorm, {
               recommended_tool: result.recommended_tool,
@@ -84,6 +113,7 @@ export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerCo
           ...result,
           status: 'success',
           cache_hit,
+          ...optionalSourceField(activeCtx, activeSource),
         };
         return validatedJsonResponse(suggestQueryParamsResponseSchema, response);
       } catch (error) {

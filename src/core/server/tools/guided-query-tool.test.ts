@@ -49,6 +49,20 @@ describe('guided_query tool handler', () => {
     } as never);
   });
 
+  it('returns VALIDATION when source is provided without ServerContext', async () => {
+    const server = createMockServer();
+    registerGuidedQueryTool(server as never);
+    const err = assertToolErrorCode(
+      await server.getHandler('guided_query')!({
+        user_query: 'What does the paper say?',
+        source: 'api_key_1',
+      }),
+      'VALIDATION'
+    );
+    expect(err.field).toBe('source');
+    expect(mockedGetNamespaces).not.toHaveBeenCalled();
+  });
+
   it('guided_query: surfaces rerank failure in decision_trace', async () => {
     mockedGetClient.mockReturnValue({
       query: vi.fn().mockResolvedValue(

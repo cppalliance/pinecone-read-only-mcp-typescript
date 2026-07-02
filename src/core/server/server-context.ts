@@ -10,12 +10,26 @@ import { warnLegacyFacade } from './legacy-facade-warn.js';
 import { normalizeNamespace } from './namespace-utils.js';
 import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
+import { buildSourceRegistry, type SourceRegistry } from './source-registry.js';
 
 export type NamespaceInfo = {
   namespace: string;
   recordCount: number;
   metadata: Record<string, string>;
+  source?: string;
 };
+
+export type ResolveSourceResult =
+  | { ok: true; source: string }
+  | {
+      ok: false;
+      code:
+        | 'UNKNOWN_SOURCE'
+        | 'AMBIGUOUS_NAMESPACE'
+        | 'NAMESPACE_NOT_FOUND'
+        | 'PARTIAL_SOURCE_AGGREGATION';
+      message: string;
+    };
 
 /** Public seed shape for namespace cache injection (not the internal {@link NamespaceInfo} type). {@link ServerContext} copies `data` at construction so callers may reuse or mutate seed buffers afterward. */
 export type NamespaceCacheSeed = {
@@ -43,6 +57,7 @@ export type ServerContextInitOptions = {
 /** Pre-built dependencies accepted by {@link ServerContext} and factory helpers. */
 export interface ServerContextComposition {
   client?: PineconeClient;
+  sourceRegistry?: SourceRegistry;
   urlGenerators?: Iterable<readonly [string, UrlGeneratorFn]>;
   namespaceCacheSeed?: NamespaceCacheSeed;
   suggestionFlowSeed?: SuggestionFlowSeedEntry[];
@@ -76,6 +91,24 @@ function buildPineconeClient(config: ServerConfigBase): PineconeClient {
   });
 }
 
+function flowKey(source: string | undefined, namespace: string, multiSource: boolean): string {
+  if (multiSource && source) {
+    return `${source}:${namespace}`;
+  }
+  return namespace;
+}
+
+function urlRegistryKey(
+  namespace: string,
+  source: string | undefined,
+  multiSource: boolean
+): string {
+  if (multiSource && source) {
+    return `${source}:${namespace.trim()}`;
+  }
+  return namespace.trim();
+}
+
 /**
  * Encapsulates per-server state: Pinecone client, config, URL registry,
  * suggest-flow gate, and namespaces cache.
@@ -87,6 +120,7 @@ export class ServerContext<
   private toolsRegistered = false;
   private client: PineconeClient | null = null;
   private clientExplicitlySet = false;
+  private sourceRegistry: SourceRegistry | null = null;
   private configValue: T | null = null;
   private readonly unconfiguredAlliance: boolean;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
@@ -95,8 +129,14 @@ export class ServerContext<
 
   constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
     this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
+    if (composition?.client && composition?.sourceRegistry) {
+      throw new Error('Cannot pass both client and sourceRegistry in ServerContextComposition.');
+    }
     if (config) {
       this.configValue = config;
+    }
+    if (composition?.sourceRegistry) {
+      this.sourceRegistry = composition.sourceRegistry;
     }
     if (composition?.client) {
       this.client = composition.client;
@@ -174,8 +214,151 @@ export class ServerContext<
   private invalidateConfigDerivedState(): void {
     this.client = null;
     this.clientExplicitlySet = false;
+    this.sourceRegistry = null;
     this.namespacesCache = null;
     this.suggestionFlow.clear();
+  }
+
+  private ensureSourceRegistry(): SourceRegistry {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry;
+    }
+    const cfg = this.getConfig();
+    if (!cfg.sources || cfg.sources.length === 0) {
+      throw new Error('Multi-source registry requested but config.sources is not set.');
+    }
+    this.sourceRegistry = buildSourceRegistry({
+      sources: cfg.sources,
+      defaultSource: cfg.defaultSource ?? cfg.sources[0]!.name,
+      cacheTtlMs: cfg.cacheTtlMs,
+      defaultTopK: cfg.defaultTopK,
+      requestTimeoutMs: cfg.requestTimeoutMs,
+    });
+    return this.sourceRegistry;
+  }
+
+  isMultiSource(): boolean {
+    const cfg = this.configValue;
+    if (cfg?.sources && cfg.sources.length > 1) {
+      return true;
+    }
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.isMultiSource();
+    }
+    return false;
+  }
+
+  listSources(): string[] {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.listSources();
+    }
+    const cfg = this.getConfigIfSet() ?? this.getConfig();
+    if (cfg.sources && cfg.sources.length > 0) {
+      return cfg.sources.map((s) => s.name);
+    }
+    return [];
+  }
+
+  getDefaultSourceName(): string {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.getDefaultName();
+    }
+    const cfg = this.getConfig();
+    return cfg.defaultSource ?? cfg.sources?.[0]?.name ?? 'default';
+  }
+
+  getClientForSource(source: string): PineconeClient {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.get(source);
+    }
+    if (!this.isMultiSource()) {
+      return this.getClient();
+    }
+    return this.ensureSourceRegistry().get(source);
+  }
+
+  /** Return the Pinecone client, lazily constructing from config when unset. */
+  getClient(): PineconeClient {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.getDefault();
+    }
+    if (this.getConfig().sources && this.getConfig().sources!.length > 0) {
+      return this.ensureSourceRegistry().getDefault();
+    }
+    if (!this.client) {
+      this.client = buildPineconeClient(this.getConfig());
+    }
+    return this.client;
+  }
+
+  async resolveSource(source?: string, namespace?: string): Promise<ResolveSourceResult> {
+    if (
+      !this.isMultiSource() &&
+      !(this.getConfig().sources && this.getConfig().sources!.length > 0)
+    ) {
+      return { ok: true, source: this.getDefaultSourceName() };
+    }
+    const registry = this.sourceRegistry ?? this.ensureSourceRegistry();
+    const trimmedSource = source?.trim();
+    if (trimmedSource) {
+      if (!registry.listSources().includes(trimmedSource)) {
+        return {
+          ok: false,
+          code: 'UNKNOWN_SOURCE',
+          message: `Unknown source "${trimmedSource}". Call list_sources for configured names.`,
+        };
+      }
+      if (namespace !== undefined) {
+        const nsNorm = normalizeNamespace(namespace);
+        if (!nsNorm) {
+          return { ok: false, code: 'NAMESPACE_NOT_FOUND', message: 'namespace cannot be empty.' };
+        }
+        const { data } = await registry.getNamespacesWithCache(trimmedSource);
+        const found = data.some((n) => normalizeNamespace(n.namespace) === nsNorm);
+        if (!found) {
+          return {
+            ok: false,
+            code: 'NAMESPACE_NOT_FOUND',
+            message: `Namespace "${namespace}" not found on source "${trimmedSource}".`,
+          };
+        }
+      }
+      return { ok: true, source: trimmedSource };
+    }
+    if (namespace !== undefined) {
+      const nsNorm = normalizeNamespace(namespace);
+      if (!nsNorm) {
+        return { ok: false, code: 'NAMESPACE_NOT_FOUND', message: 'namespace cannot be empty.' };
+      }
+      const cacheResult = await this.getNamespacesWithCache();
+      const sourceErrors = cacheResult.source_errors;
+      if (sourceErrors && Object.keys(sourceErrors).length > 0) {
+        return {
+          ok: false,
+          code: 'PARTIAL_SOURCE_AGGREGATION',
+          message:
+            'Namespace discovery is incomplete because one or more sources failed. Pass source explicitly or retry after resolving source_errors.',
+        };
+      }
+      const { data } = cacheResult;
+      const matches = data.filter((n) => normalizeNamespace(n.namespace) === nsNorm);
+      if (matches.length === 1) {
+        return { ok: true, source: matches[0]!.source ?? registry.getDefaultName() };
+      }
+      if (matches.length > 1) {
+        return {
+          ok: false,
+          code: 'AMBIGUOUS_NAMESPACE',
+          message: `Namespace "${namespace}" exists on multiple sources. Pass source explicitly.`,
+        };
+      }
+      return {
+        ok: false,
+        code: 'NAMESPACE_NOT_FOUND',
+        message: `Namespace "${namespace}" not found. Call list_namespaces first.`,
+      };
+    }
+    return { ok: true, source: registry.getDefaultName() };
   }
 
   setClient(client: PineconeClient): void {
@@ -201,19 +384,21 @@ export class ServerContext<
     return this.client;
   }
 
-  /** Return the Pinecone client, lazily constructing from config when unset. */
-  getClient(): PineconeClient {
-    if (!this.client) {
-      this.client = buildPineconeClient(this.getConfig());
+  async checkAllIndexes(): Promise<{ ok: boolean; errors: string[] }> {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.checkAllIndexes();
     }
-    return this.client;
+    if (this.getConfig().sources && this.getConfig().sources!.length > 0) {
+      return this.ensureSourceRegistry().checkAllIndexes();
+    }
+    return this.getClient().checkIndexes();
   }
 
   resetUrlGenerators(): void {
     this.urlGenerators.clear();
   }
 
-  registerUrlGenerator(namespace: string, generator: UrlGeneratorFn): void {
+  registerUrlGenerator(namespace: string, generator: UrlGeneratorFn, source?: string): void {
     const normalizedNamespace = namespace.trim();
     if (normalizedNamespace.length === 0) {
       throw new TypeError('namespace must be a non-empty string');
@@ -221,27 +406,83 @@ export class ServerContext<
     if (typeof generator !== 'function') {
       throw new TypeError('generator must be a function');
     }
+    const multi = this.isMultiSource();
+    if (multi) {
+      const sources =
+        this.sourceRegistry?.listSources() ??
+        this.configValue?.sources?.map((entry) => entry.name) ??
+        [];
+      if (source) {
+        this.urlGenerators.set(urlRegistryKey(normalizedNamespace, source, true), generator);
+      } else {
+        for (const src of sources) {
+          this.urlGenerators.set(urlRegistryKey(normalizedNamespace, src, true), generator);
+        }
+      }
+      return;
+    }
     this.urlGenerators.set(normalizedNamespace, generator);
   }
 
-  unregisterUrlGenerator(namespace: string): boolean {
-    return this.urlGenerators.delete(namespace.trim());
+  unregisterUrlGenerator(namespace: string, source?: string): boolean {
+    const trimmed = namespace.trim();
+    if (!this.isMultiSource()) {
+      return this.urlGenerators.delete(trimmed);
+    }
+    const sources =
+      this.sourceRegistry?.listSources() ??
+      this.configValue?.sources?.map((entry) => entry.name) ??
+      [];
+    if (source) {
+      return this.urlGenerators.delete(urlRegistryKey(trimmed, source, true));
+    }
+    let removed = false;
+    for (const src of sources) {
+      if (this.urlGenerators.delete(urlRegistryKey(trimmed, src, true))) {
+        removed = true;
+      }
+    }
+    return removed || this.urlGenerators.delete(trimmed);
   }
 
-  hasUrlGenerator(namespace: string): boolean {
-    return this.urlGenerators.has(namespace.trim());
+  hasUrlGenerator(namespace: string, source?: string): boolean {
+    const trimmed = namespace.trim();
+    if (!this.isMultiSource()) {
+      return this.urlGenerators.has(trimmed);
+    }
+    if (source) {
+      return (
+        this.urlGenerators.has(urlRegistryKey(trimmed, source, true)) ||
+        this.urlGenerators.has(trimmed)
+      );
+    }
+    const sources =
+      this.sourceRegistry?.listSources() ??
+      this.configValue?.sources?.map((entry) => entry.name) ??
+      [];
+    return (
+      sources.some((src) => this.urlGenerators.has(urlRegistryKey(trimmed, src, true))) ||
+      this.urlGenerators.has(trimmed)
+    );
   }
 
   generateUrlForNamespace(
     namespace: string,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
+    source?: string
   ): UrlGenerationResult {
     const existingUrl = asString(metadata['url']);
     if (existingUrl) {
       return { url: existingUrl, method: 'metadata.url' };
     }
 
-    const generator = this.urlGenerators.get(namespace.trim());
+    const multi = this.isMultiSource();
+    const trimmed = namespace.trim();
+    const key = urlRegistryKey(trimmed, source, multi);
+    let generator = this.urlGenerators.get(key);
+    if (!generator && multi && source) {
+      generator = this.urlGenerators.get(trimmed);
+    }
     if (generator) {
       return generator(metadata);
     }
@@ -263,19 +504,23 @@ export class ServerContext<
     }
   }
 
-  markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>): void {
+  markSuggested(namespace: string, state: Omit<FlowState, 'updatedAt'>, source?: string): void {
     const key = normalizeNamespace(namespace);
     if (!key) {
       throw new Error('markSuggested: namespace must not be empty after trim');
     }
     this.sweepExpiredSuggestionFlow();
-    this.suggestionFlow.set(key, {
+    const flowKeyValue = flowKey(source, key, this.isMultiSource());
+    this.suggestionFlow.set(flowKeyValue, {
       ...state,
       updatedAt: Date.now(),
     });
   }
 
-  requireSuggested(namespace: string):
+  requireSuggested(
+    namespace: string,
+    source?: string
+  ):
     | {
         ok: true;
         flow: FlowState;
@@ -304,7 +549,8 @@ export class ServerContext<
       };
     }
 
-    const state = this.suggestionFlow.get(key);
+    const flowKeyValue = flowKey(source, key, this.isMultiSource());
+    const state = this.suggestionFlow.get(flowKeyValue);
     if (!state) {
       return {
         ok: false,
@@ -316,7 +562,7 @@ export class ServerContext<
     const cfg = this.getConfig();
     const now = Date.now();
     if (now - state.updatedAt > cfg.cacheTtlMs) {
-      this.suggestionFlow.delete(key);
+      this.suggestionFlow.delete(flowKeyValue);
       return {
         ok: false,
         message:
@@ -331,11 +577,25 @@ export class ServerContext<
     this.suggestionFlow.clear();
   }
 
-  async getNamespacesWithCache(): Promise<{
+  async getNamespacesWithCache(source?: string): Promise<{
     data: NamespaceInfo[];
     cache_hit: boolean;
     expires_at: number;
+    source_errors?: Record<string, string>;
   }> {
+    if (
+      this.isMultiSource() ||
+      (this.getConfig().sources && this.getConfig().sources!.length > 0)
+    ) {
+      const registry = this.sourceRegistry ?? this.ensureSourceRegistry();
+      if (source) {
+        const result = await registry.getNamespacesWithCache(source);
+        return result;
+      }
+      const aggregated = await registry.getAllNamespacesWithCache();
+      return aggregated;
+    }
+
     const now = Date.now();
     if (this.namespacesCache && now < this.namespacesCache.expiresAt) {
       return {
@@ -353,7 +613,27 @@ export class ServerContext<
     return { data, cache_hit: false, expires_at: expiresAt };
   }
 
-  invalidateNamespacesCache(): void {
+  async getNamespacesWithCacheForSource(source: string): Promise<{
+    data: NamespaceInfo[];
+    cache_hit: boolean;
+    expires_at: number;
+  }> {
+    return this.getNamespacesWithCache(source) as Promise<{
+      data: NamespaceInfo[];
+      cache_hit: boolean;
+      expires_at: number;
+    }>;
+  }
+
+  invalidateNamespacesCache(source?: string): void {
+    if (this.sourceRegistry) {
+      this.sourceRegistry.invalidateNamespacesCache(source);
+      return;
+    }
+    if (this.isMultiSource()) {
+      this.ensureSourceRegistry().invalidateNamespacesCache(source);
+      return;
+    }
     this.namespacesCache = null;
   }
 
@@ -385,6 +665,7 @@ export class ServerContext<
     this.toolsRegistered = false;
     this.client = null;
     this.clientExplicitlySet = false;
+    this.sourceRegistry = null;
     this.configValue = null;
     this.urlGenerators.clear();
     this.suggestionFlow.clear();

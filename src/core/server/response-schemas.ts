@@ -32,6 +32,7 @@ export const queryResultRowSchema = z.object({
   score: z.number(),
   reranked: z.boolean(),
   metadata: z.record(z.string(), pineconeMetadataValueSchema).optional(),
+  source: z.string().optional(),
 });
 
 export type QueryResultRowShape = z.infer<typeof queryResultRowSchema>;
@@ -51,6 +52,7 @@ const rankedNamespaceSchema = z.object({
   score: z.number(),
   record_count: z.number(),
   reasons: z.array(z.string()),
+  source: z.string().optional(),
 });
 
 export const guidedQueryDecisionTraceSchema = z.object({
@@ -58,6 +60,7 @@ export const guidedQueryDecisionTraceSchema = z.object({
   input_namespace: z.string().nullable(),
   routed_namespace: z.string().nullable(),
   selected_namespace: z.string(),
+  selected_source: z.string().optional(),
   ranked_namespaces: z.array(rankedNamespaceSchema),
   suggested_fields: z.array(z.string()),
   suggested_tool: z.enum(['count', 'fast', 'detailed', 'full']),
@@ -80,6 +83,7 @@ export const querySuccessResponseSchema = z.object({
   mode: z.enum(['query', 'query_fast', 'query_detailed']),
   query: z.string(),
   namespace: z.string(),
+  source: z.string().optional(),
   metadata_filter: z.record(z.string(), z.unknown()).optional(),
   result_count: z.number(),
   fields: z.array(z.string()).optional(),
@@ -106,9 +110,11 @@ export const listNamespacesResponseSchema = z.object({
   cache_ttl_seconds: z.number(),
   expires_at_iso: z.string(),
   count: z.number(),
+  source_errors: z.record(z.string(), z.string()).optional(),
   namespaces: z.array(
     z.object({
       name: z.string(),
+      source: z.string().optional(),
       record_count: z.number(),
       metadata_fields: z.record(z.string(), z.string()),
     })
@@ -123,6 +129,7 @@ export const namespaceRouterResponseSchema = z.object({
   user_query: z.string(),
   suggestions: z.array(rankedNamespaceSchema),
   recommended_namespace: z.string().nullable(),
+  recommended_source: z.string().optional(),
 });
 
 export type NamespaceRouterResponse = z.infer<typeof namespaceRouterResponseSchema>;
@@ -130,6 +137,7 @@ export type NamespaceRouterResponse = z.infer<typeof namespaceRouterResponseSche
 export const suggestQueryParamsResponseSchema = z.object({
   status: z.literal('success'),
   cache_hit: z.boolean(),
+  source: z.string().optional(),
   suggested_fields: z.array(z.string()),
   use_count_tool: z.boolean(),
   recommended_tool: z.enum(['count', 'fast', 'detailed', 'full']),
@@ -144,6 +152,7 @@ export const countResponseSchema = z.object({
   count: z.number(),
   truncated: z.boolean(),
   namespace: z.string(),
+  source: z.string().optional(),
   metadata_filter: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -154,6 +163,7 @@ export const keywordSearchSuccessResponseSchema = z.object({
   status: z.literal('success'),
   query: z.string(),
   namespace: z.string(),
+  source: z.string().optional(),
   index: z.string(),
   metadata_filter: z.record(z.string(), z.unknown()).optional(),
   result_count: z.number(),
@@ -187,6 +197,7 @@ export const queryDocumentsResponseSchema = z.object({
   status: z.literal('success'),
   query: z.string(),
   namespace: z.string(),
+  source: z.string().optional(),
   metadata_filter: z.record(z.string(), z.unknown()).optional(),
   result_count: z.number(),
   documents: z.array(queryDocumentRowSchema),
@@ -198,6 +209,7 @@ export type QueryDocumentsResponse = z.infer<typeof queryDocumentsResponseSchema
 export const guidedCountResultSchema = z.object({
   tool: z.literal('count'),
   namespace: z.string(),
+  source: z.string().optional(),
   query: z.string(),
   metadata_filter: z.record(z.string(), z.unknown()).optional(),
   count: z.number(),
@@ -239,6 +251,14 @@ export const generateUrlsResponseSchema = z.object({
 });
 
 export type GenerateUrlsResponse = z.infer<typeof generateUrlsResponseSchema>;
+
+export const listSourcesResponseSchema = z.object({
+  status: z.literal('success'),
+  sources: z.array(z.string()),
+  default: z.string(),
+});
+
+export type ListSourcesResponse = z.infer<typeof listSourcesResponseSchema>;
 
 /**
  * Assemble optional `experimental` block for query-shaped tool responses.

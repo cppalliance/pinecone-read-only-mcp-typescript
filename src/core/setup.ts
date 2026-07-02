@@ -14,6 +14,7 @@ import {
 import { registerCountTool } from './server/tools/count-tool.js';
 import { registerGenerateUrlsTool } from './server/tools/generate-urls-tool.js';
 import { registerGuidedQueryTool } from './server/tools/guided-query-tool.js';
+import { registerListSourcesTool } from './server/tools/list-sources-tool.js';
 import { registerKeywordSearchTool } from './server/tools/keyword-search-tool.js';
 import { registerListNamespacesTool } from './server/tools/list-namespaces-tool.js';
 import { registerNamespaceRouterTool } from './server/tools/namespace-router-tool.js';
@@ -163,6 +164,11 @@ async function registerCoreToolSurface(
   registerQueryDocumentsTool(server, ctx);
   registerGenerateUrlsTool(server, ctx);
   registerGuidedQueryTool(server, ctx);
+
+  ctx.getConfig();
+  if (ctx.isMultiSource()) {
+    registerListSourcesTool(server, ctx);
+  }
 
   ctx.markToolsRegistered();
 

@@ -8,6 +8,8 @@
  */
 
 import { DEFAULT_TOP_K, FLOW_CACHE_TTL_MS } from '../constants.js';
+import type { ParseSourcesOptions, SourceDefinition } from './server/source-config.js';
+import { resolveSourceDefinitions } from './server/source-config.js';
 
 /** Allowed log levels, in ascending severity. */
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
@@ -55,6 +57,10 @@ export interface ServerConfigBase {
   disableSuggestFlow: boolean;
   /** When true, on-startup probe verifies dense + sparse indexes exist. */
   checkIndexes: boolean;
+  /** Named Pinecone sources when multi-project mode is enabled. */
+  sources?: SourceDefinition[];
+  /** Default source name when multi-source mode is enabled. */
+  defaultSource?: string;
 }
 
 /** Backward-compatible alias for {@link ServerConfigBase} (read paths, docs). */
@@ -144,6 +150,8 @@ export interface ConfigOverrides {
   requestTimeoutMs?: number;
   disableSuggestFlow?: boolean;
   checkIndexes?: boolean;
+  sources?: string;
+  configFile?: string;
 }
 
 /**
@@ -167,8 +175,53 @@ export interface ConfigOverrides {
  */
 export function resolveConfig(
   overrides: ConfigOverrides,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
+  parseSourcesOptions?: ParseSourcesOptions
 ): CoreServerConfig {
+  const defaultTopK = overrides.defaultTopK ?? asPositiveInt(env['PINECONE_TOP_K'], DEFAULT_TOP_K);
+  const logLevel = asLogLevel(
+    overrides.logLevel ?? env['PINECONE_READ_ONLY_MCP_LOG_LEVEL'],
+    'INFO'
+  );
+  const logFormat = asLogFormat(
+    overrides.logFormat ?? env['PINECONE_READ_ONLY_MCP_LOG_FORMAT'],
+    'text'
+  );
+  const cacheTtlSeconds =
+    overrides.cacheTtlSeconds ??
+    asPositiveInt(env['PINECONE_CACHE_TTL_SECONDS'], FLOW_CACHE_TTL_MS / 1000);
+  const requestTimeoutMs =
+    overrides.requestTimeoutMs ??
+    asPositiveInt(env['PINECONE_REQUEST_TIMEOUT_MS'], DEFAULT_REQUEST_TIMEOUT_MS);
+  const disableSuggestFlow =
+    overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], true);
+  const checkIndexes = overrides.checkIndexes ?? asBool(env['PINECONE_CHECK_INDEXES'], false);
+
+  const multi = resolveSourceDefinitions(overrides, env, parseSourcesOptions);
+  if (multi) {
+    const primary = multi.sources.find((s) => s.name === multi.defaultSource) ?? multi.sources[0]!;
+    if (trimOptional(env['PINECONE_API_KEY']) || trimOptional(overrides.apiKey)) {
+      process.stderr.write(
+        'Warning: PINECONE_SOURCES / config file is active; PINECONE_API_KEY is ignored.\n'
+      );
+    }
+    return brandCoreConfig({
+      apiKey: primary.apiKey,
+      indexName: primary.indexName,
+      sparseIndexName: primary.sparseIndexName ?? `${primary.indexName}-sparse`,
+      ...(primary.rerankModel !== undefined ? { rerankModel: primary.rerankModel } : {}),
+      defaultTopK,
+      logLevel,
+      logFormat,
+      cacheTtlMs: cacheTtlSeconds * 1000,
+      requestTimeoutMs,
+      disableSuggestFlow,
+      checkIndexes,
+      sources: multi.sources,
+      defaultSource: multi.defaultSource,
+    });
+  }
+
   const apiKey = (overrides.apiKey ?? env['PINECONE_API_KEY'] ?? '').trim();
   if (!apiKey) {
     throw new Error(
@@ -189,25 +242,6 @@ export function resolveConfig(
 
   const rerankModel = trimOptional(overrides.rerankModel ?? env['PINECONE_RERANK_MODEL']);
 
-  const defaultTopK = overrides.defaultTopK ?? asPositiveInt(env['PINECONE_TOP_K'], DEFAULT_TOP_K);
-  const logLevel = asLogLevel(
-    overrides.logLevel ?? env['PINECONE_READ_ONLY_MCP_LOG_LEVEL'],
-    'INFO'
-  );
-  const logFormat = asLogFormat(
-    overrides.logFormat ?? env['PINECONE_READ_ONLY_MCP_LOG_FORMAT'],
-    'text'
-  );
-  const cacheTtlSeconds =
-    overrides.cacheTtlSeconds ??
-    asPositiveInt(env['PINECONE_CACHE_TTL_SECONDS'], FLOW_CACHE_TTL_MS / 1000);
-  const requestTimeoutMs =
-    overrides.requestTimeoutMs ??
-    asPositiveInt(env['PINECONE_REQUEST_TIMEOUT_MS'], DEFAULT_REQUEST_TIMEOUT_MS);
-  const disableSuggestFlow =
-    overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], true);
-  const checkIndexes = overrides.checkIndexes ?? asBool(env['PINECONE_CHECK_INDEXES'], false);
-
   return brandCoreConfig({
     apiKey,
     indexName,
@@ -222,3 +256,5 @@ export function resolveConfig(
     checkIndexes,
   });
 }
+
+export type { SourceDefinition } from './server/source-config.js';

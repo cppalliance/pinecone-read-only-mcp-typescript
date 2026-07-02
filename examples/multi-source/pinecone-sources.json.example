@@ -1,0 +1,13 @@
+{
+  "defaultSource": "api_key_1",
+  "sources": {
+    "api_key_1": {
+      "apiKey": "${PINECONE_API_KEY_1}",
+      "indexName": "index_name_1"
+    },
+    "api_key_2": {
+      "apiKey": "${PINECONE_API_KEY_2}",
+      "indexName": "index_name_2"
+    }
+  }
+}

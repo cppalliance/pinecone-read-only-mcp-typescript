@@ -119,6 +119,22 @@ export function parseCli(argv: string[] = process.argv.slice(2)): ParseCliResult
       case '--check-indexes':
         overrides.checkIndexes = true;
         break;
+      case '--sources': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.sources = v;
+          i++;
+        }
+        break;
+      }
+      case '--config-file': {
+        const v = readOptionValue(argv, i);
+        if (v !== undefined) {
+          overrides.configFile = v;
+          i++;
+        }
+        break;
+      }
       default:
         break;
     }
@@ -146,6 +162,8 @@ Options:
   --request-timeout-ms N      Per Pinecone call timeout [env: PINECONE_REQUEST_TIMEOUT_MS]
   --disable-suggest-flow      Bypass suggest_query_params gate (PINECONE_DISABLE_SUGGEST_FLOW)
   --check-indexes             Verify dense + sparse indexes then exit 0/1 (PINECONE_CHECK_INDEXES)
+  --sources TEXT              Multi-source inline config (PINECONE_SOURCES)
+  --config-file PATH          Multi-source JSON config file (PINECONE_CONFIG_FILE)
   --help, -h                  Show this message
   --version, -v               Print package version
 

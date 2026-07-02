@@ -33,4 +33,23 @@ describe('formatSearchResultAsRow (ServerContext instance path)', () => {
     });
     expect(row.url).toBe('https://ctx.example/papers/doc-1');
   });
+
+  it('omits row source in single-source mode even when source option is set', () => {
+    isolateFromDefaultContext();
+    const ctx = new ServerContext(resolveTestConfig());
+    const doc: SearchResult = {
+      id: 'v1',
+      content: 'body',
+      score: 0.9,
+      metadata: { document_number: 'DOC-1', title: 'T', author: 'A' },
+      reranked: false,
+    };
+
+    const row = formatSearchResultAsRow(doc, {
+      namespace: 'papers',
+      source: 'api_key_1',
+      ctx,
+    });
+    expect(row.source).toBeUndefined();
+  });
 });

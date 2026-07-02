@@ -10,6 +10,7 @@ import {
   type AllianceServerConfig,
   type ConfigOverrides,
 } from '../core/config.js';
+import type { ParseSourcesOptions } from '../core/server/source-config.js';
 
 /** C++ Alliance default dense index when env/CLI omit `PINECONE_INDEX_NAME`. */
 export const ALLIANCE_DEFAULT_INDEX_NAME = 'rag-hybrid';
@@ -47,7 +48,13 @@ export function resolveAllianceConfig(
     trimOptional(overrides.rerankModel) ??
     trimOptional(env['PINECONE_RERANK_MODEL']) ??
     ALLIANCE_DEFAULT_RERANK_MODEL;
-  const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env);
+  const allianceParseOptions: ParseSourcesOptions = {
+    allianceDefaults: {
+      indexName,
+      rerankModel,
+    },
+  };
+  const cfg = resolveConfig({ ...overrides, indexName, rerankModel }, env, allianceParseOptions);
   const disableSuggestFlow =
     overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], false);
   return brandAllianceConfig({ ...cfg, disableSuggestFlow });

@@ -5,12 +5,19 @@ import {
   MAX_QUERY_DOCUMENTS_TOP_K,
   QUERY_DOCUMENTS_MAX_CHUNKS,
 } from '../../../constants.js';
-import { getPineconeClient } from '../client-context.js';
 import { metadataFilterSchema, validateMetadataFilterDetailed } from '../metadata-filter.js';
 import { normalizeNamespace } from '../namespace-utils.js';
 import { reassembleByDocument } from '../reassemble-documents.js';
 import type { ServerContext } from '../server-context.js';
 import { requireSuggested } from '../suggestion-flow.js';
+import {
+  getClientForResolvedSource,
+  optionalSourceField,
+  rejectSourceWithoutContext,
+  resolveSourceForTool,
+  sourceParamSchema,
+  sourceValidationError,
+} from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   flowGateToolError,
@@ -76,6 +83,7 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
           .describe(
             'Max chunks to merge per document (default 200). Lower for shorter merged_content.'
           ),
+        source: sourceParamSchema,
       },
     },
     async (params) => {
@@ -89,6 +97,7 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
           top_k = DEFAULT_QUERY_DOCUMENTS_TOP_K,
           metadata_filter,
           max_chunks_per_document,
+          source,
         } = params;
 
         if (!query_text?.trim()) {
@@ -111,13 +120,31 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
           );
         }
 
-        const flowCheck = ctx ? ctx.requireSuggested(nsNorm) : requireSuggested(nsNorm);
+        const sourceError = rejectSourceWithoutContext(source, ctx);
+        if (sourceError) {
+          return jsonErrorResponse(sourceError);
+        }
+
+        let activeCtx = ctx;
+        let activeSource: string | undefined;
+        if (ctx) {
+          const resolved = await resolveSourceForTool(ctx, source, nsNorm);
+          if (!resolved.ok) {
+            return jsonErrorResponse(sourceValidationError(resolved.code, resolved.message));
+          }
+          activeCtx = resolved.ctx;
+          activeSource = resolved.source;
+        }
+
+        const flowCheck = activeCtx
+          ? activeCtx.requireSuggested(nsNorm, activeSource)
+          : requireSuggested(nsNorm);
         if (!flowCheck.ok) {
           return jsonErrorResponse(flowGateToolError(nsNorm, flowCheck.message));
         }
 
         const chunkLimit = Math.min(QUERY_DOCUMENTS_MAX_CHUNKS, top_k * CHUNKS_PER_DOCUMENT);
-        const client = ctx ? ctx.getClient() : getPineconeClient();
+        const client = getClientForResolvedSource(activeCtx, activeSource, 'query_documents');
         const queryOutcome = await client.query({
           query: query_text.trim(),
           topK: chunkLimit,
@@ -139,6 +166,7 @@ export function registerQueryDocumentsTool(server: McpServer, ctx?: ServerContex
           status: 'success',
           query: query_text.trim(),
           namespace: nsNorm,
+          ...optionalSourceField(activeCtx, activeSource ?? ''),
           metadata_filter,
           result_count: topDocuments.length,
           ...buildQueryExperimental(queryOutcome),

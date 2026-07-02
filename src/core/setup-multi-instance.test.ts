@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveAllianceConfig } from '../alliance/config.js';
 import { setupAllianceServer } from '../alliance/setup.js';
-import { createIsolatedContext } from './server/server-context.js';
+import { ServerContext, createIsolatedContext } from './server/server-context.js';
 import { setupCoreServer, teardownServer } from './setup.js';
+import * as listSourcesTool from './server/tools/list-sources-tool.js';
 import {
   createTestServerContext,
   isolateFromDefaultContext,
@@ -130,5 +131,20 @@ describe('setup multi-instance (phase 4)', () => {
     });
     await expect(setupCoreServer({ context: ctxB })).resolves.toBeDefined();
     expect(ctxB.disposed).toBe(false);
+  });
+
+  it('registers list_sources when context resolves multi-source config from env', async () => {
+    isolateFromDefaultContext();
+    const registerSpy = vi.spyOn(listSourcesTool, 'registerListSourcesTool');
+    vi.stubEnv('PINECONE_SOURCES', 'api_key_1:sk-a:index_name_1;api_key_2:sk-b:index_name_2');
+    try {
+      const ctx = new ServerContext();
+      await setupCoreServer({ context: ctx });
+      expect(ctx.isMultiSource()).toBe(true);
+      expect(registerSpy).toHaveBeenCalledOnce();
+    } finally {
+      registerSpy.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 });

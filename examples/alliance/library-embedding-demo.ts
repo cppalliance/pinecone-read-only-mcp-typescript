@@ -21,6 +21,7 @@
 
 import { createServer, PineconeClient } from '@will-cppa/pinecone-read-only-mcp';
 import { resolveAllianceConfig, setupAllianceServer } from '@will-cppa/pinecone-read-only-mcp/alliance';
+import { exitOnDemoFailure } from '../lib/exit-on-failure.js';
 
 async function main(): Promise<void> {
   const apiKey = process.env['PINECONE_API_KEY']?.trim();
@@ -51,7 +52,4 @@ async function main(): Promise<void> {
   console.log('Embedded server constructed — connect your MCP transport (stdio, HTTP, etc.).');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(exitOnDemoFailure('library-embedding-demo'));

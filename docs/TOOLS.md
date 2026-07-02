@@ -8,15 +8,18 @@ Success payloads separate **stable** fields (safe across minor bumps after `1.0.
 
 | Tool | Stable | Experimental |
 | ---- | ------ | ------------ |
-| `list_namespaces` | `status`, `cache_hit`, `cache_ttl_seconds`, `expires_at_iso`, `count`, `namespaces` | _(none)_ |
-| `namespace_router` | `status`, `cache_hit`, `user_query`, `suggestions`, `recommended_namespace` | _(none)_ |
-| `suggest_query_params` | `status`, `cache_hit`, `suggested_fields`, `recommended_tool`, `use_count_tool`, `explanation`, `namespace_found` | _(none)_ |
-| `count` | `status`, `count`, `truncated`, `namespace`, `metadata_filter` | _(none)_ |
-| `query` | `status`, `mode`, `query`, `namespace`, `metadata_filter`, `result_count`, `results`, `fields` | `experimental.degraded`, `experimental.degradation_reason`, `experimental.hybrid_leg_failed`, `experimental.rerank_skipped_reason` |
-| `keyword_search` | `status`, `query`, `namespace`, `index`, `metadata_filter`, `result_count`, `results`, `fields` | _(none)_ |
-| `query_documents` | `status`, `query`, `namespace`, `metadata_filter`, `result_count`, `documents` | Same experimental degradation fields as `query` |
-| `guided_query` | `status`, `result` (count or query-shaped stable fields) | `experimental.decision_trace`; query-path `result.experimental` degradation fields |
-| `generate_urls` | `status`, `namespace`, `count`, `results` | _(none)_ |
+| `list_sources` | `status`, `sources`, `default` | _(none)_ |
+| `list_namespaces` | `status`, `cache_hit`, `cache_ttl_seconds`, `expires_at_iso`, `count`, `namespaces`, optional `source_errors` | _(none)_ |
+| `namespace_router` | `status`, `cache_hit`, `user_query`, `suggestions`, `recommended_namespace`, optional `recommended_source` | _(none)_ |
+| `suggest_query_params` | `status`, `cache_hit`, `suggested_fields`, `recommended_tool`, `use_count_tool`, `explanation`, `namespace_found`, optional `source` | _(none)_ |
+| `count` | `status`, `count`, `truncated`, `namespace`, `metadata_filter`, optional `source` | _(none)_ |
+| `query` | `status`, `mode`, `query`, `namespace`, `metadata_filter`, `result_count`, `results`, `fields`, optional `source` on payload and rows | `experimental.degraded`, `experimental.degradation_reason`, `experimental.hybrid_leg_failed`, `experimental.rerank_skipped_reason` |
+| `keyword_search` | `status`, `query`, `namespace`, `index`, `metadata_filter`, `result_count`, `results`, `fields`, optional `source` | _(none)_ |
+| `query_documents` | `status`, `query`, `namespace`, `metadata_filter`, `result_count`, `documents`, optional `source` | Same experimental degradation fields as `query` |
+| `guided_query` | `status`, `result` (count or query-shaped stable fields) | `experimental.decision_trace` (includes optional `selected_source`); query-path `result.experimental` degradation fields |
+| `generate_urls` | `status`, `namespace`, `count`, `results`, optional `source` | _(none)_ |
+
+Multi-source-only stable fields (`source` on namespace rows, `source_errors`, `recommended_source`) are **omitted** in single-key deployments. `selected_source` appears only under `guided_query` → `experimental.decision_trace` (experimental, not stable).
 
 Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecation-policy.md#stable-vs-experimental-mcp-response-fields).
 
@@ -24,8 +27,8 @@ Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecati
 
 | Setup | Tools | MCP instructions |
 | ----- | ----- | ------------------ |
-| `setupCoreServer` (package root) | **8:** `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls`, `guided_query` | `CORE_SERVER_INSTRUCTIONS` — includes `guided_query`; no `suggest_query_params` |
-| `setupAllianceServer` / published CLI | **9:** core tools plus `suggest_query_params` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes suggest-flow quickstart |
+| `setupCoreServer` (package root) | **8** (single-key) or **9** (multi-source adds `list_sources`): `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls`, `guided_query` | `CORE_SERVER_INSTRUCTIONS` — includes `guided_query`; no `suggest_query_params` |
+| `setupAllianceServer` / published CLI | **9** (single-key) or **10** (multi-source): core tools plus `suggest_query_params` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes suggest-flow quickstart |
 
 ## Suggest-flow gate
 
@@ -37,6 +40,48 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 
 **Core:** gate off by default; set `PINECONE_DISABLE_SUGGEST_FLOW=false` or `disableSuggestFlow: false` to enable the gate. **Alliance:** gate on by default; set `PINECONE_DISABLE_SUGGEST_FLOW=true` or CLI `--disable-suggest-flow` to bypass (not recommended for production).
 
+## Multi-source mode
+
+Activated when `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`) is set. See [CONFIGURATION.md § Multi-source mode](./CONFIGURATION.md#multi-source-mode) and [Deployment profiles](./CONFIGURATION.md#deployment-profiles).
+
+**Shared `source` parameter** (optional on most tools):
+
+> Pinecone source name (from `list_sources`). Omit on discovery tools to search all sources. On query tools, omit only when the namespace uniquely identifies one source.
+
+| Category | Tools | When `source` is omitted |
+| -------- | ----- | ------------------------ |
+| **Discovery** | `list_sources`, `list_namespaces`, `namespace_router` | Aggregate or list across **all** configured sources; rows include `source` |
+| **Orchestrator** | `guided_query` (no `namespace`) | Route using aggregated namespace lists; `experimental.decision_trace.selected_source` |
+| **Execution** | `suggest_query_params`, `query`, `count`, `query_documents`, `keyword_search`, `generate_urls`, `guided_query` (with `namespace`) | `resolveSource`: infer source when namespace is unique; `VALIDATION` (`field: source`) when ambiguous |
+
+**Typical multi-source flow:**
+
+```text
+list_sources → list_namespaces → (optional) namespace_router → suggest_query_params → query | count | query_documents
+```
+
+Or single-shot: `guided_query` (routes across sources when `namespace` is omitted).
+
+**Suggest-flow in multi-source mode:** gate state uses compound keys `source:namespace`. Pass the same `source` + `namespace` pair for `suggest_query_params` and gated tools when the namespace exists on multiple sources.
+
+---
+
+## `list_sources` (multi-source only)
+
+Registered only when more than one Pinecone source is configured.
+
+| | |
+| --- | --- |
+| **Input** | _(empty object)_ |
+| **Success** | `{ status: 'success', sources: string[], default: string }` |
+| **Errors** | `LIFECYCLE` when not in multi-source mode |
+
+**Example:**
+
+```json
+{}
+```
+
 ---
 
 ## 1. `list_namespaces`
@@ -45,14 +90,20 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 
 | | |
 | --- | --- |
-| **Input** | _(empty object)_ |
-| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields }] }` |
+| **Input** | Optional `source` — filter to one configured project |
+| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields, source? }], source_errors? }` |
 | **Errors** | `PINECONE_ERROR`, `TIMEOUT`, etc. |
 
-**Example (conceptual MCP params):**
+**Example (multi-source, all projects):**
 
 ```json
 {}
+```
+
+**Example (multi-source, one project):**
+
+```json
+{ "source": "api_key_1" }
 ```
 
 ---
@@ -65,8 +116,9 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 | ----- | ---- | -------- | ----------- |
 | `user_query` | string | yes | User question / intent |
 | `top_n` | int | no (default 3) | Max suggestions, 1–5 |
+| `source` | string | no | Restrict ranking to one configured source (multi-source) |
 
-**Success:** `{ status: 'success', cache_hit, user_query, suggestions, recommended_namespace }`.
+**Success:** `{ status: 'success', cache_hit, user_query, suggestions: [{ namespace, score, record_count, reasons, source? }], recommended_namespace, recommended_source? }`.
 
 **Example:**
 
@@ -84,8 +136,9 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 | ----- | ---- | -------- | ----------- |
 | `namespace` | string | yes | Target namespace (must exist in cached `list_namespaces`) |
 | `user_query` | string | yes | Natural-language task |
+| `source` | string | no | Pinecone source (multi-source; required when namespace is ambiguous) |
 
-**Success:** `{ status: 'success', cache_hit, ...suggestQueryParams fields including suggested_fields, recommended_tool, use_count_tool, explanation, namespace_found }`.
+**Success:** `{ status: 'success', cache_hit, ...suggestQueryParams fields including suggested_fields, recommended_tool, use_count_tool, explanation, namespace_found, source? }`.
 
 **Example:**
 
@@ -107,8 +160,9 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 | `namespace` | string | yes | Namespace |
 | `query_text` | string | yes | Query text (use broad text like `"document"` for metadata-only counts) |
 | `metadata_filter` | object | no | Pinecone metadata filter |
+| `source` | string | no | Pinecone source (multi-source) |
 
-**Success:** `{ status: 'success', count, truncated, namespace, metadata_filter? }`.
+**Success:** `{ status: 'success', count, truncated, namespace, metadata_filter?, source? }`.
 
 ---
 
@@ -125,8 +179,9 @@ When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), 
 | `use_reranking` | boolean | no | When preset allows reranking |
 | `metadata_filter` | object | no | Metadata filter |
 | `fields` | string[] | no | Pinecone fields to return |
+| `source` | string | no | Pinecone source (multi-source) |
 
-**Success (`QueryResponse`):** `{ status: 'success', mode?, query, namespace, metadata_filter?, result_count, results[], fields?, experimental?: { degraded?, degradation_reason?, hybrid_leg_failed?, rerank_skipped_reason? } }`.
+**Success (`QueryResponse`):** `{ status: 'success', mode?, query, namespace, metadata_filter?, result_count, results[], fields?, source?, experimental?: { ... } }`.
 
 Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `url`, `content`, `score`, `reranked`, optional `metadata`.
 
@@ -168,8 +223,9 @@ Treat **`experimental.degraded: true`** as lower confidence even when `status` i
 | `top_k` | int | no | 1–100 |
 | `metadata_filter` | object | no | Filter |
 | `fields` | string[] | no | Returned fields |
+| `source` | string | no | Pinecone source (multi-source) |
 
-**Success:** Similar row shape to `query` (`KeywordSearchResponse`).
+**Success:** Similar row shape to `query` (`KeywordSearchResponse`); optional `source` on payload and rows.
 
 ---
 
@@ -184,8 +240,9 @@ Treat **`experimental.degraded: true`** as lower confidence even when `status` i
 | `top_k` | int | no | Documents to return (see constants, default 5, max 20) |
 | `metadata_filter` | object | no | Filter |
 | `max_chunks_per_document` | int | no | Cap merged chunks per doc (default 200, max 500) |
+| `source` | string | no | Pinecone source (multi-source) |
 
-**Success:** `{ status: 'success', query, namespace, metadata_filter?, result_count, documents[], experimental?: { degraded?, degradation_reason?, hybrid_leg_failed?, rerank_skipped_reason? } }`.
+**Success:** `{ status: 'success', query, namespace, metadata_filter?, result_count, documents[], source?, experimental?: { ... } }`.
 
 ---
 
@@ -201,10 +258,11 @@ Treat **`experimental.degraded: true`** as lower confidence even when `status` i
 | `top_k` | int | no | For query paths |
 | `preferred_tool` | `auto` \| `count` \| `fast` \| `detailed` \| `full` | no | Override automated tool choice |
 | `enrich_urls` | boolean | no (default true) | Run URL generator when metadata lacks `url` |
+| `source` | string | no | Pinecone source (multi-source; pin routing when namespace is ambiguous) |
 
 **Success:** `{ status: 'success', experimental: { decision_trace }, result }` where `result` is either a count payload or a `QueryResponse`-shaped query payload.
 
-**`experimental.decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`, `rerank_status` (`success` \| `skipped` \| `skipped_no_model` \| `failed`).
+**`experimental.decision_trace` fields (non-exhaustive):** `cache_hit`, `input_namespace`, `routed_namespace`, `selected_namespace`, `selected_source?`, `ranked_namespaces`, `suggested_fields`, `suggested_tool`, `selected_tool`, `explanation`, `enrich_urls`, `rerank_status` (`success` \| `skipped` \| `skipped_no_model` \| `failed`).
 
 When the inner query path runs, `result.experimental` includes the same degradation fields as `query` (see [Rerank and hybrid degradation](#rerank-and-hybrid-degradation)).
 
@@ -227,8 +285,9 @@ When the inner query path runs, `result.experimental` includes the same degradat
 | ----- | ---- | -------- | ----------- |
 | `namespace` | string | yes | Namespace |
 | `records` | object[] | yes | Up to 500 records (metadata object or `{ metadata: {...} }`) |
+| `source` | string | no | Pinecone source (multi-source) |
 
-**Success:** `{ status: 'success', namespace, count, results: [{ index, url, method, reason, metadata }] }`.
+**Success:** `{ status: 'success', namespace, count, results: [...], source? }`.
 
 ---
 
@@ -237,6 +296,9 @@ When the inner query path runs, `result.experimental` includes the same degradat
 ```text
 Typical manual flow:
   list_namespaces → (optional) namespace_router → suggest_query_params → query | count | query_documents
+
+Multi-source manual flow:
+  list_sources → list_namespaces → (optional) namespace_router → suggest_query_params → query | count | query_documents
 
 Keyword-only:
   list_namespaces → keyword_search   # no suggest gate

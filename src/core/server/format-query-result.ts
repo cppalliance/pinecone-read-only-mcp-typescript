@@ -11,6 +11,7 @@ import { generateUrlForNamespace } from './url-registry.js';
 
 export type FormatQueryResultOptions = {
   namespace?: string;
+  source?: string;
   enrichUrls?: boolean;
   contentMaxLength?: number;
   ctx?: ServerContext;
@@ -46,7 +47,7 @@ export function formatSearchResultAsRow(
 
   if (options?.enrichUrls && options?.namespace) {
     const generated = options.ctx
-      ? options.ctx.generateUrlForNamespace(options.namespace, metadata)
+      ? options.ctx.generateUrlForNamespace(options.namespace, metadata, options.source)
       : generateUrlForNamespace(options.namespace, metadata);
     const existingUrl = metadata['url'];
     const urlIsBlank = typeof existingUrl !== 'string' || existingUrl.trim() === '';
@@ -81,6 +82,7 @@ export function formatSearchResultAsRow(
     score: Math.round(doc.score * 10000) / 10000,
     reranked: doc.reranked,
     metadata,
+    ...(options?.source && options?.ctx?.isMultiSource() ? { source: options.source } : {}),
   };
 }
 

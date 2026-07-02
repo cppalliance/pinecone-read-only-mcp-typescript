@@ -44,6 +44,7 @@ Features:
 - URL Generation: Use generate_urls to synthesize URLs for namespaces that have a registered generator when metadata lacks url.
 - Document reassembly: Use query_documents to get whole documents (chunks grouped and merged by document_number/doc_id/url) for content analysis or summarization. query_documents reranks when a rerank model is configured.
 - Keyword search: Use keyword_search to query the sparse index for lexical/keyword-only retrieval without reranking.
+- Multi-Source: When PINECONE_SOURCES or a config file is set, multiple Pinecone projects are available in one server. Use list_sources and pass source on tools; list_namespaces tags each namespace with its source.
 
 Notes:
 - Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.
@@ -58,7 +59,9 @@ Usage:
 1. Prefer guided_query for single-call retrieval (no prerequisite tools).
 2. Use list_namespaces (cached) to discover available namespaces in the index. The response includes \`expires_at_iso\` so you know when to refresh.
 3. Optionally use namespace_router to choose candidate namespace(s) from user intent.
-4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, query_documents for full-document content, keyword_search for lexical retrieval, or generate_urls when records need synthesized URLs.`;
+4. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, query_documents for full-document content, keyword_search for lexical retrieval, or generate_urls when records need synthesized URLs.
+
+Multi-source (when configured): call list_sources, then list_namespaces (all sources unless source is set). Pass source when a namespace may exist on multiple projects. Treat source on results as provenance.`;
 
 /** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
 export const ALLIANCE_INSTRUCTIONS_APPENDIX = `
