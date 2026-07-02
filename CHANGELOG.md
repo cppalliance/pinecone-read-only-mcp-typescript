@@ -8,13 +8,16 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-24
+
 ### Added
 
-- **Multi-source mode:** configure multiple Pinecone API keys / indexes in one MCP server via `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`). New `list_sources` tool (when more than one source is configured). Optional `source` parameter on discovery and query tools; `list_namespaces` aggregates across sources and tags each namespace with `source`. See [CONFIGURATION.md](docs/CONFIGURATION.md#multi-source-mode), [TOOLS.md](docs/TOOLS.md#multi-source-mode), and deployment profiles in [CONFIGURATION.md](docs/CONFIGURATION.md#deployment-profiles).
+- **Multi-source mode:** configure multiple Pinecone API keys / indexes in one MCP server via `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`). New `list_sources` tool (when more than one source is configured). Optional `source` parameter on discovery and query tools; `list_namespaces` aggregates across sources and tags each namespace with `source`. See [CONFIGURATION.md](docs/CONFIGURATION.md#multi-source-mode), [TOOLS.md](docs/TOOLS.md#multi-source-mode), and deployment profiles in [CONFIGURATION.md](docs/CONFIGURATION.md#deployment-profiles). Migration: [MIGRATION.md § 0.4.0 multi-source](docs/MIGRATION.md#040-multi-source-pinecone-projects).
 
 ### Changed
 
-- **Library:** `resolveConfig()` returns `CoreServerConfig`; `resolveAllianceConfig()` returns `AllianceServerConfig`. `setupCoreServer` / `setupAllianceServer` accept only their respective branded config and context types (`CoreServerContext` / `AllianceServerContext`). `ServerConfig` remains an alias for `ServerConfigBase` on read paths (`ctx.getConfig()`). See [MIGRATION.md](docs/MIGRATION.md#unreleased-branded-serverconfig-types).
+- **Breaking (types):** `resolveConfig()` returns `CoreServerConfig`; `resolveAllianceConfig()` returns `AllianceServerConfig`. `setupCoreServer` / `setupAllianceServer` accept only their respective branded config and context types (`CoreServerContext` / `AllianceServerContext`). `ServerConfig` remains an alias for `ServerConfigBase` on read paths (`ctx.getConfig()`). See [MIGRATION.md § 0.4.0 branded ServerConfig](docs/MIGRATION.md#040-branded-serverconfig-types).
+- **Library (internal):** Query and `keyword_search` response Zod schemas consolidated to a single canonical schema per type; permissive variants are derived via `.partial()` (no MCP payload shape change). See comment in `src/core/server/response-schemas.ts`.
 
 ## [0.3.0] - 2026-06-23
 
@@ -141,7 +144,8 @@ details. Newer shipped changes are recorded in this changelog by version.
 - Environment variable support
 - Full documentation and examples
 
-[Unreleased]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/cppalliance/pinecone-read-only-mcp-typescript/compare/v0.1.1...v0.1.6
