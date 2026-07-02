@@ -7,11 +7,15 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.25+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
-Current version: 0.3.0 (npm `latest` after publish). Pin `@0.3.0` in install and MCP config for reproducible upgrades.
+Current version: 0.4.0 (npm `latest` after publish). Pin `@0.4.0` in install and MCP config for reproducible upgrades.
+
+## Upgrading to 0.4.0
+
+Version **0.4.0** adds **multi-source mode** (`PINECONE_SOURCES`, `list_sources`, optional `source` on query tools) and **breaking (types)** branded `CoreServerConfig` / `AllianceServerConfig` — `setupCoreServer` and `setupAllianceServer` now accept only matching config/context types. See [docs/MIGRATION.md](docs/MIGRATION.md#040-multi-source-pinecone-projects), [docs/MIGRATION.md § branded ServerConfig](docs/MIGRATION.md#040-branded-serverconfig-types), and the [CHANGELOG](CHANGELOG.md#040---2026-06-24).
 
 ## Upgrading to 0.3.0
 
-Version **0.3.0** includes breaking MCP and library changes: experimental response fields nested under `experimental`, branded `CoreServerConfig` / `AllianceServerConfig`, legacy module-facade deprecations, and core `resolveConfig` requiring an index name with suggest-flow off by default. See [docs/MIGRATION.md](docs/MIGRATION.md) for before/after examples and the [CHANGELOG](CHANGELOG.md#030---2026-06-23) **Changed** section for the full list.
+Version **0.3.0** includes breaking MCP and library changes: experimental response fields nested under `experimental`, legacy module-facade deprecations, and core `resolveConfig` requiring an index name with suggest-flow off by default. See [docs/MIGRATION.md](docs/MIGRATION.md) for before/after examples and the [CHANGELOG](CHANGELOG.md#030---2026-06-23) **Changed** section for the full list.
 
 ## Upgrading from 0.1.x
 
@@ -70,25 +74,25 @@ For successful `query`, `query_documents`, and `guided_query` payloads, **rerank
 ### As a Package
 
 ```bash
-npm install @will-cppa/pinecone-read-only-mcp@0.3.0
+npm install @will-cppa/pinecone-read-only-mcp@0.4.0
 ```
 
 Or using yarn:
 
 ```bash
-yarn add @will-cppa/pinecone-read-only-mcp@0.3.0
+yarn add @will-cppa/pinecone-read-only-mcp@0.4.0
 ```
 
 Or using pnpm:
 
 ```bash
-pnpm add @will-cppa/pinecone-read-only-mcp@0.3.0
+pnpm add @will-cppa/pinecone-read-only-mcp@0.4.0
 ```
 
 ### Global Installation
 
 ```bash
-npm install -g @will-cppa/pinecone-read-only-mcp@0.3.0
+npm install -g @will-cppa/pinecone-read-only-mcp@0.4.0
 ```
 
 ### From Source
@@ -256,7 +260,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "pinecone-search": {
       "command": "npx",
-      "args": ["-y", "@will-cppa/pinecone-read-only-mcp@0.3.0"],
+      "args": ["-y", "@will-cppa/pinecone-read-only-mcp@0.4.0"],
       "env": {
         "PINECONE_API_KEY": "your-api-key-here",
         "PINECONE_INDEX_NAME": "your-index-name",
@@ -276,7 +280,7 @@ Or with explicit options:
       "command": "npx",
       "args": [
         "-y",
-        "@will-cppa/pinecone-read-only-mcp@0.3.0",
+        "@will-cppa/pinecone-read-only-mcp@0.4.0",
         "--api-key",
         "your-api-key-here",
         "--index-name",
@@ -309,7 +313,7 @@ For a global installation:
 Run the server using npx (no installation required):
 
 ```bash
-npx @will-cppa/pinecone-read-only-mcp@0.3.0 --api-key YOUR_API_KEY --index-name YOUR_INDEX
+npx @will-cppa/pinecone-read-only-mcp@0.4.0 --api-key YOUR_API_KEY --index-name YOUR_INDEX
 ```
 
 Or if installed globally:
@@ -349,10 +353,10 @@ Run `pinecone-read-only-mcp --help` for the full option list.
 
 ```bash
 # install
-npm i @will-cppa/pinecone-read-only-mcp@0.3.0
+npm i @will-cppa/pinecone-read-only-mcp@0.4.0
 
 # run
-npx @will-cppa/pinecone-read-only-mcp@0.3.0 --api-key YOUR_API_KEY
+npx @will-cppa/pinecone-read-only-mcp@0.4.0 --api-key YOUR_API_KEY
 ```
 
 ### Deploy with Docker
