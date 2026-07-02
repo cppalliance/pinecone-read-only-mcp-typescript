@@ -7,9 +7,7 @@ import { SERVER_VERSION } from './constants.js';
 import type { ConfigOverrides } from './core/config.js';
 
 export type ParseCliResult =
-  | { kind: 'help' }
-  | { kind: 'version' }
-  | { kind: 'config'; overrides: ConfigOverrides };
+  { kind: 'help' } | { kind: 'version' } | { kind: 'config'; overrides: ConfigOverrides };
 
 function parsePositiveInt(raw: string | undefined): number | undefined {
   if (raw === undefined || raw === '') return undefined;
