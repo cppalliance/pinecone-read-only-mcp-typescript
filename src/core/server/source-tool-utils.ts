@@ -17,10 +17,7 @@ export const sourceParamSchema = z
   );
 
 export type ResolveSourceFailureCode =
-  | 'UNKNOWN_SOURCE'
-  | 'AMBIGUOUS_NAMESPACE'
-  | 'NAMESPACE_NOT_FOUND'
-  | 'PARTIAL_SOURCE_AGGREGATION';
+  'UNKNOWN_SOURCE' | 'AMBIGUOUS_NAMESPACE' | 'NAMESPACE_NOT_FOUND' | 'PARTIAL_SOURCE_AGGREGATION';
 
 function validationFieldForSourceCode(code: ResolveSourceFailureCode): 'source' | 'namespace' {
   switch (code) {
