@@ -36,7 +36,7 @@ const SERVER_FEATURES_AND_NOTES = `A semantic search server that provides hybrid
 
 Features:
 - Hybrid Search: Combines dense and sparse embeddings for superior recall
-- Semantic Reranking: Uses a configurable reranker model when PINECONE_RERANK_MODEL is set; disabled when unset
+- Semantic Reranking: Applied when a rerank model is configured; skipped when none is configured
 - Dynamic Namespace Discovery: Automatically discovers available namespaces
 - Metadata Filtering: Supports optional metadata filters for refined searches
 - Namespace Router: Suggests likely namespace(s) from natural-language intent
@@ -47,11 +47,10 @@ Features:
 - Multi-Source: When PINECONE_SOURCES or a config file is set, multiple Pinecone projects are available in one server. Use list_sources and pass source on tools; list_namespaces tags each namespace with its source.
 
 Notes:
-- Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.
-- The server emits structured logs to stderr (text by default, set PINECONE_READ_ONLY_MCP_LOG_FORMAT=json for log aggregation).`;
+- Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.`;
 
 /** MCP instructions for {@link setupCoreServer} (eight core tools including guided_query). */
-export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns \`experimental.decision_trace\` you can show the user. Alternatively call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed. For \`setupCoreServer\` / package-root \`resolveConfig\`, \`PINECONE_INDEX_NAME\` (or \`--index-name\`) is required in addition to \`PINECONE_API_KEY\`. Misconfiguration surfaces at startup, not as tool errors.
+export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns \`experimental.decision_trace\` you can show the user. Alternatively call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed.
 
 ${SERVER_FEATURES_AND_NOTES}
 
@@ -66,13 +65,11 @@ Multi-source (when configured): call list_sources, then list_namespaces (all sou
 /** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
 export const ALLIANCE_INSTRUCTIONS_APPENDIX = `
 
-Alliance deployment: The Alliance CLI and \`resolveAllianceConfig\` default the index to \`rag-hybrid\` (and rerank to \`bge-reranker-v2-m3\`) when those env vars are omitted.
-
 For manual flows with the full tool surface, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate unless \`PINECONE_DISABLE_SUGGEST_FLOW=true\`).
 
-Alliance usage (after list_namespaces):
-4. Call suggest_query_params before query/count/query_documents tools (mandatory flow gate) to get suggested_fields and recommended_tool.
-5. Use count for count questions, \`query\` with the appropriate preset for chunk-level retrieval, or query_documents for full-document content.`;
+Manual Alliance flow (after list_namespaces):
+- Call suggest_query_params before query/count/query_documents (mandatory gate unless PINECONE_DISABLE_SUGGEST_FLOW=true)
+- Use the recommended preset/tool from the suggestion response`;
 
 /** MCP instructions for {@link setupAllianceServer} (core tools plus Alliance tools). */
 export const ALLIANCE_SERVER_INSTRUCTIONS =

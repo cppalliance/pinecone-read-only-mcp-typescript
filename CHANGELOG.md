@@ -8,6 +8,10 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+### Changed
+
+- **Instructions:** Trimmed operator/install/deploy content (env-var setup, misconfiguration note, Alliance CLI index/rerank defaults, stderr logging config) from `CORE_SERVER_INSTRUCTIONS` and `ALLIANCE_INSTRUCTIONS_APPENDIX` — reduces per-session token cost; no behavior change. Replaced colliding Alliance appendix steps 4–5 with unnumbered "Manual Alliance flow" bullets (includes `PINECONE_DISABLE_SUGGEST_FLOW=true` escape clause). Full detail remains in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
 ## [0.4.0] - 2026-06-24
 
 ### Added

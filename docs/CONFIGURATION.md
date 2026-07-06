@@ -28,7 +28,7 @@ Configuration is built from **CLI flags** (when using the binary), **environment
 | `sources` | `sources` / `PINECONE_SOURCES` or JSON config file | Omitted in single-key mode; see [Multi-source mode](#multi-source-mode) |
 | `defaultSource` | JSON config `defaultSource` only | First source when using inline `PINECONE_SOURCES` |
 
-**Throws** if `apiKey` or `indexName` is missing after trim (single-key mode). In multi-source mode, `PINECONE_API_KEY` is ignored when `PINECONE_SOURCES` or a config file is set; credentials come from each source entry.
+**Throws** if `apiKey` or `indexName` is missing after trim (single-key mode) — this happens at server startup, not as an MCP tool error. In multi-source mode, `PINECONE_API_KEY` is ignored when `PINECONE_SOURCES` or a config file is set; credentials come from each source entry.
 
 For the full Alliance tool surface (including `suggest_query_params`, `guided_query`, and built-in URL generators), import from `@will-cppa/pinecone-read-only-mcp/alliance` and use the three-step instance-first recipe at [Library embedding](#library-embedding) below.
 
