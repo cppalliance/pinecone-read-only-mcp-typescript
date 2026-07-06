@@ -65,10 +65,8 @@ Multi-source (when configured): call list_sources, then list_namespaces (all sou
 /** Alliance-only supplement appended to core instructions for {@link setupAllianceServer}. */
 export const ALLIANCE_INSTRUCTIONS_APPENDIX = `
 
-For manual flows with the full tool surface, call \`list_namespaces\` -> \`suggest_query_params\` -> \`query\` (use preset fast/detailed/full per suggestion) or \`count\` (the suggest step is a mandatory gate unless \`PINECONE_DISABLE_SUGGEST_FLOW=true\`).
-
 Manual Alliance flow (after list_namespaces):
-- Call suggest_query_params before query/count/query_documents (mandatory gate unless PINECONE_DISABLE_SUGGEST_FLOW=true)
+- Call suggest_query_params before query (preset fast/detailed/full per suggestion), count, or query_documents — mandatory gate unless PINECONE_DISABLE_SUGGEST_FLOW=true
 - Use the recommended preset/tool from the suggestion response`;
 
 /** MCP instructions for {@link setupAllianceServer} (core tools plus Alliance tools). */

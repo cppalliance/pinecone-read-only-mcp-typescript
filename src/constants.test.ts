@@ -39,7 +39,7 @@ describe('server instructions', () => {
 
   it('ALLIANCE_INSTRUCTIONS_APPENDIX uses unnumbered manual flow without duplicate step numbering', () => {
     expect(ALLIANCE_INSTRUCTIONS_APPENDIX).not.toMatch(/Alliance usage/);
-    expect(ALLIANCE_INSTRUCTIONS_APPENDIX).not.toMatch(/^4\. /m);
+    expect(ALLIANCE_INSTRUCTIONS_APPENDIX).not.toMatch(/^[45]\. /m);
     expect(ALLIANCE_INSTRUCTIONS_APPENDIX).toMatch(/Manual Alliance flow/);
     expect((ALLIANCE_SERVER_INSTRUCTIONS.match(/Usage:/g) ?? []).length).toBe(1);
   });
