@@ -59,10 +59,7 @@ describe('server instructions', () => {
   });
 
   it('example multi-source config uses only generic placeholder descriptions and schemas', () => {
-    const examplePath = join(
-      process.cwd(),
-      'examples/multi-source/pinecone-sources.json.example'
-    );
+    const examplePath = join(process.cwd(), 'examples/multi-source/pinecone-sources.json.example');
     const raw = readFileSync(examplePath, 'utf8');
     expect(raw).toContain(
       '<optional: describe this corpus in your PRIVATE staff config, not here>'

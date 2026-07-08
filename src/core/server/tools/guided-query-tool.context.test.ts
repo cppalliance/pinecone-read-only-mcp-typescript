@@ -39,23 +39,21 @@ function papersNamespaceClient(overrides?: { query?: ReturnType<typeof vi.fn> })
 
 describe('guided_query tool handler (ServerContext instance path)', () => {
   it('returns success with decision_trace using injected context', async () => {
-    const listNamespacesWithMetadata = vi
-      .fn()
-      .mockResolvedValue(
-        mockNamespacesWithMetadataResult([
-          {
-            namespace: 'papers',
-            recordCount: 42,
-            metadata: {
-              document_number: 'string',
-              title: 'string',
-              url: 'string',
-              author: 'string',
-              chunk_text: 'string',
-            },
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'papers',
+          recordCount: 42,
+          metadata: {
+            document_number: 'string',
+            title: 'string',
+            url: 'string',
+            author: 'string',
+            chunk_text: 'string',
           },
-        ])
-      );
+        },
+      ])
+    );
     const query = vi.fn().mockResolvedValue(makeHybridQueryResult());
     const ctx = createTestServerContext({
       client: {
@@ -138,22 +136,20 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
     );
     const ctx = createTestServerContext({
       client: {
-        listNamespacesWithMetadata: vi
-          .fn()
-          .mockResolvedValue(
-            mockNamespacesWithMetadataResult([
-              {
-                namespace: 'mailing',
-                recordCount: 42,
-                metadata: {
-                  document_number: 'string',
-                  title: 'string',
-                  author: 'string',
-                  chunk_text: 'string',
-                },
+        listNamespacesWithMetadata: vi.fn().mockResolvedValue(
+          mockNamespacesWithMetadataResult([
+            {
+              namespace: 'mailing',
+              recordCount: 42,
+              metadata: {
+                document_number: 'string',
+                title: 'string',
+                author: 'string',
+                chunk_text: 'string',
               },
-            ])
-          ),
+            },
+          ])
+        ),
         query,
         count: vi.fn(),
       } as never,

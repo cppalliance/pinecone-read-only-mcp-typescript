@@ -11,7 +11,12 @@ function mockClient(name: string) {
   return {
     listNamespacesWithMetadata: vi.fn().mockResolvedValue({
       namespaces: [
-        { namespace: 'wg21', recordCount: 10, metadata: { title: 'string' }, schema_source: 'sampled' },
+        {
+          namespace: 'wg21',
+          recordCount: 10,
+          metadata: { title: 'string' },
+          schema_source: 'sampled',
+        },
       ],
       warnings: [],
     }),

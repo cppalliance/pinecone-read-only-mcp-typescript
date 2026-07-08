@@ -13,17 +13,15 @@ import {
 
 describe('list_namespaces tool handler (ServerContext instance path)', () => {
   it('returns namespaces from injected context cache miss', async () => {
-    const listNamespacesWithMetadata = vi
-      .fn()
-      .mockResolvedValue(
-        mockNamespacesWithMetadataResult([
-          {
-            namespace: 'wg21',
-            recordCount: 10,
-            metadata: { title: 'string', url: 'string' },
-          },
-        ])
-      );
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'wg21',
+          recordCount: 10,
+          metadata: { title: 'string', url: 'string' },
+        },
+      ])
+    );
     const ctx = createTestServerContext({
       client: { listNamespacesWithMetadata } as never,
     });
@@ -50,17 +48,15 @@ describe('list_namespaces tool handler (ServerContext instance path)', () => {
   });
 
   it('serves cached namespaces on second call via injected context', async () => {
-    const listNamespacesWithMetadata = vi
-      .fn()
-      .mockResolvedValue(
-        mockNamespacesWithMetadataResult([
-          {
-            namespace: 'wg21',
-            recordCount: 10,
-            metadata: { title: 'string' },
-          },
-        ])
-      );
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'wg21',
+          recordCount: 10,
+          metadata: { title: 'string' },
+        },
+      ])
+    );
     const ctx = createTestServerContext({
       client: { listNamespacesWithMetadata } as never,
     });
@@ -146,7 +142,9 @@ describe('list_namespaces tool handler (multi-source)', () => {
 
     const server = createMockServer();
     registerListNamespacesTool(server as never, ctx);
-    const body = parseToolJson(await server.getHandler('list_namespaces')!({ source: 'api_key_1' }));
+    const body = parseToolJson(
+      await server.getHandler('list_namespaces')!({ source: 'api_key_1' })
+    );
     expect(body['namespaces']).toEqual([
       {
         name: 'wg21',

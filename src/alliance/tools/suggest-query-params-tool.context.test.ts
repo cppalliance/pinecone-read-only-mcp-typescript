@@ -37,23 +37,21 @@ describe('suggest_query_params tool handler (ServerContext instance path)', () =
   });
 
   it('marks suggest-flow on injected context when namespace exists', async () => {
-    const listNamespacesWithMetadata = vi
-      .fn()
-      .mockResolvedValue(
-        mockNamespacesWithMetadataResult([
-          {
-            namespace: 'wg21',
-            recordCount: 42,
-            metadata: {
-              document_number: 'string',
-              title: 'string',
-              url: 'string',
-              author: 'string',
-              chunk_text: 'string',
-            },
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'wg21',
+          recordCount: 42,
+          metadata: {
+            document_number: 'string',
+            title: 'string',
+            url: 'string',
+            author: 'string',
+            chunk_text: 'string',
           },
-        ])
-      );
+        },
+      ])
+    );
     const ctx = createTestServerContext({
       client: { listNamespacesWithMetadata } as never,
     });
