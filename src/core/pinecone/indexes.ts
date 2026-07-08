@@ -112,15 +112,20 @@ export class PineconeIndexSession {
    * List all available namespaces with their metadata information
    *
    * Fetches namespaces from the index stats and samples records to discover
-   * available metadata fields and their types.
+   * available metadata fields and their types. When `declaredSchemas` provides
+   * a schema for a live namespace, sampling is skipped for that namespace.
    */
-  async listNamespacesWithMetadata(): Promise<
-    Array<{
+  async listNamespacesWithMetadata(
+    declaredSchemas?: Record<string, Record<string, string>>
+  ): Promise<{
+    namespaces: Array<{
       namespace: string;
       recordCount: number;
       metadata: Record<string, string>;
-    }>
-  > {
+      schema_source: 'declared' | 'sampled';
+    }>;
+    warnings: string[];
+  }> {
     try {
       const { denseIndex } = await this.ensureIndexes();
 
@@ -129,14 +134,36 @@ export class PineconeIndexSession {
         ? await denseIndex.describeIndexStats()
         : undefined;
       const namespaces = stats?.namespaces ? Object.keys(stats.namespaces) : [];
+      const liveSet = new Set(namespaces);
 
       logInfo(`Found ${namespaces.length} namespace(s)`);
 
-      // Get metadata info for each namespace by sampling records
+      const warnings: string[] = [];
+      if (declaredSchemas) {
+        for (const declaredNs of Object.keys(declaredSchemas)) {
+          if (!liveSet.has(declaredNs)) {
+            warnings.push(
+              `Declared namespace "${declaredNs}" not found in Pinecone index "${this.indexName}" — schema declaration is stale.`
+            );
+          }
+        }
+      }
+
+      // Get metadata info for each namespace by sampling records (or use declared schema)
       const namespacesInfo = await Promise.all(
         namespaces.map(async (ns: string) => {
           try {
             const recordCount = stats?.namespaces?.[ns]?.recordCount || 0;
+            const declared = declaredSchemas?.[ns];
+            if (declared) {
+              return {
+                namespace: ns,
+                recordCount,
+                metadata: { ...declared },
+                schema_source: 'declared' as const,
+              };
+            }
+
             const metadataFields: Record<string, string> = {};
 
             // Sample a few records to discover metadata fields
@@ -180,6 +207,7 @@ export class PineconeIndexSession {
               namespace: ns,
               recordCount,
               metadata: metadataFields,
+              schema_source: 'sampled' as const,
             };
           } catch (error) {
             logError(`Error processing namespace ${ns}`, error);
@@ -187,15 +215,16 @@ export class PineconeIndexSession {
               namespace: ns,
               recordCount: 0,
               metadata: {},
+              schema_source: 'sampled' as const,
             };
           }
         })
       );
 
-      return namespacesInfo;
+      return { namespaces: namespacesInfo, warnings };
     } catch (error) {
       logError('Error listing namespaces', error);
-      return [];
+      return { namespaces: [], warnings: [] };
     }
   }
 

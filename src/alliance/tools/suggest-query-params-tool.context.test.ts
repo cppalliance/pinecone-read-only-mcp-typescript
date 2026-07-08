@@ -7,6 +7,7 @@ import {
   createTestServerContext,
   expectMatchesResponseSchema,
   makeHybridQueryResult,
+  mockNamespacesWithMetadataResult,
   parseToolJson,
 } from '../../core/server/tools/test-helpers.js';
 
@@ -22,7 +23,11 @@ function mockNamespacesClient() {
   return {
     listNamespacesWithMetadata: vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 42, metadata: namespaceMetadata }]),
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 42, metadata: namespaceMetadata },
+        ])
+      ),
   };
 }
 
@@ -32,19 +37,23 @@ describe('suggest_query_params tool handler (ServerContext instance path)', () =
   });
 
   it('marks suggest-flow on injected context when namespace exists', async () => {
-    const listNamespacesWithMetadata = vi.fn().mockResolvedValue([
-      {
-        namespace: 'wg21',
-        recordCount: 42,
-        metadata: {
-          document_number: 'string',
-          title: 'string',
-          url: 'string',
-          author: 'string',
-          chunk_text: 'string',
-        },
-      },
-    ]);
+    const listNamespacesWithMetadata = vi
+      .fn()
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          {
+            namespace: 'wg21',
+            recordCount: 42,
+            metadata: {
+              document_number: 'string',
+              title: 'string',
+              url: 'string',
+              author: 'string',
+              chunk_text: 'string',
+            },
+          },
+        ])
+      );
     const ctx = createTestServerContext({
       client: { listNamespacesWithMetadata } as never,
     });

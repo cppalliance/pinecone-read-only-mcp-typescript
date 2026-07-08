@@ -6,6 +6,56 @@ This guide is for **library and MCP client authors** upgrading from earlier **0.
 
 Under [semver 0.y.z](https://semver.org/spec/v2.0.0.html#spec-item-4), **0.1.x → 0.2.0 is a breaking minor** — pin `@0.2.0` only after reading this guide.
 
+## Unreleased: `list_sources` response shape
+
+**Who is affected:** MCP clients parsing `list_sources` success JSON in multi-source mode.
+
+**Before:**
+
+```json
+{
+  "status": "success",
+  "sources": ["api_key_1", "api_key_2"],
+  "default": "api_key_1"
+}
+```
+
+**After:**
+
+```json
+{
+  "status": "success",
+  "sources": [
+    { "name": "api_key_1", "description": "Optional corpus hint from private config" },
+    { "name": "api_key_2" }
+  ],
+  "default": "api_key_1"
+}
+```
+
+Read `sources[].name` instead of treating `sources` as `string[]`. `description` is omitted when not configured.
+
+## Unreleased: `PineconeClient.listNamespacesWithMetadata` return shape
+
+**Who is affected:** Direct library consumers of `PineconeClient` (not MCP tool clients — `list_namespaces` tool response shape is additive only).
+
+**Before:**
+
+```ts
+const rows = await client.listNamespacesWithMetadata();
+// rows: Array<{ namespace, recordCount, metadata }>
+```
+
+**After:**
+
+```ts
+const { namespaces, warnings } = await client.listNamespacesWithMetadata(declaredSchemas);
+// namespaces: Array<{ namespace, recordCount, metadata, schema_source }>
+// warnings: string[] — e.g. stale declared namespace not found live
+```
+
+Optional `declaredSchemas` argument skips live sampling for namespaces with a declared schema.
+
 ## Unreleased: Stable vs experimental response fields
 
 **Rationale:** Tool success payloads mixed stable contract fields with experimental diagnostics (`degraded`, `decision_trace`, etc.) at the top level. Experimental fields are now nested under `experimental` so consumers know which fields are safe across minor version bumps.

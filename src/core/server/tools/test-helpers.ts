@@ -174,6 +174,25 @@ export const DEFAULT_MULTI_SOURCE_DEFINITIONS: SourceDefinition[] = [
   { name: 'api_key_2', apiKey: 'k2', indexName: 'idx-b', sparseIndexName: 'idx-b-sparse' },
 ];
 
+/** Wrap namespace rows in the shape returned by `listNamespacesWithMetadata`. */
+export function mockNamespacesWithMetadataResult(
+  namespaces: Array<{
+    namespace: string;
+    recordCount: number;
+    metadata: Record<string, string>;
+    schema_source?: 'declared' | 'sampled';
+  }>,
+  warnings: string[] = []
+) {
+  return {
+    namespaces: namespaces.map((ns) => ({
+      ...ns,
+      schema_source: ns.schema_source ?? ('sampled' as const),
+    })),
+    warnings,
+  };
+}
+
 /** Minimal mock {@link PineconeClient} with configurable namespace list. */
 export function makeMockPineconeClient(
   namespaces: string[],
@@ -181,11 +200,13 @@ export function makeMockPineconeClient(
 ) {
   return {
     listNamespacesWithMetadata: vi.fn().mockResolvedValue(
-      namespaces.map((namespace) => ({
-        namespace,
-        recordCount: 1,
-        metadata: { title: 'string' },
-      }))
+      mockNamespacesWithMetadataResult(
+        namespaces.map((namespace) => ({
+          namespace,
+          recordCount: 1,
+          metadata: { title: 'string' },
+        }))
+      )
     ),
     query: options?.query ?? vi.fn(),
     count: vi.fn().mockResolvedValue({ count: 0, truncated: false }),

@@ -75,6 +75,17 @@ Set `PINECONE_CONFIG_FILE` (or `--config-file`) to a path such as [examples/mult
 
 Values support `${ENV_VAR}` indirection (resolved at startup). Per-source `sparseIndexName` and `rerankModel` are optional; Alliance defaults apply when omitted.
 
+Optional **config-file-only** fields (not supported in inline `PINECONE_SOURCES`):
+
+| Field | Scope | Purpose |
+| ----- | ----- | ------- |
+| `description` | Per source | Short corpus/content hint surfaced via `list_sources` (helps LLM routing across sources or MCP entries) |
+| `namespaces` | Per source | Map of namespace name → `{ description?, metadata_schema? }` |
+
+`metadata_schema` is a flat `fieldName → type` map (same vocabulary as `list_namespaces` → `metadata_fields`, e.g. `"title": "string"`). When declared for a live namespace, the server **skips live sampling** for that namespace and trusts the declared schema until the config file changes. Namespaces declared in config but absent from Pinecone produce a non-fatal `config_warnings` entry in `list_namespaces` (never a startup failure).
+
+**Never** commit real corpus descriptions, namespace names, or internal field names to the open-source repo — use generic placeholders in examples only. Real values belong in staff-machine private config files per [Deployment profiles](#deployment-profiles). See [SECURITY.md](./SECURITY.md).
+
 ### MCP tools and routing
 
 | Tool | `source` parameter |
@@ -131,7 +142,7 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
 }
 ```
 
-Prefer `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over inline API keys in `PINECONE_SOURCES`. See [SECURITY.md](./SECURITY.md).
+Prefer `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over inline API keys in `PINECONE_SOURCES`. For internal deployments, add optional `description` and `namespaces` declarations in the JSON config file on staff machines only — never in public examples or committed constants. See [SECURITY.md](./SECURITY.md).
 
 ### Architecture decision
 

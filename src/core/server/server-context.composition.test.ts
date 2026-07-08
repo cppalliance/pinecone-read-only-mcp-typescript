@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PineconeClient } from '../pinecone-client.js';
-import { resolveTestConfig } from './tools/test-helpers.js';
+import { resolveTestConfig, mockNamespacesWithMetadataResult } from './tools/test-helpers.js';
 import {
   ServerContext,
   createIsolatedContext,
@@ -88,7 +88,11 @@ describe('ServerContext composition API', () => {
     const config = testConfig();
     const listNamespaces = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } },
+        ])
+      );
     const injected = { listNamespacesWithMetadata: listNamespaces } as never;
 
     const viaComposition = new ServerContext(config, { client: injected });
@@ -106,7 +110,11 @@ describe('ServerContext composition API', () => {
   it('refetches when namespace cache seed is expired', async () => {
     const listNamespaces = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 2, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 2, metadata: { title: 'string' } },
+        ])
+      );
     const ctx = new ServerContext(testConfig(), {
       client: { listNamespacesWithMetadata: listNamespaces } as never,
       namespaceCacheSeed: {
@@ -124,7 +132,11 @@ describe('ServerContext composition API', () => {
   it('setConfig preserves URL generators but clears namespace cache and suggest-flow', async () => {
     const listNamespaces = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } },
+        ])
+      );
     const ctx = new ServerContext(testConfig(), {
       client: { listNamespacesWithMetadata: listNamespaces } as never,
       urlGenerators: [['wg21', () => ({ url: 'https://example.com', method: 'generated.custom' })]],
@@ -207,10 +219,18 @@ describe('ServerContext composition API', () => {
   it('isolates namespace cache between two createIsolatedContext instances', async () => {
     const listA = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'a', recordCount: 1, metadata: { source: 'a' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'a', recordCount: 1, metadata: { source: 'a' } },
+        ])
+      );
     const listB = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'b', recordCount: 2, metadata: { source: 'b' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'b', recordCount: 2, metadata: { source: 'b' } },
+        ])
+      );
     const cfgA = resolveTestConfig({ apiKey: 'iso-a' });
     const cfgB = resolveTestConfig({ apiKey: 'iso-b' });
     const seed = {

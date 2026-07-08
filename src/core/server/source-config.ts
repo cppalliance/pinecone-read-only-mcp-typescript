@@ -6,6 +6,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { trimOptional } from '../config.js';
 
+/** Per-namespace declaration loaded from private JSON config (config-file only). */
+export interface NamespaceDeclaration {
+  description?: string;
+  metadata_schema?: Record<string, string>;
+}
+
 /** Named Pinecone project connection (one API key + index pair). */
 export interface SourceDefinition {
   name: string;
@@ -13,6 +19,10 @@ export interface SourceDefinition {
   indexName: string;
   sparseIndexName?: string;
   rerankModel?: string;
+  /** Optional corpus-level description (config-file only; never from inline PINECONE_SOURCES). */
+  description?: string;
+  /** Optional per-namespace declarations (config-file only). */
+  namespaces?: Record<string, NamespaceDeclaration>;
 }
 
 export type ParseSourcesOptions = {
@@ -48,6 +58,60 @@ function validateSourceName(name: string): void {
   }
 }
 
+function validateNamespaces(
+  sourceName: string,
+  raw: unknown
+): Record<string, NamespaceDeclaration> | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error(`Source "${sourceName}": namespaces must be an object.`);
+  }
+  const result: Record<string, NamespaceDeclaration> = {};
+  for (const [nsName, entry] of Object.entries(raw as Record<string, unknown>)) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`Source "${sourceName}": namespaces["${nsName}"] must be an object.`);
+    }
+    const obj = entry as Record<string, unknown>;
+    const declaration: NamespaceDeclaration = {};
+    if (obj['description'] != null) {
+      if (typeof obj['description'] !== 'string') {
+        throw new Error(
+          `Source "${sourceName}": namespaces["${nsName}"].description must be a string.`
+        );
+      }
+      const trimmed = obj['description'].trim();
+      if (trimmed) {
+        declaration.description = trimmed;
+      }
+    }
+    if (obj['metadata_schema'] != null) {
+      if (typeof obj['metadata_schema'] !== 'object' || Array.isArray(obj['metadata_schema'])) {
+        throw new Error(
+          `Source "${sourceName}": namespaces["${nsName}"].metadata_schema must be a flat object.`
+        );
+      }
+      const schema: Record<string, string> = {};
+      for (const [field, type] of Object.entries(
+        obj['metadata_schema'] as Record<string, unknown>
+      )) {
+        if (typeof type !== 'string' || !type.trim()) {
+          throw new Error(
+            `Source "${sourceName}": namespaces["${nsName}"].metadata_schema["${field}"] must be a non-empty string type.`
+          );
+        }
+        schema[field] = type.trim();
+      }
+      if (Object.keys(schema).length > 0) {
+        declaration.metadata_schema = schema;
+      }
+    }
+    result[nsName] = declaration;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function normalizeSourceEntry(
   name: string,
   raw: {
@@ -55,6 +119,8 @@ function normalizeSourceEntry(
     indexName: string;
     sparseIndexName?: string;
     rerankModel?: string;
+    description?: string;
+    namespaces?: Record<string, NamespaceDeclaration>;
   },
   env: NodeJS.ProcessEnv,
   allianceDefaults?: ParseSourcesOptions['allianceDefaults']
@@ -82,7 +148,25 @@ function normalizeSourceEntry(
     indexName,
     sparseIndexName,
     ...(rerankModel !== undefined ? { rerankModel } : {}),
+    ...(raw.description !== undefined ? { description: raw.description } : {}),
+    ...(raw.namespaces !== undefined ? { namespaces: raw.namespaces } : {}),
   };
+}
+
+/** Extract declared metadata schemas per namespace for Pinecone discovery. */
+export function extractDeclaredSchemas(
+  namespaces?: Record<string, NamespaceDeclaration>
+): Record<string, Record<string, string>> | undefined {
+  if (!namespaces) {
+    return undefined;
+  }
+  const result: Record<string, Record<string, string>> = {};
+  for (const [nsName, decl] of Object.entries(namespaces)) {
+    if (decl.metadata_schema && Object.keys(decl.metadata_schema).length > 0) {
+      result[nsName] = { ...decl.metadata_schema };
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /** Parse inline `name:apiKey:indexName[;name2:...]` format. */
@@ -133,6 +217,8 @@ type JsonSourceFile = {
       indexName: string;
       sparseIndexName?: string;
       rerankModel?: string;
+      description?: string;
+      namespaces?: Record<string, NamespaceDeclaration>;
     }
   >;
 };
@@ -169,6 +255,11 @@ export function parseSourcesConfigFile(
     if (!cfg || typeof cfg !== 'object') {
       throw new Error(`Source "${name}" in config file must be an object.`);
     }
+    const description =
+      cfg.description != null && typeof cfg.description === 'string'
+        ? trimOptional(cfg.description)
+        : undefined;
+    const namespaces = validateNamespaces(name, cfg.namespaces);
     sources.push(
       normalizeSourceEntry(
         name,
@@ -177,6 +268,8 @@ export function parseSourcesConfigFile(
           indexName: String(cfg.indexName ?? ''),
           ...(cfg.sparseIndexName != null ? { sparseIndexName: String(cfg.sparseIndexName) } : {}),
           ...(cfg.rerankModel != null ? { rerankModel: String(cfg.rerankModel) } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(namespaces !== undefined ? { namespaces } : {}),
         },
         env,
         options?.allianceDefaults

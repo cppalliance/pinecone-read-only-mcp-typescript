@@ -11,7 +11,7 @@ export function registerListSourcesTool(server: McpServer, ctx?: ServerContext):
     {
       description:
         'List configured Pinecone source names when multiple API keys/projects are active. ' +
-        'Returns source ids and the default source.',
+        'Returns source ids, optional per-source descriptions from private config, and the default source.',
       inputSchema: {},
     },
     async () => {
@@ -26,7 +26,7 @@ export function registerListSourcesTool(server: McpServer, ctx?: ServerContext):
         }
         const response: ListSourcesResponse = {
           status: 'success',
-          sources: ctx.listSources(),
+          sources: ctx.listSourceDetails(),
           default: ctx.getDefaultSourceName(),
         };
         return validatedJsonResponse(listSourcesResponseSchema, response);

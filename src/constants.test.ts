@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ALLIANCE_INSTRUCTIONS_APPENDIX,
@@ -54,5 +56,27 @@ describe('server instructions', () => {
 
   it('SERVER_INSTRUCTIONS aliases Alliance instructions', () => {
     expect(SERVER_INSTRUCTIONS).toBe(ALLIANCE_SERVER_INSTRUCTIONS);
+  });
+
+  it('example multi-source config uses only generic placeholder descriptions and schemas', () => {
+    const examplePath = join(
+      process.cwd(),
+      'examples/multi-source/pinecone-sources.json.example'
+    );
+    const raw = readFileSync(examplePath, 'utf8');
+    expect(raw).toContain(
+      '<optional: describe this corpus in your PRIVATE staff config, not here>'
+    );
+    expect(raw).toContain(
+      '<optional: describe this namespace in your PRIVATE staff config, not here>'
+    );
+    expect(raw).toContain('"field_a": "string"');
+    expect(raw).toContain('"field_b": "number"');
+    expect(CORE_SERVER_INSTRUCTIONS).not.toMatch(
+      /<optional: describe this corpus in your PRIVATE staff config, not here>/
+    );
+    expect(ALLIANCE_SERVER_INSTRUCTIONS).not.toMatch(
+      /<optional: describe this corpus in your PRIVATE staff config, not here>/
+    );
   });
 });

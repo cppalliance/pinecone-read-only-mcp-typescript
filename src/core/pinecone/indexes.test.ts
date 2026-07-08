@@ -79,7 +79,8 @@ describe('PineconeIndexSession', () => {
       });
 
       const rows = await session.listNamespacesWithMetadata();
-      expect(rows).toEqual([]);
+      expect(rows.namespaces).toEqual([]);
+      expect(rows.warnings).toEqual([]);
     });
 
     it('returns row with empty metadata when recordCount is zero', async () => {
@@ -95,8 +96,13 @@ describe('PineconeIndexSession', () => {
       });
 
       const rows = await session.listNamespacesWithMetadata();
-      expect(rows).toHaveLength(1);
-      expect(rows[0]).toEqual({ namespace: 'ns1', recordCount: 0, metadata: {} });
+      expect(rows.namespaces).toHaveLength(1);
+      expect(rows.namespaces[0]).toEqual({
+        namespace: 'ns1',
+        recordCount: 0,
+        metadata: {},
+        schema_source: 'sampled',
+      });
     });
 
     it('samples metadata when records exist and namespace.query returns matches', async () => {
@@ -126,12 +132,61 @@ describe('PineconeIndexSession', () => {
       });
 
       const rows = await session.listNamespacesWithMetadata();
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.namespace).toBe('ns1');
-      expect(rows[0]?.metadata['title']).toBe('string');
-      expect(rows[0]?.metadata['tags']).toBe('string[]');
-      expect(rows[0]?.metadata['emptyArr']).toBe('array');
-      expect(rows[0]?.metadata['nested']).toBe('object');
+      expect(rows.namespaces).toHaveLength(1);
+      expect(rows.namespaces[0]?.namespace).toBe('ns1');
+      expect(rows.namespaces[0]?.metadata['title']).toBe('string');
+      expect(rows.namespaces[0]?.metadata['tags']).toBe('string[]');
+      expect(rows.namespaces[0]?.metadata['emptyArr']).toBe('array');
+      expect(rows.namespaces[0]?.metadata['nested']).toBe('object');
+      expect(rows.namespaces[0]?.schema_source).toBe('sampled');
+    });
+
+    it('uses declared schema and skips sampling when declaredSchemas provides one', async () => {
+      const query = vi.fn();
+      const dense = {
+        describeIndexStats: vi.fn().mockResolvedValue({
+          namespaces: { declared_ns: { recordCount: 5 }, sampled_ns: { recordCount: 2 } },
+          dimension: 4,
+        }),
+        namespace: () => ({ query }),
+      } as unknown as SearchableIndex;
+      const session = new PineconeIndexSessionTestDouble({
+        dense,
+        sparse: {} as SearchableIndex,
+      });
+
+      const rows = await session.listNamespacesWithMetadata({
+        declared_ns: { title: 'string', author: 'string' },
+      });
+
+      const declared = rows.namespaces.find((n) => n.namespace === 'declared_ns');
+      expect(declared).toMatchObject({
+        metadata: { title: 'string', author: 'string' },
+        schema_source: 'declared',
+      });
+      const sampled = rows.namespaces.find((n) => n.namespace === 'sampled_ns');
+      expect(sampled?.schema_source).toBe('sampled');
+      expect(query).toHaveBeenCalledOnce();
+    });
+
+    it('warns when declared namespace is missing from live Pinecone index', async () => {
+      const dense = {
+        describeIndexStats: vi.fn().mockResolvedValue({
+          namespaces: { live_ns: { recordCount: 1 } },
+        }),
+        namespace: vi.fn(),
+      } as unknown as SearchableIndex;
+      const session = new PineconeIndexSessionTestDouble({
+        dense,
+        sparse: {} as SearchableIndex,
+      });
+
+      const rows = await session.listNamespacesWithMetadata({
+        stale_ns: { title: 'string' },
+      });
+
+      expect(rows.namespaces.map((n) => n.namespace)).toEqual(['live_ns']);
+      expect(rows.warnings.some((w) => w.includes('stale_ns'))).toBe(true);
     });
   });
 

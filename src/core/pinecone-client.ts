@@ -77,15 +77,19 @@ export class PineconeClient {
     return this.indexSession.listNamespacesFromKeywordIndex();
   }
 
-  /** Dense index namespaces with sampled metadata field types. */
-  async listNamespacesWithMetadata(): Promise<
-    Array<{
+  /** Dense index namespaces with sampled or declared metadata field types. */
+  async listNamespacesWithMetadata(
+    declaredSchemas?: Record<string, Record<string, string>>
+  ): Promise<{
+    namespaces: Array<{
       namespace: string;
       recordCount: number;
       metadata: Record<string, string>;
-    }>
-  > {
-    return this.indexSession.listNamespacesWithMetadata();
+      schema_source: 'declared' | 'sampled';
+    }>;
+    warnings: string[];
+  }> {
+    return this.indexSession.listNamespacesWithMetadata(declaredSchemas);
   }
 
   /** Probe dense + sparse indexes (describeIndexStats) for startup checks. */

@@ -8,8 +8,8 @@ Success payloads separate **stable** fields (safe across minor bumps after `1.0.
 
 | Tool | Stable | Experimental |
 | ---- | ------ | ------------ |
-| `list_sources` | `status`, `sources`, `default` | _(none)_ |
-| `list_namespaces` | `status`, `cache_hit`, `cache_ttl_seconds`, `expires_at_iso`, `count`, `namespaces`, optional `source_errors` | _(none)_ |
+| `list_sources` | `status`, `sources` (`{ name, description? }[]`), `default` | _(none)_ |
+| `list_namespaces` | `status`, `cache_hit`, `cache_ttl_seconds`, `expires_at_iso`, `count`, `namespaces`, optional `source_errors`, optional `config_warnings`, optional per-row `schema_source` | _(none)_ |
 | `namespace_router` | `status`, `cache_hit`, `user_query`, `suggestions`, `recommended_namespace`, optional `recommended_source` | _(none)_ |
 | `suggest_query_params` | `status`, `cache_hit`, `suggested_fields`, `recommended_tool`, `use_count_tool`, `explanation`, `namespace_found`, optional `source` | _(none)_ |
 | `count` | `status`, `count`, `truncated`, `namespace`, `metadata_filter`, optional `source` | _(none)_ |
@@ -73,7 +73,7 @@ Registered only when more than one Pinecone source is configured.
 | | |
 | --- | --- |
 | **Input** | _(empty object)_ |
-| **Success** | `{ status: 'success', sources: string[], default: string }` |
+| **Success** | `{ status: 'success', sources: { name, description? }[], default: string }` |
 | **Errors** | `LIFECYCLE` when not in multi-source mode |
 
 **Example:**
@@ -91,7 +91,7 @@ Registered only when more than one Pinecone source is configured.
 | | |
 | --- | --- |
 | **Input** | Optional `source` — filter to one configured project |
-| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields, source? }], source_errors? }` |
+| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields, source?, schema_source? }], source_errors?, config_warnings? }` |
 | **Errors** | `PINECONE_ERROR`, `TIMEOUT`, etc. |
 
 **Example (multi-source, all projects):**

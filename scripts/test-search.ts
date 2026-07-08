@@ -36,8 +36,8 @@ async function test() {
     // Test 1: List namespaces with metadata
     console.log('\n📋 Test 1: Listing namespaces with metadata...');
     const namespacesInfo = await client.listNamespacesWithMetadata();
-    console.log(`✅ Found ${namespacesInfo.length} namespace(s):`);
-    namespacesInfo.forEach((ns) => {
+    console.log(`✅ Found ${namespacesInfo.namespaces.length} namespace(s):`);
+    namespacesInfo.namespaces.forEach((ns) => {
       console.log(`   - ${ns.namespace}: ${ns.recordCount} records`);
       if (Object.keys(ns.metadata).length > 0) {
         console.log(`     Metadata fields:`, Object.keys(ns.metadata));

@@ -36,21 +36,33 @@ export class DemoMockPineconeClient extends PineconeClient {
     super({ apiKey: '00000000-0000-0000-0000-000000000000', indexName: 'demo-index' });
   }
 
-  override async listNamespacesWithMetadata(): Promise<
-    Array<{ namespace: string; recordCount: number; metadata: Record<string, string> }>
-  > {
-    return [
-      {
-        namespace: DEMO_NAMESPACE,
-        recordCount: 42,
-        metadata: {
-          document_number: 'string',
-          title: 'string',
-          chunk_text: 'string',
-          url: 'string',
+  override async listNamespacesWithMetadata(
+    _declaredSchemas?: Record<string, Record<string, string>>
+  ): Promise<{
+    namespaces: Array<{
+      namespace: string;
+      recordCount: number;
+      metadata: Record<string, string>;
+      schema_source: 'declared' | 'sampled';
+    }>;
+    warnings: string[];
+  }> {
+    return {
+      namespaces: [
+        {
+          namespace: DEMO_NAMESPACE,
+          recordCount: 42,
+          metadata: {
+            document_number: 'string',
+            title: 'string',
+            chunk_text: 'string',
+            url: 'string',
+          },
+          schema_source: 'sampled',
         },
-      },
-    ];
+      ],
+      warnings: [],
+    };
   }
 
   override async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {

@@ -11,12 +11,14 @@ import { normalizeNamespace } from './namespace-utils.js';
 import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
 import { buildSourceRegistry, type SourceRegistry } from './source-registry.js';
+import { extractDeclaredSchemas } from './source-config.js';
 
 export type NamespaceInfo = {
   namespace: string;
   recordCount: number;
   metadata: Record<string, string>;
   source?: string;
+  schema_source?: 'declared' | 'sampled';
 };
 
 export type ResolveSourceResult =
@@ -73,6 +75,7 @@ type FlowState = {
 type CacheEntry = {
   data: NamespaceInfo[];
   expiresAt: number;
+  warnings: string[];
 };
 
 /** Return a trimmed non-empty string or null for empty/missing values. */
@@ -156,6 +159,7 @@ export class ServerContext<
           metadata: { ...entry.metadata },
         })),
         expiresAt,
+        warnings: [],
       };
     }
     if (composition?.suggestionFlowSeed) {
@@ -257,6 +261,20 @@ export class ServerContext<
       return cfg.sources.map((s) => s.name);
     }
     return [];
+  }
+
+  listSourceDetails(): { name: string; description?: string }[] {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.listSources().map((name) => {
+        const def = this.sourceRegistry!.getDefinition(name);
+        return { name, ...(def.description !== undefined ? { description: def.description } : {}) };
+      });
+    }
+    const cfg = this.getConfigIfSet() ?? this.getConfig();
+    return (cfg.sources ?? []).map((s) => ({
+      name: s.name,
+      ...(s.description !== undefined ? { description: s.description } : {}),
+    }));
   }
 
   getDefaultSourceName(): string {
@@ -582,6 +600,7 @@ export class ServerContext<
     cache_hit: boolean;
     expires_at: number;
     source_errors?: Record<string, string>;
+    warnings?: string[];
   }> {
     if (
       this.isMultiSource() ||
@@ -602,15 +621,32 @@ export class ServerContext<
         data: this.namespacesCache.data,
         cache_hit: true,
         expires_at: this.namespacesCache.expiresAt,
+        ...(this.namespacesCache.warnings.length > 0
+          ? { warnings: [...this.namespacesCache.warnings] }
+          : {}),
       };
     }
 
+    const cfg = this.getConfig();
+    const sourceDef = cfg.sources?.[0];
+    const declaredSchemas = extractDeclaredSchemas(sourceDef?.namespaces);
     const client = this.getClient();
-    const data = await client.listNamespacesWithMetadata();
-    const ttlMs = this.getConfig().cacheTtlMs;
+    const raw = await client.listNamespacesWithMetadata(declaredSchemas);
+    const data: NamespaceInfo[] = raw.namespaces.map((ns) => ({
+      namespace: ns.namespace,
+      recordCount: ns.recordCount,
+      metadata: ns.metadata,
+      schema_source: ns.schema_source,
+    }));
+    const ttlMs = cfg.cacheTtlMs;
     const expiresAt = now + ttlMs;
-    this.namespacesCache = { data, expiresAt };
-    return { data, cache_hit: false, expires_at: expiresAt };
+    this.namespacesCache = { data, expiresAt, warnings: raw.warnings };
+    return {
+      data,
+      cache_hit: false,
+      expires_at: expiresAt,
+      ...(raw.warnings.length > 0 ? { warnings: [...raw.warnings] } : {}),
+    };
   }
 
   async getNamespacesWithCacheForSource(source: string): Promise<{

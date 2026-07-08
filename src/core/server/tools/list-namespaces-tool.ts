@@ -37,6 +37,9 @@ async function executeListNamespaces(source: string | undefined, ctx?: ServerCon
       typeof rawSourceErrors === 'object'
         ? (rawSourceErrors as Record<string, string>)
         : undefined;
+    const rawWarnings = 'warnings' in cacheResult ? cacheResult.warnings : undefined;
+    const config_warnings =
+      Array.isArray(rawWarnings) && rawWarnings.length > 0 ? rawWarnings : undefined;
     const now = Date.now();
     const ttlSeconds = Math.max(0, Math.floor((expires_at - now) / 1000));
 
@@ -47,11 +50,13 @@ async function executeListNamespaces(source: string | undefined, ctx?: ServerCon
       expires_at_iso: new Date(expires_at).toISOString(),
       count: namespacesInfo.length,
       ...(source_errors !== undefined && source_errors !== null ? { source_errors } : {}),
+      ...(config_warnings !== undefined ? { config_warnings } : {}),
       namespaces: namespacesInfo.map((ns) => ({
         name: ns.namespace,
         record_count: ns.recordCount,
         metadata_fields: ns.metadata,
         ...(ns.source !== undefined ? { source: ns.source } : {}),
+        ...(ns.schema_source !== undefined ? { schema_source: ns.schema_source } : {}),
       })),
     };
 
