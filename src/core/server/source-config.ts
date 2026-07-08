@@ -255,10 +255,13 @@ export function parseSourcesConfigFile(
     if (!cfg || typeof cfg !== 'object') {
       throw new Error(`Source "${name}" in config file must be an object.`);
     }
-    const description =
-      cfg.description != null && typeof cfg.description === 'string'
-        ? trimOptional(cfg.description)
-        : undefined;
+    let description: string | undefined;
+    if (cfg.description != null) {
+      if (typeof cfg.description !== 'string') {
+        throw new Error(`Source "${name}": description must be a string.`);
+      }
+      description = trimOptional(cfg.description);
+    }
     const namespaces = validateNamespaces(name, cfg.namespaces);
     sources.push(
       normalizeSourceEntry(

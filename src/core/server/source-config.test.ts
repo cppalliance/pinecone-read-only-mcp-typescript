@@ -153,6 +153,44 @@ describe('source-config', () => {
     expect(first?.namespaces).toBeUndefined();
   });
 
+  it('parseSourcesConfigFile throws when source description is not a string', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-source-description.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { apiKey: 'k', indexName: 'idx', description: 42 },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Source "api_key_1": description must be a string/
+    );
+  });
+
+  it('parseSourcesConfigFile throws when namespace description is not a string', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-namespace-description.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: {
+            apiKey: 'k',
+            indexName: 'idx',
+            namespaces: { example_ns: { description: 42 } },
+          },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /namespaces\["example_ns"\]\.description must be a string/
+    );
+  });
+
   it('parseSourcesConfigFile throws on malformed metadata_schema value', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
     const filePath = join(dir, 'bad-schema.json');
