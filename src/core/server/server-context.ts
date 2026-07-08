@@ -19,6 +19,7 @@ export type NamespaceInfo = {
   metadata: Record<string, string>;
   source?: string;
   schema_source?: 'declared' | 'sampled';
+  description?: string;
 };
 
 export type ResolveSourceResult =
@@ -629,15 +630,21 @@ export class ServerContext<
 
     const cfg = this.getConfig();
     const sourceDef = cfg.sources?.[0];
-    const declaredSchemas = extractDeclaredSchemas(sourceDef?.namespaces);
+    const declaredNamespaces = sourceDef?.namespaces;
+    const declaredSchemas = extractDeclaredSchemas(declaredNamespaces);
+    const declaredNamespaceNames = declaredNamespaces ? Object.keys(declaredNamespaces) : undefined;
     const client = this.getClient();
-    const raw = await client.listNamespacesWithMetadata(declaredSchemas);
-    const data: NamespaceInfo[] = raw.namespaces.map((ns) => ({
-      namespace: ns.namespace,
-      recordCount: ns.recordCount,
-      metadata: ns.metadata,
-      schema_source: ns.schema_source,
-    }));
+    const raw = await client.listNamespacesWithMetadata(declaredSchemas, declaredNamespaceNames);
+    const data: NamespaceInfo[] = raw.namespaces.map((ns) => {
+      const description = declaredNamespaces?.[ns.namespace]?.description;
+      return {
+        namespace: ns.namespace,
+        recordCount: ns.recordCount,
+        metadata: ns.metadata,
+        schema_source: ns.schema_source,
+        ...(description !== undefined ? { description } : {}),
+      };
+    });
     const ttlMs = cfg.cacheTtlMs;
     const expiresAt = now + ttlMs;
     this.namespacesCache = { data, expiresAt, warnings: raw.warnings };

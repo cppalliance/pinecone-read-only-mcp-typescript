@@ -10,6 +10,7 @@ import {
   type HybridQueryResult,
   type KeywordIndexNamespacesResult,
   type KeywordSearchParams,
+  type NamespacesWithMetadataResult,
   type PineconeMetadataValue,
   type QueryParams,
   type SearchResult,
@@ -37,16 +38,9 @@ export class DemoMockPineconeClient extends PineconeClient {
   }
 
   override async listNamespacesWithMetadata(
-    _declaredSchemas?: Record<string, Record<string, string>>
-  ): Promise<{
-    namespaces: Array<{
-      namespace: string;
-      recordCount: number;
-      metadata: Record<string, string>;
-      schema_source: 'declared' | 'sampled';
-    }>;
-    warnings: string[];
-  }> {
+    _declaredSchemas?: Record<string, Record<string, string>>,
+    _declaredNamespaceNames?: string[]
+  ): Promise<NamespacesWithMetadataResult> {
     return {
       namespaces: [
         {

@@ -158,4 +158,59 @@ describe('list_namespaces tool handler (multi-source)', () => {
       'Declared namespace "stale_ns" not found in Pinecone index "idx-a" — schema declaration is stale.',
     ]);
   });
+
+  it('surfaces per-namespace description from private config on matching live rows', async () => {
+    const client1 = {
+      listNamespacesWithMetadata: vi.fn().mockResolvedValue({
+        namespaces: [
+          {
+            namespace: 'wg21',
+            recordCount: 10,
+            metadata: { title: 'string' },
+            schema_source: 'sampled',
+          },
+        ],
+        warnings: [],
+      }),
+      query: vi.fn(),
+      count: vi.fn(),
+      keywordSearch: vi.fn(),
+      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+      getSparseIndexName: () => 'sparse',
+    };
+    const { ctx } = createMultiSourceTestContext({
+      clients: new Map([['api_key_1', client1 as never]]),
+      sources: [
+        {
+          name: 'api_key_1',
+          apiKey: 'k1',
+          indexName: 'idx-a',
+          namespaces: {
+            wg21: { description: 'WG21 papers corpus' },
+          },
+        },
+        {
+          name: 'api_key_2',
+          apiKey: 'k2',
+          indexName: 'idx-b',
+        },
+      ],
+    });
+
+    const server = createMockServer();
+    registerListNamespacesTool(server as never, ctx);
+    const body = parseToolJson(
+      await server.getHandler('list_namespaces')!({ source: 'api_key_1' })
+    );
+    expect(body['namespaces']).toEqual([
+      {
+        name: 'wg21',
+        record_count: 10,
+        metadata_fields: { title: 'string' },
+        source: 'api_key_1',
+        schema_source: 'sampled',
+        description: 'WG21 papers corpus',
+      },
+    ]);
+  });
 });

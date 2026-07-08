@@ -10,10 +10,6 @@ import type {
   SearchableIndex,
 } from '../../types.js';
 
-/**
- * Infers a human-readable metadata field type for namespace discovery.
- * Distinguishes Pinecone-supported list type (string[]) from other arrays.
- */
 function inferMetadataFieldType(value: unknown): string {
   if (value === null || value === undefined) {
     return 'unknown';
@@ -27,6 +23,18 @@ function inferMetadataFieldType(value: unknown): string {
   if (t === 'string' || t === 'number' || t === 'boolean') return t;
   return 'object';
 }
+
+export type NamespaceWithMetadataRow = {
+  namespace: string;
+  recordCount: number;
+  metadata: Record<string, string>;
+  schema_source: 'declared' | 'sampled';
+};
+
+export type NamespacesWithMetadataResult = {
+  namespaces: NamespaceWithMetadataRow[];
+  warnings: string[];
+};
 
 /** Holds lazy Pinecone SDK client and dense/sparse index references. */
 export class PineconeIndexSession {
@@ -116,16 +124,9 @@ export class PineconeIndexSession {
    * a schema for a live namespace, sampling is skipped for that namespace.
    */
   async listNamespacesWithMetadata(
-    declaredSchemas?: Record<string, Record<string, string>>
-  ): Promise<{
-    namespaces: Array<{
-      namespace: string;
-      recordCount: number;
-      metadata: Record<string, string>;
-      schema_source: 'declared' | 'sampled';
-    }>;
-    warnings: string[];
-  }> {
+    declaredSchemas?: Record<string, Record<string, string>>,
+    declaredNamespaceNames?: string[]
+  ): Promise<NamespacesWithMetadataResult> {
     try {
       const { denseIndex } = await this.ensureIndexes();
 
@@ -139,13 +140,13 @@ export class PineconeIndexSession {
       logInfo(`Found ${namespaces.length} namespace(s)`);
 
       const warnings: string[] = [];
-      if (declaredSchemas) {
-        for (const declaredNs of Object.keys(declaredSchemas)) {
-          if (!liveSet.has(declaredNs)) {
-            warnings.push(
-              `Declared namespace "${declaredNs}" not found in Pinecone index "${this.indexName}" — schema declaration is stale.`
-            );
-          }
+      const namesToVerify =
+        declaredNamespaceNames ?? (declaredSchemas ? Object.keys(declaredSchemas) : []);
+      for (const declaredNs of namesToVerify) {
+        if (!liveSet.has(declaredNs)) {
+          warnings.push(
+            `Declared namespace "${declaredNs}" not found in Pinecone index "${this.indexName}" — schema declaration is stale.`
+          );
         }
       }
 

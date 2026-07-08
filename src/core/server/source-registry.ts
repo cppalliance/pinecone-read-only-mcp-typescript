@@ -112,15 +112,24 @@ export class SourceRegistry {
         ...(entry.cache.warnings.length > 0 ? { warnings: [...entry.cache.warnings] } : {}),
       };
     }
-    const declaredSchemas = extractDeclaredSchemas(entry.definition.namespaces);
-    const raw = await entry.client.listNamespacesWithMetadata(declaredSchemas);
-    const data: NamespaceInfo[] = raw.namespaces.map((ns) => ({
-      namespace: ns.namespace,
-      recordCount: ns.recordCount,
-      metadata: ns.metadata,
-      schema_source: ns.schema_source,
-      source,
-    }));
+    const declaredNamespaces = entry.definition.namespaces;
+    const declaredSchemas = extractDeclaredSchemas(declaredNamespaces);
+    const declaredNamespaceNames = declaredNamespaces ? Object.keys(declaredNamespaces) : undefined;
+    const raw = await entry.client.listNamespacesWithMetadata(
+      declaredSchemas,
+      declaredNamespaceNames
+    );
+    const data: NamespaceInfo[] = raw.namespaces.map((ns) => {
+      const description = declaredNamespaces?.[ns.namespace]?.description;
+      return {
+        namespace: ns.namespace,
+        recordCount: ns.recordCount,
+        metadata: ns.metadata,
+        schema_source: ns.schema_source,
+        source,
+        ...(description !== undefined ? { description } : {}),
+      };
+    });
     const expiresAt = now + this.cacheTtlMs;
     entry.cache = { data, expiresAt, warnings: raw.warnings };
     return {

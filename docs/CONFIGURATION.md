@@ -80,7 +80,7 @@ Optional **config-file-only** fields (not supported in inline `PINECONE_SOURCES`
 | Field | Scope | Purpose |
 | ----- | ----- | ------- |
 | `description` | Per source | Short corpus/content hint surfaced via `list_sources` (helps LLM routing across sources or MCP entries) |
-| `namespaces` | Per source | Map of namespace name → `{ description?, metadata_schema? }` |
+| `namespaces` | Per source | Map of namespace name → `{ description?, metadata_schema? }`; per-namespace `description` is surfaced via `list_namespaces` on matching live rows |
 
 `metadata_schema` is a flat `fieldName → type` map (same vocabulary as `list_namespaces` → `metadata_fields`, e.g. `"title": "string"`). When declared for a live namespace, the server **skips live sampling** for that namespace and trusts the declared schema until the config file changes. Namespaces declared in config but absent from Pinecone produce a non-fatal `config_warnings` entry in `list_namespaces` (never a startup failure).
 

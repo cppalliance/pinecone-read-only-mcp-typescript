@@ -119,6 +119,7 @@ export const listNamespacesResponseSchema = z.object({
       record_count: z.number(),
       metadata_fields: z.record(z.string(), z.string()),
       schema_source: z.enum(['declared', 'sampled']).optional(),
+      description: z.string().optional(),
     })
   ),
 });

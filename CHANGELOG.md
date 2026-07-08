@@ -11,7 +11,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 ### Added
 
 - **Per-source and per-namespace private config:** optional `description` (source-level) and `namespaces` map (`description` + declared `metadata_schema`) in JSON config files (`PINECONE_CONFIG_FILE` only — not inline `PINECONE_SOURCES`). Declared schemas skip live sampling; stale declared namespaces surface as `config_warnings` in `list_namespaces`. See [CONFIGURATION.md](docs/CONFIGURATION.md#json-config-file).
-- **`list_namespaces`:** optional per-namespace `schema_source` (`declared` | `sampled`) and top-level `config_warnings` when private config declarations do not match live Pinecone data.
+- **`list_namespaces`:** optional per-namespace `schema_source` (`declared` | `sampled`), optional per-namespace `description` (from private config), and top-level `config_warnings` when private config declarations do not match live Pinecone data.
 
 ### Changed
 

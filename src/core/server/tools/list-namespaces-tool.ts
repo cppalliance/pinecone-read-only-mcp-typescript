@@ -57,6 +57,7 @@ async function executeListNamespaces(source: string | undefined, ctx?: ServerCon
         metadata_fields: ns.metadata,
         ...(ns.source !== undefined ? { source: ns.source } : {}),
         ...(ns.schema_source !== undefined ? { schema_source: ns.schema_source } : {}),
+        ...(ns.description !== undefined ? { description: ns.description } : {}),
       })),
     };
 

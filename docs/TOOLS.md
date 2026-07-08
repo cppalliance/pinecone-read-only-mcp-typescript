@@ -91,7 +91,7 @@ Registered only when more than one Pinecone source is configured.
 | | |
 | --- | --- |
 | **Input** | Optional `source` — filter to one configured project |
-| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields, source?, schema_source? }], source_errors?, config_warnings? }` |
+| **Success** | `{ status: 'success', cache_hit, cache_ttl_seconds, expires_at_iso, count, namespaces: [{ name, record_count, metadata_fields, source?, schema_source?, description? }], source_errors?, config_warnings? }` |
 | **Errors** | `PINECONE_ERROR`, `TIMEOUT`, etc. |
 
 **Example (multi-source, all projects):**

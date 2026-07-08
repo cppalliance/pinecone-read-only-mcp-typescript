@@ -16,6 +16,8 @@ export async function getNamespacesWithCache(): Promise<{
   data: NamespaceInfo[];
   cache_hit: boolean;
   expires_at: number;
+  source_errors?: Record<string, string>;
+  warnings?: string[];
 }> {
   warnLegacyFacade('getNamespacesWithCache');
   return resolveDefaultServerContext().getNamespacesWithCache();
