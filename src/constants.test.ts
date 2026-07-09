@@ -85,7 +85,7 @@ describe('server instructions', () => {
       field_a: 'string',
       field_b: 'number',
     });
-    expect(CORE_SERVER_INSTRUCTIONS).not.toMatch(new RegExp(corpusPlaceholder));
-    expect(ALLIANCE_SERVER_INSTRUCTIONS).not.toMatch(new RegExp(corpusPlaceholder));
+    expect(CORE_SERVER_INSTRUCTIONS).not.toContain(corpusPlaceholder);
+    expect(ALLIANCE_SERVER_INSTRUCTIONS).not.toContain(corpusPlaceholder);
   });
 });
