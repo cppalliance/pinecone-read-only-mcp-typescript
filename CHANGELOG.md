@@ -12,6 +12,10 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 - **Instructions:** Trimmed operator/install/deploy content (env-var setup, misconfiguration note, Alliance CLI index/rerank defaults, stderr logging config) from `CORE_SERVER_INSTRUCTIONS` and `ALLIANCE_INSTRUCTIONS_APPENDIX` — reduces per-session token cost; no behavior change. Replaced colliding Alliance appendix steps 4–5 with unnumbered "Manual Alliance flow" bullets (includes `PINECONE_DISABLE_SUGGEST_FLOW=true` escape clause). Full detail remains in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
+### Removed
+
+- **Breaking (library):** Trimmed internal-only re-exports from the package root and `/alliance` entry to shrink the public surface and blast radius: `trimOptional`, `createUnconfiguredAllianceContext` (core), and the concrete URL generators `generatorMailing`, `generatorSlackCpplang` (alliance). These were internal helpers, not part of the documented API; register built-ins via `registerBuiltinUrlGenerators` and build contexts via `createServer` / `createIsolatedContext`. A snapshot test now guards the runtime export surface so internal symbols cannot leak back in. See [MIGRATION.md](docs/MIGRATION.md#internal-only-re-exports-removed-203). (#203)
+
 ## [0.4.0] - 2026-06-24
 
 ### Added

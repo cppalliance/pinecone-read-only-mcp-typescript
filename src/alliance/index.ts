@@ -13,9 +13,5 @@ export {
 export type { AllianceServerConfig } from './config.js';
 export type { AllianceServerContext } from '../core/server/server-context.js';
 export { setupAllianceServer, type SetupAllianceServerOptions } from './setup.js';
-export {
-  registerBuiltinUrlGenerators,
-  generatorMailing,
-  generatorSlackCpplang,
-} from './url-builtins.js';
+export { registerBuiltinUrlGenerators } from './url-builtins.js';
 export type { RegisterBuiltinUrlGeneratorsOptions } from './url-builtins.js';

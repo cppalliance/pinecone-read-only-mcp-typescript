@@ -202,6 +202,16 @@ import { buildQueryExperimental } from '@will-cppa/pinecone-read-only-mcp';
 
 `PineconeClient.query()` return types (`HybridQueryResult`, etc.) and all Zod response schemas remain on the public surface.
 
+### Internal-only re-exports removed (#203)
+
+**Who is affected:** Library embedders that imported any of these internal helpers from the package root or `/alliance`:
+
+- `trimOptional` (a string-trim helper)
+- `createUnconfiguredAllianceContext` (an internal context factory used by setup guards)
+- `generatorMailing`, `generatorSlackCpplang` (the concrete Alliance URL generators)
+
+**After:** none of these are part of the supported surface. Trim whitespace yourself, build contexts with `createServer` / `createIsolatedContext`, and register the built-in URL generators with `registerBuiltinUrlGenerators` (the documented entry point) instead of importing the individual generators. The public runtime export surface is now guarded by a snapshot test so internal symbols cannot leak back in.
+
 ## Unreleased: `ServerContext` instance APIs (initial)
 
 **Rationale:** Process-global singletons (Pinecone client slot, config, URL registry, suggest-flow gate, namespaces cache) complicate testing and multi-tenant embedding. The initial milestone introduces an opt-in **`ServerContext`**; legacy module facades are deprecated since **0.3.0** (see [Legacy module-facade deprecations](#030-legacy-module-facade-deprecations)).
