@@ -79,6 +79,7 @@ export type {
   ConfigOverrides,
 } from './config.js';
 export { PineconeClient } from './pinecone-client.js';
+export type { NamespacesWithMetadataResult, NamespaceWithMetadataRow } from './pinecone/indexes.js';
 export type {
   PineconeClientConfig,
   QueryParams,

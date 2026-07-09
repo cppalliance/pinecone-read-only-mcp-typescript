@@ -111,12 +111,15 @@ export const listNamespacesResponseSchema = z.object({
   expires_at_iso: z.string(),
   count: z.number(),
   source_errors: z.record(z.string(), z.string()).optional(),
+  config_warnings: z.array(z.string()).optional(),
   namespaces: z.array(
     z.object({
       name: z.string(),
       source: z.string().optional(),
       record_count: z.number(),
       metadata_fields: z.record(z.string(), z.string()),
+      schema_source: z.enum(['declared', 'sampled']).optional(),
+      description: z.string().optional(),
     })
   ),
 });
@@ -254,7 +257,12 @@ export type GenerateUrlsResponse = z.infer<typeof generateUrlsResponseSchema>;
 
 export const listSourcesResponseSchema = z.object({
   status: z.literal('success'),
-  sources: z.array(z.string()),
+  sources: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string().optional(),
+    })
+  ),
   default: z.string(),
 });
 

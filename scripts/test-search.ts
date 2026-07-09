@@ -36,22 +36,27 @@ async function test() {
     // Test 1: List namespaces with metadata
     console.log('\n📋 Test 1: Listing namespaces with metadata...');
     const namespacesInfo = await client.listNamespacesWithMetadata();
-    console.log(`✅ Found ${namespacesInfo.length} namespace(s):`);
-    namespacesInfo.forEach((ns) => {
+    console.log(`✅ Found ${namespacesInfo.namespaces.length} namespace(s):`);
+    namespacesInfo.namespaces.forEach((ns) => {
       console.log(`   - ${ns.namespace}: ${ns.recordCount} records`);
       if (Object.keys(ns.metadata).length > 0) {
         console.log(`     Metadata fields:`, Object.keys(ns.metadata));
       }
     });
 
-    if (namespacesInfo.length === 0) {
+    if (namespacesInfo.warnings.length > 0) {
+      console.log('⚠️  Config warnings:');
+      namespacesInfo.warnings.forEach((warning) => console.log(`   - ${warning}`));
+    }
+
+    if (namespacesInfo.namespaces.length === 0) {
       console.log('⚠️  No namespaces found in your index');
       console.log('   Make sure your Pinecone index has data');
       return;
     }
 
     // Test 2: Query without reranking (faster)
-    const testNamespace = namespacesInfo[0].namespace;
+    const testNamespace = namespacesInfo.namespaces[0].namespace;
     console.log(`\n🔍 Test 2: Query WITHOUT reranking (faster)`);
     console.log(`   Namespace: "${testNamespace}"`);
     console.log(`   Query: "test query"`);
@@ -95,7 +100,7 @@ async function test() {
     }
 
     // Test 4: Query with metadata filter on wg21-papers namespace
-    const wg21Namespace = namespacesInfo.find((ns) => ns.namespace === 'wg21-papers');
+    const wg21Namespace = namespacesInfo.namespaces.find((ns) => ns.namespace === 'wg21-papers');
     let duration3: number | undefined;
 
     if (wg21Namespace) {
@@ -149,7 +154,7 @@ async function test() {
     } else {
       console.log(`\n⚠️  Test 4 skipped: "wg21-papers" namespace not found`);
       console.log(
-        `   Available namespaces: ${namespacesInfo.map((ns) => ns.namespace).join(', ')}`
+        `   Available namespaces: ${namespacesInfo.namespaces.map((ns) => ns.namespace).join(', ')}`
       );
     }
 

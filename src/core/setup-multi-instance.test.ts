@@ -7,6 +7,7 @@ import * as listSourcesTool from './server/tools/list-sources-tool.js';
 import {
   createTestServerContext,
   isolateFromDefaultContext,
+  mockNamespacesWithMetadataResult,
   resolveTestConfig,
 } from './server/tools/test-helpers.js';
 
@@ -76,10 +77,18 @@ describe('setup multi-instance (phase 4)', () => {
     isolateFromDefaultContext();
     const listNsA = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 10, metadata: { source: 'a' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 10, metadata: { source: 'a' } },
+        ])
+      );
     const listNsB = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'other', recordCount: 5, metadata: { source: 'b' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'other', recordCount: 5, metadata: { source: 'b' } },
+        ])
+      );
     const cfgA = resolveTestConfig({ apiKey: 'cache-iso-a' });
     const cfgB = resolveTestConfig({ apiKey: 'cache-iso-b' });
     const ctxA = createTestServerContext({

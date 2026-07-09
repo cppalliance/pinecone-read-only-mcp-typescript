@@ -78,4 +78,38 @@ describe('list_namespaces tool handler', () => {
     const err = assertToolErrorCode(raw, 'PINECONE_ERROR');
     expect(err.message).toBe('Failed to list namespaces');
   });
+
+  it('propagates config_warnings and schema_source via legacy namespaces-cache facade', async () => {
+    mockedGetNamespaces.mockResolvedValue({
+      data: [
+        {
+          namespace: 'wg21',
+          recordCount: 10,
+          metadata: { title: 'string' },
+          schema_source: 'declared',
+        },
+      ],
+      cache_hit: false,
+      expires_at: Date.now() + 60_000,
+      warnings: [
+        'Declared namespace "stale_ns" not found in Pinecone index "idx-a" — schema declaration is stale.',
+      ],
+    });
+
+    const server = createMockServer();
+    registerListNamespacesTool(server as never);
+    const body = parseToolJson(await server.getHandler('list_namespaces')!({}));
+
+    expect(body.config_warnings).toEqual([
+      'Declared namespace "stale_ns" not found in Pinecone index "idx-a" — schema declaration is stale.',
+    ]);
+    expect(body.namespaces).toEqual([
+      {
+        name: 'wg21',
+        record_count: 10,
+        metadata_fields: { title: 'string' },
+        schema_source: 'declared',
+      },
+    ]);
+  });
 });

@@ -6,6 +6,7 @@ import {
   keywordSearchResponseSchema,
   keywordSearchSuccessResponseSchema,
   listNamespacesResponseSchema,
+  listSourcesResponseSchema,
   namespaceRouterResponseSchema,
   queryDocumentsResponseSchema,
   queryResponseSchema,
@@ -195,6 +196,33 @@ describe('response-schemas', () => {
   });
 
   it('validates all nine tool schemas with minimal fixtures', () => {
+    expect(
+      listNamespacesResponseSchema.parse({
+        status: 'success',
+        cache_hit: false,
+        cache_ttl_seconds: 1800,
+        expires_at_iso: '2026-01-01T00:00:00.000Z',
+        count: 1,
+        namespaces: [
+          {
+            name: 'wg21',
+            record_count: 1,
+            metadata_fields: { title: 'string' },
+            schema_source: 'declared',
+          },
+        ],
+        config_warnings: ['Declared namespace "stale" not found'],
+      })
+    ).toBeDefined();
+
+    expect(
+      listSourcesResponseSchema.parse({
+        status: 'success',
+        sources: [{ name: 'api_key_1', description: 'Public corpus' }, { name: 'api_key_2' }],
+        default: 'api_key_1',
+      })
+    ).toBeDefined();
+
     expect(
       listNamespacesResponseSchema.parse({
         status: 'success',

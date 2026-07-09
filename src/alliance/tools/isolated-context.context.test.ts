@@ -7,6 +7,7 @@ import {
   isolateFromDefaultContext,
   makeHybridQueryResult,
   makeSearchResult,
+  mockNamespacesWithMetadataResult,
   parseToolJson,
 } from '../../core/server/tools/test-helpers.js';
 import {
@@ -27,18 +28,20 @@ describe('isolated ServerContext with zero default context', () => {
   });
 
   it('guided_query enrich_urls uses ctx builtins, not default registry', async () => {
-    const listNamespacesWithMetadata = vi.fn().mockResolvedValue([
-      {
-        namespace: 'mailing',
-        recordCount: 42,
-        metadata: {
-          document_number: 'string',
-          title: 'string',
-          author: 'string',
-          chunk_text: 'string',
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'mailing',
+          recordCount: 42,
+          metadata: {
+            document_number: 'string',
+            title: 'string',
+            author: 'string',
+            chunk_text: 'string',
+          },
         },
-      },
-    ]);
+      ])
+    );
     const query = vi.fn().mockResolvedValue(
       makeHybridQueryResult({
         results: [

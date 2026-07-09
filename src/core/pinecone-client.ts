@@ -15,7 +15,7 @@ import type {
   HybridLegFailed,
 } from '../types.js';
 import { DEFAULT_TOP_K, MAX_TOP_K, COUNT_TOP_K, COUNT_FIELDS } from '../constants.js';
-import { PineconeIndexSession } from './pinecone/indexes.js';
+import { PineconeIndexSession, type NamespacesWithMetadataResult } from './pinecone/indexes.js';
 import {
   countUniqueDocumentsFromHits,
   mapSparseHitsToSearchResults,
@@ -77,15 +77,12 @@ export class PineconeClient {
     return this.indexSession.listNamespacesFromKeywordIndex();
   }
 
-  /** Dense index namespaces with sampled metadata field types. */
-  async listNamespacesWithMetadata(): Promise<
-    Array<{
-      namespace: string;
-      recordCount: number;
-      metadata: Record<string, string>;
-    }>
-  > {
-    return this.indexSession.listNamespacesWithMetadata();
+  /** Dense index namespaces with sampled or declared metadata field types. */
+  async listNamespacesWithMetadata(
+    declaredSchemas?: Record<string, Record<string, string>>,
+    declaredNamespaceNames?: string[]
+  ): Promise<NamespacesWithMetadataResult> {
+    return this.indexSession.listNamespacesWithMetadata(declaredSchemas, declaredNamespaceNames);
   }
 
   /** Probe dense + sparse indexes (describeIndexStats) for startup checks. */

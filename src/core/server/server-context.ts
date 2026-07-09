@@ -11,12 +11,15 @@ import { normalizeNamespace } from './namespace-utils.js';
 import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
 import { buildSourceRegistry, type SourceRegistry } from './source-registry.js';
+import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
 
 export type NamespaceInfo = {
   namespace: string;
   recordCount: number;
   metadata: Record<string, string>;
   source?: string;
+  schema_source?: 'declared' | 'sampled';
+  description?: string;
 };
 
 export type ResolveSourceResult =
@@ -70,12 +73,6 @@ type FlowState = {
   user_query: string;
 };
 
-type CacheEntry = {
-  data: NamespaceInfo[];
-  expiresAt: number;
-};
-
-/** Return a trimmed non-empty string or null for empty/missing values. */
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
@@ -125,7 +122,7 @@ export class ServerContext<
   private readonly unconfiguredAlliance: boolean;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
-  private namespacesCache: CacheEntry | null = null;
+  private namespacesCache: NamespacesCacheEntry | null = null;
 
   constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
     this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
@@ -156,6 +153,7 @@ export class ServerContext<
           metadata: { ...entry.metadata },
         })),
         expiresAt,
+        warnings: [],
       };
     }
     if (composition?.suggestionFlowSeed) {
@@ -257,6 +255,20 @@ export class ServerContext<
       return cfg.sources.map((s) => s.name);
     }
     return [];
+  }
+
+  listSourceDetails(): { name: string; description?: string }[] {
+    if (this.sourceRegistry) {
+      return this.sourceRegistry.listSources().map((name) => {
+        const def = this.sourceRegistry!.getDefinition(name);
+        return { name, ...(def.description !== undefined ? { description: def.description } : {}) };
+      });
+    }
+    const cfg = this.getConfigIfSet() ?? this.getConfig();
+    return (cfg.sources ?? []).map((s) => ({
+      name: s.name,
+      ...(s.description !== undefined ? { description: s.description } : {}),
+    }));
   }
 
   getDefaultSourceName(): string {
@@ -582,6 +594,7 @@ export class ServerContext<
     cache_hit: boolean;
     expires_at: number;
     source_errors?: Record<string, string>;
+    warnings?: string[];
   }> {
     if (
       this.isMultiSource() ||
@@ -602,15 +615,22 @@ export class ServerContext<
         data: this.namespacesCache.data,
         cache_hit: true,
         expires_at: this.namespacesCache.expiresAt,
+        ...(this.namespacesCache.warnings.length > 0
+          ? { warnings: [...this.namespacesCache.warnings] }
+          : {}),
       };
     }
 
-    const client = this.getClient();
-    const data = await client.listNamespacesWithMetadata();
-    const ttlMs = this.getConfig().cacheTtlMs;
-    const expiresAt = now + ttlMs;
-    this.namespacesCache = { data, expiresAt };
-    return { data, cache_hit: false, expires_at: expiresAt };
+    const cfg = this.getConfig();
+    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(this.getClient());
+    const expiresAt = now + cfg.cacheTtlMs;
+    this.namespacesCache = { data, expiresAt, warnings };
+    return {
+      data,
+      cache_hit: false,
+      expires_at: expiresAt,
+      ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
+    };
   }
 
   async getNamespacesWithCacheForSource(source: string): Promise<{
