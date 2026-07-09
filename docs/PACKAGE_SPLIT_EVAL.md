@@ -182,7 +182,7 @@ Both packages would share the same four production dependencies from the root `p
 
 | Dependency | Current range | Alignment note |
 | ---------- | ------------- | -------------- |
-| `@modelcontextprotocol/sdk` | `^1.25.3` | MCP protocol surface; must stay aligned across core and Alliance |
+| `@modelcontextprotocol/sdk` | `^1.29.0` | MCP protocol surface; must stay aligned across core and Alliance |
 | `@pinecone-database/pinecone` | `^7.1.0` | Client API used by `PineconeClient`; core owns the wrapper |
 | `dotenv` | `^17.2.3` | Env loading in config resolvers |
 | `zod` | `^4.3.6` | Tool input schemas and response validation |

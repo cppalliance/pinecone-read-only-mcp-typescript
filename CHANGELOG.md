@@ -8,8 +8,13 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ## [Unreleased]
 
+### Added
+
+- **Tests:** MCP verification harness ([src/__tests__/mcp-rc-readiness.test.ts](src/__tests__/mcp-rc-readiness.test.ts)) that drives the real server over an in-memory transport with the SDK client (initialize and protocol negotiation, the full registered tool surface, and a round-trip tool call), so a future SDK or MCP protocol bump is verified in one place. Protocol assertions key off the SDK's `LATEST_PROTOCOL_VERSION`, so pinning the RC SDK re-runs the check with no test edits. (#202)
+
 ### Changed
 
+- **Dependencies:** Bumped the declared `@modelcontextprotocol/sdk` floor from `^1.25.3` to `^1.29.0` to match the resolved version and ready the server for the upcoming MCP RC protocol revision. `McpServer` construction, tool registration, and the stdio transport are unchanged and re-verified by the harness above. (#202)
 - **Instructions:** Trimmed operator/install/deploy content (env-var setup, misconfiguration note, Alliance CLI index/rerank defaults, stderr logging config) from `CORE_SERVER_INSTRUCTIONS` and `ALLIANCE_INSTRUCTIONS_APPENDIX` — reduces per-session token cost; no behavior change. Replaced colliding Alliance appendix steps 4–5 with unnumbered "Manual Alliance flow" bullets (includes `PINECONE_DISABLE_SUGGEST_FLOW=true` escape clause). Full detail remains in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ## [0.4.0] - 2026-06-24
