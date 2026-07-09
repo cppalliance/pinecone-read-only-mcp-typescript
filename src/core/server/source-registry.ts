@@ -4,13 +4,10 @@
 
 import { PineconeClient } from '../pinecone-client.js';
 import type { NamespaceInfo } from './server-context.js';
-import { extractDeclaredSchemas, type SourceDefinition } from './source-config.js';
+import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
+import type { SourceDefinition } from './source-config.js';
 
-type CacheEntry = {
-  data: NamespaceInfo[];
-  expiresAt: number;
-  warnings: string[];
-};
+export type { NamespacesCacheEntry };
 
 export type PerSourceCacheResult = {
   data: NamespaceInfo[];
@@ -39,7 +36,7 @@ export type BuildSourceRegistryOptions = {
 export class SourceRegistry {
   private readonly entries: Map<
     string,
-    { client: PineconeClient; cache: CacheEntry | null; definition: SourceDefinition }
+    { client: PineconeClient; cache: NamespacesCacheEntry | null; definition: SourceDefinition }
   >;
   private readonly defaultSourceName: string;
   private readonly cacheTtlMs: number;
@@ -112,31 +109,18 @@ export class SourceRegistry {
         ...(entry.cache.warnings.length > 0 ? { warnings: [...entry.cache.warnings] } : {}),
       };
     }
-    const declaredNamespaces = entry.definition.namespaces;
-    const declaredSchemas = extractDeclaredSchemas(declaredNamespaces);
-    const declaredNamespaceNames = declaredNamespaces ? Object.keys(declaredNamespaces) : undefined;
-    const raw = await entry.client.listNamespacesWithMetadata(
-      declaredSchemas,
-      declaredNamespaceNames
+    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(
+      entry.client,
+      entry.definition.namespaces,
+      source
     );
-    const data: NamespaceInfo[] = raw.namespaces.map((ns) => {
-      const description = declaredNamespaces?.[ns.namespace]?.description;
-      return {
-        namespace: ns.namespace,
-        recordCount: ns.recordCount,
-        metadata: ns.metadata,
-        schema_source: ns.schema_source,
-        source,
-        ...(description !== undefined ? { description } : {}),
-      };
-    });
     const expiresAt = now + this.cacheTtlMs;
-    entry.cache = { data, expiresAt, warnings: raw.warnings };
+    entry.cache = { data, expiresAt, warnings };
     return {
       data,
       cache_hit: false,
       expires_at: expiresAt,
-      ...(raw.warnings.length > 0 ? { warnings: [...raw.warnings] } : {}),
+      ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
     };
   }
 

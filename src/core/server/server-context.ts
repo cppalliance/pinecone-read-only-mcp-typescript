@@ -11,7 +11,7 @@ import { normalizeNamespace } from './namespace-utils.js';
 import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
 import { buildSourceRegistry, type SourceRegistry } from './source-registry.js';
-import { extractDeclaredSchemas } from './source-config.js';
+import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
 
 export type NamespaceInfo = {
   namespace: string;
@@ -73,13 +73,6 @@ type FlowState = {
   user_query: string;
 };
 
-type CacheEntry = {
-  data: NamespaceInfo[];
-  expiresAt: number;
-  warnings: string[];
-};
-
-/** Return a trimmed non-empty string or null for empty/missing values. */
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
@@ -129,7 +122,7 @@ export class ServerContext<
   private readonly unconfiguredAlliance: boolean;
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
-  private namespacesCache: CacheEntry | null = null;
+  private namespacesCache: NamespacesCacheEntry | null = null;
 
   constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
     this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
@@ -629,30 +622,14 @@ export class ServerContext<
     }
 
     const cfg = this.getConfig();
-    const sourceDef = cfg.sources?.[0];
-    const declaredNamespaces = sourceDef?.namespaces;
-    const declaredSchemas = extractDeclaredSchemas(declaredNamespaces);
-    const declaredNamespaceNames = declaredNamespaces ? Object.keys(declaredNamespaces) : undefined;
-    const client = this.getClient();
-    const raw = await client.listNamespacesWithMetadata(declaredSchemas, declaredNamespaceNames);
-    const data: NamespaceInfo[] = raw.namespaces.map((ns) => {
-      const description = declaredNamespaces?.[ns.namespace]?.description;
-      return {
-        namespace: ns.namespace,
-        recordCount: ns.recordCount,
-        metadata: ns.metadata,
-        schema_source: ns.schema_source,
-        ...(description !== undefined ? { description } : {}),
-      };
-    });
-    const ttlMs = cfg.cacheTtlMs;
-    const expiresAt = now + ttlMs;
-    this.namespacesCache = { data, expiresAt, warnings: raw.warnings };
+    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(this.getClient());
+    const expiresAt = now + cfg.cacheTtlMs;
+    this.namespacesCache = { data, expiresAt, warnings };
     return {
       data,
       cache_hit: false,
       expires_at: expiresAt,
-      ...(raw.warnings.length > 0 ? { warnings: [...raw.warnings] } : {}),
+      ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
     };
   }
 
