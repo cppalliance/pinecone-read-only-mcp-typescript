@@ -11,7 +11,6 @@ export {
   ServerContext,
   createServer,
   createIsolatedContext,
-  createUnconfiguredAllianceContext,
   getDefaultServerContext,
 } from './server/server-context.js';
 export type {
@@ -65,7 +64,7 @@ export {
   hasUrlGenerator,
 } from './server/url-registry.js';
 export type { UrlGenerationResult, UrlGenerator, UrlGeneratorFn } from './server/url-registry.js';
-export { resolveConfig, trimOptional } from './config.js';
+export { resolveConfig } from './config.js';
 export type { SourceDefinition } from './server/source-config.js';
 export { SourceRegistry, buildSourceRegistry } from './server/source-registry.js';
 export type { AggregatedCacheResult, PerSourceCacheResult } from './server/source-registry.js';
