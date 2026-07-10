@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
+import { LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { SERVER_NAME, SERVER_VERSION } from '../constants.js';
 import { setupCoreServer, teardownServer, type ServerHandle } from '../core/setup.js';
 import { setupAllianceServer } from '../alliance/setup.js';
@@ -59,33 +59,40 @@ async function rawInitialize(
 ): Promise<{ protocolVersion: string; serverInfo: { name: string; version: string } }> {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const result = await new Promise<{
-    protocolVersion: string;
-    serverInfo: { name: string; version: string };
-  }>((resolve, reject) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clientTransport.onmessage = (message: any) => {
-      if (message?.id !== 1) return;
-      if (message.error) reject(new Error(message.error.message));
-      else resolve(message.result);
-    };
-    void clientTransport
-      .start()
-      .then(() =>
-        clientTransport.send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: requestedProtocolVersion,
-            capabilities: {},
-            clientInfo: { name: 'raw-harness', version: '0.0.0' },
-          },
-        })
-      )
-      .catch(reject);
-  });
-  return result;
+  try {
+    return await new Promise<{
+      protocolVersion: string;
+      serverInfo: { name: string; version: string };
+    }>((resolve, reject) => {
+      clientTransport.onmessage = (message: JSONRPCMessage) => {
+        if (!('id' in message) || message.id !== 1) return;
+        if ('error' in message) {
+          reject(new Error(message.error.message));
+        } else if ('result' in message) {
+          resolve(
+            message.result as { protocolVersion: string; serverInfo: { name: string; version: string } }
+          );
+        }
+      };
+      void clientTransport
+        .start()
+        .then(() =>
+          clientTransport.send({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: requestedProtocolVersion,
+              capabilities: {},
+              clientInfo: { name: 'raw-harness', version: '0.0.0' },
+            },
+          })
+        )
+        .catch(reject);
+    });
+  } finally {
+    await clientTransport.close();
+  }
 }
 
 describe('MCP RC-readiness harness (#202)', () => {
