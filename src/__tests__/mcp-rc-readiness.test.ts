@@ -70,7 +70,10 @@ async function rawInitialize(
           reject(new Error(message.error.message));
         } else if ('result' in message) {
           resolve(
-            message.result as { protocolVersion: string; serverInfo: { name: string; version: string } }
+            message.result as {
+              protocolVersion: string;
+              serverInfo: { name: string; version: string };
+            }
           );
         }
       };
