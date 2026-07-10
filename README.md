@@ -5,7 +5,7 @@
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
 [![CI](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/workflows/CI/badge.svg)](https://github.com/cppalliance/pinecone-read-only-mcp-typescript/actions)
 
-A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.25+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
+A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that implements the MCP specification via `@modelcontextprotocol/sdk` v1.29+ and provides semantic search over Pinecone vector databases using hybrid search (dense + sparse) with reranking.
 
 Current version: 0.4.0 (npm `latest` after publish). Pin `@0.4.0` in install and MCP config for reproducible upgrades.
 
