@@ -104,6 +104,118 @@ describe('source-config', () => {
     expect(() => parseSourcesConfigFile(filePath, {})).toThrow(/defaultSource/);
   });
 
+  it('parseSourcesConfigFile reads description and namespaces with metadata_schema', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: {
+            apiKey: 'k',
+            indexName: 'index_name_1',
+            description: 'Staff corpus hint',
+            namespaces: {
+              example_ns: {
+                description: 'Namespace hint',
+                metadata_schema: { field_a: 'string', field_b: 'number' },
+              },
+            },
+          },
+        },
+      })
+    );
+    const parsed = parseSourcesConfigFile(filePath, {});
+    const first = parsed.sources[0];
+    expect(first?.description).toBe('Staff corpus hint');
+    expect(first?.namespaces?.example_ns).toMatchObject({
+      description: 'Namespace hint',
+      metadata_schema: { field_a: 'string', field_b: 'number' },
+    });
+  });
+
+  it('parseSourcesConfigFile omits description and namespaces when not set (back-compat)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'minimal.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { apiKey: 'k', indexName: 'idx' },
+        },
+      })
+    );
+    const parsed = parseSourcesConfigFile(filePath, {});
+    const first = parsed.sources[0];
+    expect(first?.description).toBeUndefined();
+    expect(first?.namespaces).toBeUndefined();
+  });
+
+  it('parseSourcesConfigFile throws when source description is not a string', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-source-description.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { apiKey: 'k', indexName: 'idx', description: 42 },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Source "api_key_1": description must be a string/
+    );
+  });
+
+  it('parseSourcesConfigFile throws when namespace description is not a string', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-namespace-description.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: {
+            apiKey: 'k',
+            indexName: 'idx',
+            namespaces: { example_ns: { description: 42 } },
+          },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /namespaces\["example_ns"\]\.description must be a string/
+    );
+  });
+
+  it('parseSourcesConfigFile throws on malformed metadata_schema value', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-schema.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: {
+            apiKey: 'k',
+            indexName: 'idx',
+            namespaces: { ns1: { metadata_schema: { field_a: 123 } } },
+          },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(/metadata_schema/);
+  });
+
+  it('parseInlineSources never includes description or namespaces', () => {
+    const sources = parseInlineSources('api_key_1:sk:idx', {});
+    expect(sources[0]).not.toHaveProperty('description');
+    expect(sources[0]).not.toHaveProperty('namespaces');
+  });
+
   it('resolveConfig uses PINECONE_SOURCES when set', () => {
     vi.stubEnv('PINECONE_SOURCES', 'api_key_1:sk-test:my-index');
     vi.stubEnv('PINECONE_API_KEY', 'ignored');

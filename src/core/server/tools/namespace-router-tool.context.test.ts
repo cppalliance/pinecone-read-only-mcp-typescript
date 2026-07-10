@@ -5,18 +5,21 @@ import {
   createMockServer,
   createTestServerContext,
   expectMatchesResponseSchema,
+  mockNamespacesWithMetadataResult,
   parseToolJson,
 } from './test-helpers.js';
 
 describe('namespace_router tool handler (ServerContext instance path)', () => {
   it('returns ranked suggestions from injected context cache miss', async () => {
-    const listNamespacesWithMetadata = vi.fn().mockResolvedValue([
-      {
-        namespace: 'papers',
-        recordCount: 42,
-        metadata: { title: 'string', document_number: 'string' },
-      },
-    ]);
+    const listNamespacesWithMetadata = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'papers',
+          recordCount: 42,
+          metadata: { title: 'string', document_number: 'string' },
+        },
+      ])
+    );
     const ctx = createTestServerContext({
       client: { listNamespacesWithMetadata } as never,
     });

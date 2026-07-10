@@ -9,9 +9,17 @@ const sources: SourceDefinition[] = [
 
 function mockClient(name: string) {
   return {
-    listNamespacesWithMetadata: vi
-      .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 10, metadata: { title: 'string' } }]),
+    listNamespacesWithMetadata: vi.fn().mockResolvedValue({
+      namespaces: [
+        {
+          namespace: 'wg21',
+          recordCount: 10,
+          metadata: { title: 'string' },
+          schema_source: 'sampled',
+        },
+      ],
+      warnings: [],
+    }),
     checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
     getSparseIndexName: () => `${name}-sparse`,
   };
@@ -81,5 +89,92 @@ describe('SourceRegistry', () => {
     expect(result.data[0]?.source).toBe('api_key_1');
     expect(result.source_errors).toEqual({ api_key_2: 'api_key_2 unreachable' });
     expect(result.cache_hit).toBe(false);
+  });
+
+  it('aggregates warnings across sources in getAllNamespacesWithCache', async () => {
+    const client1 = {
+      listNamespacesWithMetadata: vi.fn().mockResolvedValue({
+        namespaces: [
+          {
+            namespace: 'wg21',
+            recordCount: 10,
+            metadata: { title: 'string' },
+            schema_source: 'sampled',
+          },
+        ],
+        warnings: [
+          'Declared namespace "stale" not found in Pinecone index "idx-a" — schema declaration is stale.',
+        ],
+      }),
+      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+      getSparseIndexName: () => 'idx-a-sparse',
+    };
+    const client2 = mockClient('api_key_2');
+    const registry = buildSourceRegistry({
+      sources: [
+        {
+          ...sources[0]!,
+          namespaces: { stale: { metadata_schema: { title: 'string' } } },
+        },
+        sources[1]!,
+      ],
+      defaultSource: 'api_key_1',
+      cacheTtlMs: 60_000,
+      defaultTopK: 10,
+      requestTimeoutMs: 15_000,
+      clients: new Map([
+        ['api_key_1', client1 as never],
+        ['api_key_2', client2 as never],
+      ]),
+    });
+    const result = await registry.getAllNamespacesWithCache();
+    expect(result.warnings?.some((w) => w.includes('stale'))).toBe(true);
+    expect(client1.listNamespacesWithMetadata).toHaveBeenCalledWith(
+      { stale: { title: 'string' } },
+      ['stale']
+    );
+  });
+
+  it('passes all namespace keys for stale warnings including description-only declarations', async () => {
+    const client1 = {
+      listNamespacesWithMetadata: vi.fn().mockResolvedValue({
+        namespaces: [
+          {
+            namespace: 'wg21',
+            recordCount: 10,
+            metadata: { title: 'string' },
+            schema_source: 'sampled',
+          },
+        ],
+        warnings: [
+          'Declared namespace "desc_only_stale" not found in Pinecone index "idx-a" — schema declaration is stale.',
+        ],
+      }),
+      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+      getSparseIndexName: () => 'idx-a-sparse',
+    };
+    const registry = buildSourceRegistry({
+      sources: [
+        {
+          ...sources[0]!,
+          namespaces: {
+            wg21: { description: 'Live namespace hint' },
+            desc_only_stale: { description: 'Stale namespace hint' },
+          },
+        },
+      ],
+      defaultSource: 'api_key_1',
+      cacheTtlMs: 60_000,
+      defaultTopK: 10,
+      requestTimeoutMs: 15_000,
+      clients: new Map([['api_key_1', client1 as never]]),
+    });
+    const result = await registry.getNamespacesWithCache('api_key_1');
+    expect(client1.listNamespacesWithMetadata).toHaveBeenCalledWith(undefined, [
+      'wg21',
+      'desc_only_stale',
+    ]);
+    expect(result.data[0]?.description).toBe('Live namespace hint');
+    expect(result.warnings?.some((w) => w.includes('desc_only_stale'))).toBe(true);
   });
 });

@@ -4,17 +4,16 @@
 
 import { PineconeClient } from '../pinecone-client.js';
 import type { NamespaceInfo } from './server-context.js';
+import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
 import type { SourceDefinition } from './source-config.js';
 
-type CacheEntry = {
-  data: NamespaceInfo[];
-  expiresAt: number;
-};
+export type { NamespacesCacheEntry };
 
 export type PerSourceCacheResult = {
   data: NamespaceInfo[];
   cache_hit: boolean;
   expires_at: number;
+  warnings?: string[];
 };
 
 export type AggregatedCacheResult = {
@@ -22,6 +21,7 @@ export type AggregatedCacheResult = {
   cache_hit: boolean;
   expires_at: number;
   source_errors?: Record<string, string>;
+  warnings?: string[];
 };
 
 export type BuildSourceRegistryOptions = {
@@ -36,7 +36,7 @@ export type BuildSourceRegistryOptions = {
 export class SourceRegistry {
   private readonly entries: Map<
     string,
-    { client: PineconeClient; cache: CacheEntry | null; definition: SourceDefinition }
+    { client: PineconeClient; cache: NamespacesCacheEntry | null; definition: SourceDefinition }
   >;
   private readonly defaultSourceName: string;
   private readonly cacheTtlMs: number;
@@ -106,18 +106,22 @@ export class SourceRegistry {
         data: entry.cache.data,
         cache_hit: true,
         expires_at: entry.cache.expiresAt,
+        ...(entry.cache.warnings.length > 0 ? { warnings: [...entry.cache.warnings] } : {}),
       };
     }
-    const raw = await entry.client.listNamespacesWithMetadata();
-    const data: NamespaceInfo[] = raw.map((ns) => ({
-      namespace: ns.namespace,
-      recordCount: ns.recordCount,
-      metadata: ns.metadata,
-      source,
-    }));
+    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(
+      entry.client,
+      entry.definition.namespaces,
+      source
+    );
     const expiresAt = now + this.cacheTtlMs;
-    entry.cache = { data, expiresAt };
-    return { data, cache_hit: false, expires_at: expiresAt };
+    entry.cache = { data, expiresAt, warnings };
+    return {
+      data,
+      cache_hit: false,
+      expires_at: expiresAt,
+      ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
+    };
   }
 
   async getAllNamespacesWithCache(): Promise<AggregatedCacheResult> {
@@ -130,6 +134,7 @@ export class SourceRegistry {
     );
     const data: NamespaceInfo[] = [];
     const source_errors: Record<string, string> = {};
+    const warnings: string[] = [];
     let cache_hit = true;
     let maxExpires = 0;
     for (let i = 0; i < settled.length; i++) {
@@ -139,6 +144,9 @@ export class SourceRegistry {
         data.push(...outcome.value.result.data);
         if (!outcome.value.result.cache_hit) {
           cache_hit = false;
+        }
+        if (outcome.value.result.warnings?.length) {
+          warnings.push(...outcome.value.result.warnings);
         }
         maxExpires = Math.max(maxExpires, outcome.value.result.expires_at);
       } else {
@@ -154,6 +162,7 @@ export class SourceRegistry {
       cache_hit,
       expires_at,
       ...(Object.keys(source_errors).length > 0 ? { source_errors } : {}),
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   }
 

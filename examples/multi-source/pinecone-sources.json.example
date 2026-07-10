@@ -3,7 +3,17 @@
   "sources": {
     "api_key_1": {
       "apiKey": "${PINECONE_API_KEY_1}",
-      "indexName": "index_name_1"
+      "indexName": "index_name_1",
+      "description": "<optional: describe this corpus in your PRIVATE staff config, not here>",
+      "namespaces": {
+        "example-namespace": {
+          "description": "<optional: describe this namespace in your PRIVATE staff config, not here>",
+          "metadata_schema": {
+            "field_a": "string",
+            "field_b": "number"
+          }
+        }
+      }
     },
     "api_key_2": {
       "apiKey": "${PINECONE_API_KEY_2}",

@@ -233,7 +233,10 @@ function createBenchPineconeMock(): PineconeClient {
       return { count: 42, truncated: false };
     },
     async listNamespacesWithMetadata() {
-      return namespaces;
+      return {
+        namespaces: namespaces.map((n) => ({ ...n, schema_source: 'sampled' as const })),
+        warnings: [],
+      };
     },
     async listNamespacesFromKeywordIndex() {
       return namespaces.map((n) => ({ namespace: n.namespace, recordCount: n.recordCount }));

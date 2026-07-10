@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ALLIANCE_INSTRUCTIONS_APPENDIX,
@@ -54,5 +56,36 @@ describe('server instructions', () => {
 
   it('SERVER_INSTRUCTIONS aliases Alliance instructions', () => {
     expect(SERVER_INSTRUCTIONS).toBe(ALLIANCE_SERVER_INSTRUCTIONS);
+  });
+
+  it('example multi-source config uses only generic placeholder descriptions and schemas', () => {
+    const examplePath = join(process.cwd(), 'examples/multi-source/pinecone-sources.json.example');
+    const raw = readFileSync(examplePath, 'utf8');
+    const parsed = JSON.parse(raw) as {
+      sources: Record<
+        string,
+        {
+          description?: string;
+          namespaces?: Record<
+            string,
+            { description?: string; metadata_schema?: Record<string, string> }
+          >;
+        }
+      >;
+    };
+    const corpusPlaceholder =
+      '<optional: describe this corpus in your PRIVATE staff config, not here>';
+    const namespacePlaceholder =
+      '<optional: describe this namespace in your PRIVATE staff config, not here>';
+    expect(parsed.sources.api_key_1.description).toBe(corpusPlaceholder);
+    expect(parsed.sources.api_key_1.namespaces?.['example-namespace']?.description).toBe(
+      namespacePlaceholder
+    );
+    expect(parsed.sources.api_key_1.namespaces?.['example-namespace']?.metadata_schema).toEqual({
+      field_a: 'string',
+      field_b: 'number',
+    });
+    expect(CORE_SERVER_INSTRUCTIONS).not.toContain(corpusPlaceholder);
+    expect(ALLIANCE_SERVER_INSTRUCTIONS).not.toContain(corpusPlaceholder);
   });
 });

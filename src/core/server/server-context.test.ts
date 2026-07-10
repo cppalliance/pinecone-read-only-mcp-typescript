@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PineconeClient } from '../pinecone-client.js';
-import { resolveTestConfig } from './tools/test-helpers.js';
+import { resolveTestConfig, mockNamespacesWithMetadataResult } from './tools/test-helpers.js';
 import {
   ServerContext,
   createServer,
@@ -50,10 +50,18 @@ describe('ServerContext', () => {
   it('setConfig clears client, namespaces cache, and suggest-flow', async () => {
     const listA = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'a', recordCount: 1, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'a', recordCount: 1, metadata: { title: 'string' } },
+        ])
+      );
     const listB = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'b', recordCount: 2, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'b', recordCount: 2, metadata: { title: 'string' } },
+        ])
+      );
     const ctx = ServerContext.fromClient(testConfig(), {
       listNamespacesWithMetadata: listA,
     } as never);
@@ -111,7 +119,11 @@ describe('ServerContext', () => {
     const config = testConfig();
     const listNamespaces = vi
       .fn()
-      .mockResolvedValue([{ namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } }]);
+      .mockResolvedValue(
+        mockNamespacesWithMetadataResult([
+          { namespace: 'wg21', recordCount: 1, metadata: { title: 'string' } },
+        ])
+      );
     const ctx = ServerContext.fromClient(config, {
       listNamespacesWithMetadata: listNamespaces,
     } as never);
