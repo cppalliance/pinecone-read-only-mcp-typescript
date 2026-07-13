@@ -38,8 +38,14 @@ const SOURCE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 /** Resolve `${ENV_VAR}` references in a string value. */
 export function resolveEnvIndirection(value: string, env: NodeJS.ProcessEnv): string {
   const trimmed = value.trim();
+  const looksLikeIndirection = /^\$\{.*\}$/.test(trimmed);
   const match = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(trimmed);
   if (!match) {
+    if (looksLikeIndirection) {
+      throw new Error(
+        `Invalid environment variable reference "${trimmed}": names must contain only letters, digits, and underscores (no leading digit).`
+      );
+    }
     return trimmed;
   }
   const envKey = match[1]!;
@@ -284,6 +290,10 @@ export function parseSourcesConfigObject(
   return { sources, defaultSource };
 }
 
+function looksLikeSourceEntry(v: unknown): boolean {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
 function parseJsonSourcesInline(
   inline: string,
   env: NodeJS.ProcessEnv,
@@ -300,8 +310,14 @@ function parseJsonSourcesInline(
     throw new Error('PINECONE_SOURCES JSON must be a JSON object.');
   }
   const obj = parsed as Record<string, unknown>;
+  const sourcesCandidate = obj['sources'];
+  const hasFileShapeSourcesField =
+    sourcesCandidate != null &&
+    typeof sourcesCandidate === 'object' &&
+    !Array.isArray(sourcesCandidate) &&
+    Object.values(sourcesCandidate as Record<string, unknown>).every(looksLikeSourceEntry);
   const fileShape =
-    obj['sources'] != null && typeof obj['sources'] === 'object' && !Array.isArray(obj['sources'])
+    obj['defaultSource'] != null || hasFileShapeSourcesField
       ? (parsed as JsonSourceFile)
       : ({ sources: parsed } as JsonSourceFile);
   return parseSourcesConfigObject(fileShape, env, options, 'PINECONE_SOURCES JSON');

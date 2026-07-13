@@ -16,6 +16,12 @@ describe('source-config', () => {
     expect(resolveEnvIndirection('${PINECONE_API_KEY_1}', env)).toBe('key-one');
   });
 
+  it('throws on malformed env indirection reference', () => {
+    expect(() => resolveEnvIndirection('${internal-corpus}', {})).toThrow(
+      /Invalid environment variable reference/
+    );
+  });
+
   it('parses inline sources', () => {
     const env = {
       K1: 'api-1',
@@ -308,6 +314,30 @@ describe('source-config', () => {
     expect(() => resolveSourceDefinitions({}, env)).toThrow(
       /Environment variable api_key_1 is not set/
     );
+  });
+
+  it('resolveSourceDefinitions throws when hyphenated source name uses defaulted apiKey', () => {
+    const inline = JSON.stringify({
+      'internal-corpus': { indexName: 'index_name_1' },
+    });
+    const env = { PINECONE_SOURCES: inline };
+    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+      /Invalid environment variable reference "\$\{internal-corpus\}"/
+    );
+  });
+
+  it('resolveSourceDefinitions treats bare map with source named sources as sources-map', () => {
+    const inline = JSON.stringify({
+      sources: { indexName: 'rag-hybrid' },
+    });
+    const env = { sources: 'api-key-for-sources', PINECONE_SOURCES: inline };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.sources).toHaveLength(1);
+    expect(parsed?.sources[0]).toMatchObject({
+      name: 'sources',
+      apiKey: 'api-key-for-sources',
+      indexName: 'rag-hybrid',
+    });
   });
 
   it('resolveConfig uses PINECONE_SOURCES when set', () => {
