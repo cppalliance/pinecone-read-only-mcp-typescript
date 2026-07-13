@@ -98,8 +98,6 @@ At process runtime, env values are always strings. MCP hosts (including Cursor) 
 
 **Precedence:** `PINECONE_CONFIG_FILE` / `--config-file` wins over `PINECONE_SOURCES` when both are set. Within `PINECONE_SOURCES`, JSON (starts with `{`) is detected before the colon format.
 
-Staff inline example: [data/cppa-pinecone-mcp-setting.json](../data/cppa-pinecone-mcp-setting.json).
-
 ### JSON config file
 
 Set `PINECONE_CONFIG_FILE` (or `--config-file`) to a path such as [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example):
