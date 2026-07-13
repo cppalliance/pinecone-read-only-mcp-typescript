@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { trimOptional } from '../config.js';
 
-/** Per-namespace declaration loaded from private JSON config (config-file only). */
+/** Per-namespace declaration loaded from JSON config file or JSON-shaped PINECONE_SOURCES. */
 export interface NamespaceDeclaration {
   description?: string;
   metadata_schema?: Record<string, string>;
@@ -19,9 +19,9 @@ export interface SourceDefinition {
   indexName: string;
   sparseIndexName?: string;
   rerankModel?: string;
-  /** Optional corpus-level description (config-file only; never from inline PINECONE_SOURCES). */
+  /** Optional corpus-level description (JSON config file or JSON-shaped PINECONE_SOURCES only). */
   description?: string;
-  /** Optional per-namespace declarations (config-file only). */
+  /** Optional per-namespace declarations (JSON config file or JSON-shaped PINECONE_SOURCES only). */
   namespaces?: Record<string, NamespaceDeclaration>;
 }
 
@@ -208,52 +208,48 @@ export function parseInlineSources(
   return sources;
 }
 
-type JsonSourceFile = {
-  defaultSource?: string;
-  sources: Record<
-    string,
-    {
-      apiKey: string;
-      indexName: string;
-      sparseIndexName?: string;
-      rerankModel?: string;
-      description?: string;
-      namespaces?: Record<string, NamespaceDeclaration>;
-    }
-  >;
+type JsonSourceEntry = {
+  apiKey?: string;
+  indexName: string;
+  sparseIndexName?: string;
+  rerankModel?: string;
+  description?: string;
+  namespaces?: Record<string, NamespaceDeclaration>;
 };
 
-/** Parse JSON config file for multi-source setup. */
-export function parseSourcesConfigFile(
-  filePath: string,
+export type JsonSourceFile = {
+  defaultSource?: string;
+  sources: Record<string, JsonSourceEntry>;
+};
+
+function defaultApiKeyForSource(name: string, rawApiKey: unknown): string {
+  const trimmed = trimOptional(rawApiKey != null ? String(rawApiKey) : undefined);
+  return trimmed ?? `\${${name}}`;
+}
+
+/** Parse a JSON sources object (config file or inline PINECONE_SOURCES JSON). */
+export function parseSourcesConfigObject(
+  parsed: JsonSourceFile,
   env: NodeJS.ProcessEnv = process.env,
-  options?: ParseSourcesOptions
+  options?: ParseSourcesOptions,
+  originLabel = 'config file'
 ): { sources: SourceDefinition[]; defaultSource: string } {
-  const absolute = resolve(filePath);
-  let parsed: JsonSourceFile;
-  try {
-    const raw = readFileSync(absolute, 'utf8');
-    parsed = JSON.parse(raw) as JsonSourceFile;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to read PINECONE config file "${filePath}": ${message}`);
-  }
-  if (!parsed.sources || typeof parsed.sources !== 'object') {
-    throw new Error(`PINECONE config file "${filePath}" must contain a "sources" object.`);
+  if (!parsed.sources || typeof parsed.sources !== 'object' || Array.isArray(parsed.sources)) {
+    throw new Error(`PINECONE ${originLabel} must contain a "sources" object.`);
   }
   const entries = Object.entries(parsed.sources);
   if (entries.length === 0) {
-    throw new Error(`PINECONE config file "${filePath}" has no sources.`);
+    throw new Error(`PINECONE ${originLabel} has no sources.`);
   }
   const sources: SourceDefinition[] = [];
   const seen = new Set<string>();
   for (const [name, cfg] of entries) {
     if (seen.has(name)) {
-      throw new Error(`Duplicate source name "${name}" in config file.`);
+      throw new Error(`Duplicate source name "${name}" in ${originLabel}.`);
     }
     seen.add(name);
     if (!cfg || typeof cfg !== 'object') {
-      throw new Error(`Source "${name}" in config file must be an object.`);
+      throw new Error(`Source "${name}" in ${originLabel} must be an object.`);
     }
     let description: string | undefined;
     if (cfg.description != null) {
@@ -267,7 +263,7 @@ export function parseSourcesConfigFile(
       normalizeSourceEntry(
         name,
         {
-          apiKey: String(cfg.apiKey ?? ''),
+          apiKey: defaultApiKeyForSource(name, cfg.apiKey),
           indexName: String(cfg.indexName ?? ''),
           ...(cfg.sparseIndexName != null ? { sparseIndexName: String(cfg.sparseIndexName) } : {}),
           ...(cfg.rerankModel != null ? { rerankModel: String(cfg.rerankModel) } : {}),
@@ -288,6 +284,47 @@ export function parseSourcesConfigFile(
   return { sources, defaultSource };
 }
 
+function parseJsonSourcesInline(
+  inline: string,
+  env: NodeJS.ProcessEnv,
+  options?: ParseSourcesOptions
+): { sources: SourceDefinition[]; defaultSource: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(inline);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse PINECONE_SOURCES JSON: ${message}`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('PINECONE_SOURCES JSON must be a JSON object.');
+  }
+  const obj = parsed as Record<string, unknown>;
+  const fileShape =
+    obj['sources'] != null && typeof obj['sources'] === 'object' && !Array.isArray(obj['sources'])
+      ? (parsed as JsonSourceFile)
+      : ({ sources: parsed } as JsonSourceFile);
+  return parseSourcesConfigObject(fileShape, env, options, 'PINECONE_SOURCES JSON');
+}
+
+/** Parse JSON config file for multi-source setup. */
+export function parseSourcesConfigFile(
+  filePath: string,
+  env: NodeJS.ProcessEnv = process.env,
+  options?: ParseSourcesOptions
+): { sources: SourceDefinition[]; defaultSource: string } {
+  const absolute = resolve(filePath);
+  let parsed: JsonSourceFile;
+  try {
+    const raw = readFileSync(absolute, 'utf8');
+    parsed = JSON.parse(raw) as JsonSourceFile;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read PINECONE config file "${filePath}": ${message}`);
+  }
+  return parseSourcesConfigObject(parsed, env, options, `config file "${filePath}"`);
+}
+
 /** Resolve sources from overrides/env/file; config file wins over inline when both are set. */
 export function resolveSourceDefinitions(
   overrides: { sources?: string; configFile?: string },
@@ -302,6 +339,9 @@ export function resolveSourceDefinitions(
     return parseSourcesConfigFile(configFile, env, options);
   }
   if (inline) {
+    if (inline.startsWith('{')) {
+      return parseJsonSourcesInline(inline, env, options);
+    }
     const sources = parseInlineSources(inline, env, options);
     return { sources, defaultSource: sources[0]!.name };
   }

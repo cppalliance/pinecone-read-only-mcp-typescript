@@ -25,7 +25,7 @@ This covers tool error payloads, hybrid degradation reasons, and SDK error text 
 
 ## Private config content (descriptions and schemas)
 
-Per-source `description` and per-namespace `namespaces` (including namespace names and `metadata_schema` field names) loaded from `PINECONE_CONFIG_FILE` are **High**-risk if committed to the open-source repo or shared through public distribution channels — they can disclose what private corpora contain and which internal metadata fields exist. Keep real values on staff machines only; use generic placeholders in examples and tests. Same deployment-profile separation as API keys — see [CONFIGURATION.md § Deployment profiles](./CONFIGURATION.md#deployment-profiles).
+Per-source `description` and per-namespace `namespaces` (including namespace names and `metadata_schema` field names) loaded from `PINECONE_CONFIG_FILE` or JSON-shaped `PINECONE_SOURCES` are **High**-risk if committed to the open-source repo or shared through public distribution channels — they can disclose what private corpora contain and which internal metadata fields exist. Keep real values on staff machines only; use generic placeholders in examples and tests. Same deployment-profile separation as API keys — see [CONFIGURATION.md § Deployment profiles](./CONFIGURATION.md#deployment-profiles).
 
 ## Docker image
 

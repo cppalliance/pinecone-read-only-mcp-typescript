@@ -160,7 +160,7 @@ Options:
   --request-timeout-ms N      Per Pinecone call timeout [env: PINECONE_REQUEST_TIMEOUT_MS]
   --disable-suggest-flow      Bypass suggest_query_params gate (PINECONE_DISABLE_SUGGEST_FLOW)
   --check-indexes             Verify dense + sparse indexes then exit 0/1 (PINECONE_CHECK_INDEXES)
-  --sources TEXT              Multi-source inline config (PINECONE_SOURCES)
+  --sources TEXT              Multi-source inline config: JSON object or name:apiKey:indexName;... (PINECONE_SOURCES)
   --config-file PATH          Multi-source JSON config file (PINECONE_CONFIG_FILE)
   --help, -h                  Show this message
   --version, -v               Print package version

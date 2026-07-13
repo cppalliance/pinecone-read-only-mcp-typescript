@@ -10,7 +10,8 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 ### Added
 
-- **Per-source and per-namespace private config:** optional `description` (source-level) and `namespaces` map (`description` + declared `metadata_schema`) in JSON config files (`PINECONE_CONFIG_FILE` only — not inline `PINECONE_SOURCES`). Declared schemas skip live sampling; stale declared namespaces surface as `config_warnings` in `list_namespaces`. See [CONFIGURATION.md](docs/CONFIGURATION.md#json-config-file).
+- **Per-source and per-namespace private config:** optional `description` (source-level) and `namespaces` map (`description` + declared `metadata_schema`) in JSON config files (`PINECONE_CONFIG_FILE`) or JSON-shaped `PINECONE_SOURCES` (not the colon-delimited inline format). Declared schemas skip live sampling; stale declared namespaces surface as `config_warnings` in `list_namespaces`. See [CONFIGURATION.md](docs/CONFIGURATION.md#json-config-file).
+- **JSON-shaped `PINECONE_SOURCES`:** inline rich multi-source config (descriptions, namespaces, optional `defaultSource`) in MCP `env` or `--sources` without a separate config file; `apiKey` defaults to `${sourceName}` when omitted.
 - **`list_namespaces`:** optional per-namespace `schema_source` (`declared` | `sampled`), optional per-namespace `description` (from private config), and top-level `config_warnings` when private config declarations do not match live Pinecone data.
 - **Tests:** MCP verification harness ([src/__tests__/mcp-rc-readiness.test.ts](src/__tests__/mcp-rc-readiness.test.ts)) that drives the real server over an in-memory transport with the SDK client (initialize and protocol negotiation, the full registered tool surface, and a round-trip tool call), so a future SDK or MCP protocol bump is verified in one place. Protocol assertions key off the SDK's `LATEST_PROTOCOL_VERSION`, so pinning the RC SDK re-runs the check with no test edits. (#202)
 

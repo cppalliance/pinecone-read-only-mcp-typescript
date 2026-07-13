@@ -216,6 +216,100 @@ describe('source-config', () => {
     expect(sources[0]).not.toHaveProperty('namespaces');
   });
 
+  it('resolveSourceDefinitions parses JSON sources-map with description and namespaces', () => {
+    const inline = JSON.stringify({
+      api_key_1: {
+        indexName: 'index_name_1',
+        description: 'Staff corpus hint',
+        namespaces: {
+          example_ns: {
+            description: 'Namespace hint',
+            metadata_schema: { field_a: 'string' },
+          },
+        },
+      },
+    });
+    const env = { api_key_1: 'api-1', PINECONE_SOURCES: inline };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.defaultSource).toBe('api_key_1');
+    expect(parsed?.sources[0]).toMatchObject({
+      name: 'api_key_1',
+      apiKey: 'api-1',
+      indexName: 'index_name_1',
+      description: 'Staff corpus hint',
+    });
+    expect(parsed?.sources[0]?.namespaces?.example_ns).toMatchObject({
+      description: 'Namespace hint',
+      metadata_schema: { field_a: 'string' },
+    });
+  });
+
+  it('resolveSourceDefinitions parses full JSON file shape inline', () => {
+    const inline = JSON.stringify({
+      defaultSource: 'api_key_2',
+      sources: {
+        api_key_1: { apiKey: '${K1}', indexName: 'index_name_1' },
+        api_key_2: { apiKey: '${K2}', indexName: 'index_name_2' },
+      },
+    });
+    const env = { K1: 'api-1', K2: 'api-2', PINECONE_SOURCES: inline };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.defaultSource).toBe('api_key_2');
+    expect(parsed?.sources).toHaveLength(2);
+    expect(parsed?.sources.find((s) => s.name === 'api_key_2')?.apiKey).toBe('api-2');
+  });
+
+  it('resolveSourceDefinitions colon format still works (regression)', () => {
+    const env = { K1: 'api-1', PINECONE_SOURCES: 'api_key_1:${K1}:index_name_1' };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.sources[0]).toMatchObject({
+      name: 'api_key_1',
+      apiKey: 'api-1',
+      indexName: 'index_name_1',
+    });
+    expect(parsed?.sources[0]).not.toHaveProperty('description');
+  });
+
+  it('resolveSourceDefinitions throws on invalid JSON PINECONE_SOURCES', () => {
+    const env = { PINECONE_SOURCES: '{not valid json' };
+    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+      /Failed to parse PINECONE_SOURCES JSON/
+    );
+  });
+
+  it('resolveSourceDefinitions prefers config file over JSON PINECONE_SOURCES', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'from_file',
+        sources: {
+          from_file: { apiKey: 'file-key', indexName: 'file-index' },
+        },
+      })
+    );
+    const env = {
+      PINECONE_SOURCES: JSON.stringify({
+        from_inline: { apiKey: 'inline-key', indexName: 'inline-index' },
+      }),
+      PINECONE_CONFIG_FILE: filePath,
+    };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.defaultSource).toBe('from_file');
+    expect(parsed?.sources[0]?.indexName).toBe('file-index');
+  });
+
+  it('resolveSourceDefinitions throws when defaulted apiKey env is missing', () => {
+    const inline = JSON.stringify({
+      api_key_1: { indexName: 'index_name_1' },
+    });
+    const env = { PINECONE_SOURCES: inline };
+    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+      /Environment variable api_key_1 is not set/
+    );
+  });
+
   it('resolveConfig uses PINECONE_SOURCES when set', () => {
     vi.stubEnv('PINECONE_SOURCES', 'api_key_1:sk-test:my-index');
     vi.stubEnv('PINECONE_API_KEY', 'ignored');

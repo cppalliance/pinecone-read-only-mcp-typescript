@@ -49,7 +49,7 @@ C++ Alliance deployers can copy [examples/alliance/.env.example](../examples/all
 
 Use **one MCP server entry** with multiple Pinecone API keys / projects when `PINECONE_SOURCES`, `--sources`, or a JSON config file (`PINECONE_CONFIG_FILE` / `--config-file`) is set.
 
-### Inline format (`PINECONE_SOURCES` / `--sources`)
+### Inline colon format (`PINECONE_SOURCES` / `--sources`)
 
 Semicolon-separated entries: `name:apiKey:indexName`
 
@@ -58,6 +58,47 @@ PINECONE_SOURCES=api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECO
 ```
 
 API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key.
+
+This colon format does **not** support `description` or `namespaces` — use JSON-shaped `PINECONE_SOURCES` or a JSON config file for those fields.
+
+### Inline JSON format (`PINECONE_SOURCES` / `--sources`)
+
+When the value starts with `{`, it is parsed as JSON. Two shapes are accepted:
+
+1. **Sources map** (MCP `env` friendly) — keys are source names; omit `apiKey` to default to `${sourceName}` (resolved from a sibling env var with the same name):
+
+```json
+{
+  "api_key_1": {
+    "indexName": "rag-hybrid",
+    "description": "Public corpora",
+    "namespaces": {
+      "example_ns": {
+        "description": "Namespace hint",
+        "metadata_schema": { "field_a": "string" }
+      }
+    }
+  },
+  "api_key_2": { "indexName": "rag-hybrid" }
+}
+```
+
+2. **Full file shape** — same as a JSON config file (`defaultSource` optional, `sources` required):
+
+```json
+{
+  "defaultSource": "api_key_1",
+  "sources": {
+    "api_key_1": { "apiKey": "${PINECONE_API_KEY_1}", "indexName": "index_name_1" }
+  }
+}
+```
+
+At process runtime, env values are always strings. MCP hosts (including Cursor) typically JSON-stringify nested `env` objects when spawning the server; a pre-stringified JSON value also works.
+
+**Precedence:** `PINECONE_CONFIG_FILE` / `--config-file` wins over `PINECONE_SOURCES` when both are set. Within `PINECONE_SOURCES`, JSON (starts with `{`) is detected before the colon format.
+
+Staff inline example: [data/cppa-pinecone-mcp-setting.json](../data/cppa-pinecone-mcp-setting.json).
 
 ### JSON config file
 
@@ -73,18 +114,18 @@ Set `PINECONE_CONFIG_FILE` (or `--config-file`) to a path such as [examples/mult
 }
 ```
 
-Values support `${ENV_VAR}` indirection (resolved at startup). Per-source `sparseIndexName` and `rerankModel` are optional; Alliance defaults apply when omitted.
+Values support `${ENV_VAR}` indirection (resolved at startup). Per-source `sparseIndexName` and `rerankModel` are optional; Alliance defaults apply when omitted. When `apiKey` is omitted in JSON, it defaults to `${sourceName}` (e.g. source `api_key_1` → `${api_key_1}`).
 
-Optional **config-file-only** fields (not supported in inline `PINECONE_SOURCES`):
+Optional rich fields (supported in JSON config files **and** JSON-shaped `PINECONE_SOURCES`; **not** in the colon-delimited inline format):
 
 | Field | Scope | Purpose |
 | ----- | ----- | ------- |
 | `description` | Per source | Short corpus/content hint surfaced via `list_sources` (helps LLM routing across sources or MCP entries) |
 | `namespaces` | Per source | Map of namespace name → `{ description?, metadata_schema? }`; per-namespace `description` is surfaced via `list_namespaces` on matching live rows |
 
-`metadata_schema` is a flat `fieldName → type` map (same vocabulary as `list_namespaces` → `metadata_fields`, e.g. `"title": "string"`). When declared for a live namespace, the server **skips live sampling** for that namespace and trusts the declared schema until the config file changes. Namespaces declared in config but absent from Pinecone produce a non-fatal `config_warnings` entry in `list_namespaces` (never a startup failure).
+`metadata_schema` is a flat `fieldName → type` map (same vocabulary as `list_namespaces` → `metadata_fields`, e.g. `"title": "string"`). When declared for a live namespace, the server **skips live sampling** for that namespace and trusts the declared schema until the config changes. Namespaces declared in config but absent from Pinecone produce a non-fatal `config_warnings` entry in `list_namespaces` (never a startup failure).
 
-**Never** commit real corpus descriptions, namespace names, or internal field names to the open-source repo — use generic placeholders in examples only. Real values belong in staff-machine private config files per [Deployment profiles](#deployment-profiles). See [SECURITY.md](./SECURITY.md).
+**Never** commit real corpus descriptions, namespace names, or internal field names to the open-source repo — use generic placeholders in examples only. Real values belong in staff-machine private config (JSON file or MCP `env`) per [Deployment profiles](#deployment-profiles). See [SECURITY.md](./SECURITY.md).
 
 ### MCP tools and routing
 
@@ -124,7 +165,7 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
 }
 ```
 
-**Internal MCP config (merged sources):**
+**Internal MCP config (merged sources, JSON inline):**
 
 ```json
 {
@@ -133,16 +174,21 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
       "command": "npx",
       "args": ["-y", "@will-cppa/pinecone-read-only-mcp"],
       "env": {
-        "PINECONE_SOURCES": "api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECONE_API_KEY_2}:index_name_2",
-        "PINECONE_API_KEY_1": "pcsk_...",
-        "PINECONE_API_KEY_2": "pcsk_..."
+        "api_key_1": "pcsk_...",
+        "api_key_2": "pcsk_...",
+        "PINECONE_SOURCES": {
+          "api_key_1": { "indexName": "rag-hybrid", "description": "..." },
+          "api_key_2": { "indexName": "rag-hybrid" }
+        }
       }
     }
   }
 }
 ```
 
-Prefer `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over inline API keys in `PINECONE_SOURCES`. For internal deployments, add optional `description` and `namespaces` declarations in the JSON config file on staff machines only — never in public examples or committed constants. See [SECURITY.md](./SECURITY.md).
+Colon format remains supported: `"PINECONE_SOURCES": "api_key_1:${PINECONE_API_KEY_1}:index_name_1;..."`.
+
+Prefer JSON-shaped `PINECONE_SOURCES` or `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over embedding raw API keys. For internal deployments, add optional `description` and `namespaces` in JSON on staff machines only — never in public examples or committed constants. See [SECURITY.md](./SECURITY.md).
 
 ### Architecture decision
 
