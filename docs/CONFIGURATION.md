@@ -60,6 +60,7 @@ Need more than one Pinecone project in the same MCP entry? See [Multi-source mod
 | `requestTimeoutMs` | `--request-timeout-ms` | `PINECONE_REQUEST_TIMEOUT_MS` | `15000` |
 | `disableSuggestFlow` | `--disable-suggest-flow` | `PINECONE_DISABLE_SUGGEST_FLOW` | **Core:** `true` (gate off). **Alliance:** `false` (gate on). Bool parsing: `true`/`1`/`yes`/`on` |
 | `checkIndexes` | `--check-indexes` | `PINECONE_CHECK_INDEXES` | `false` |
+| `disableRemoteSchema` | `--disable-remote-schema` | `PINECONE_DISABLE_REMOTE_SCHEMA` | `false` (remote `_mcp_config` loading on) |
 | `sources` | `--sources` | `PINECONE_SOURCES` | Multi-source only; see below |
 | `configFile` | `--config-file` | `PINECONE_CONFIG_FILE` | Multi-source only; see below |
 | — | `--help`, `-h` | — | Print help and exit |
@@ -91,11 +92,10 @@ Use **one MCP server entry** with multiple Pinecone projects by setting `PINECON
 | I want to... | Use |
 | ------------ | --- |
 | List a few `name:key:index` pairs, nothing else | [Colon format](#colon-format-keys-only) |
-| Add per-source `description` or per-namespace `metadata_schema` | [JSON format](#json-format-descriptions--namespaces) — inline or file, same schema |
-| Keep source config in a separate file from the MCP settings | JSON via `PINECONE_CONFIG_FILE` |
-| Keep everything in the MCP host's `env` block | JSON via `PINECONE_SOURCES` |
+| Add per-source `description` or per-namespace `metadata_schema` locally | [JSON config file](#json-config-file-descriptions--namespaces) |
+| Let Pinecone supply descriptions/schemas automatically | [Remote schema manifest](#remote-schema-manifest-_mcp_config) (default when no local `namespaces`) |
 
-**Precedence:** `PINECONE_CONFIG_FILE` / `--config-file` wins when both are set. Within `PINECONE_SOURCES`, a value starting with `{` is parsed as JSON; otherwise it is parsed as the colon format.
+**Precedence:** `PINECONE_CONFIG_FILE` / `--config-file` wins over colon `PINECONE_SOURCES` when both are set. Per-source local `namespaces` in a config file win over the remote `_mcp_config` manifest for that source.
 
 ### Colon format (keys only)
 
@@ -107,9 +107,9 @@ PINECONE_SOURCES=api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECO
 
 API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key. This format never carries `description` or `namespaces` — use JSON for those.
 
-### JSON format (descriptions + namespaces)
+### JSON config file (descriptions + namespaces)
 
-One schema, loadable two ways — as the `PINECONE_SOURCES` value (inline) or as a `PINECONE_CONFIG_FILE` file:
+Set `PINECONE_CONFIG_FILE=./pinecone-sources.json` (or `--config-file`) with this shape:
 
 ```json
 {
@@ -136,28 +136,28 @@ One schema, loadable two ways — as the `PINECONE_SOURCES` value (inline) or as
 - `sparseIndexName` / `rerankModel` are optional per source (same defaults as single-key mode).
 - All string values support `${ENV_VAR}` indirection, resolved at startup.
 
-**Inline in `PINECONE_SOURCES`**, you can also drop the `sources` wrapper and use the map directly (handy for MCP `env` blocks — Cursor's `mcp.json` example below uses this shape):
+See [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example).
 
-```json
-{
-  "api_key_1": { "indexName": "rag-hybrid", "description": "..." },
-  "api_key_2": { "indexName": "rag-hybrid" }
-}
-```
-
-Both shapes (wrapped with `sources`, or the bare map) are accepted whenever `PINECONE_SOURCES` starts with `{`.
-
-**As a file**, set `PINECONE_CONFIG_FILE=./pinecone-sources.json` (or `--config-file`) pointing at the wrapped shape above — see [examples/multi-source/pinecone-sources.json.example](../examples/multi-source/pinecone-sources.json.example).
-
-**Passing JSON through `env`:** env values are always strings at the OS level. The safest option is to pass an already-stringified JSON string as the `PINECONE_SOURCES` value. Some MCP hosts (including Cursor) also accept a nested JSON object in `mcp.json` and stringify it before spawning the server — if your host does this, a raw object works too; if you see a parse error, stringify it explicitly instead.
+> **Caveat — source names with hyphens:** the default-`apiKey` shortcut (`apiKey` omitted → `${sourceName}`) only works when the source name is also a valid environment-variable identifier (letters, digits, underscore; no leading digit). A name like `internal-corpus` triggers a startup error — supply `apiKey` explicitly for hyphenated source names.
 
 **`metadata_schema`** is a flat `fieldName → type` map (same vocabulary as `list_namespaces` → `metadata_fields`, e.g. `"title": "string"`). When declared for a live namespace, the server **skips live sampling** for that namespace and trusts the declared schema until the config changes. Namespaces declared but absent from Pinecone produce a non-fatal `config_warnings` entry in `list_namespaces` (never a startup failure).
 
 **Never** commit real corpus descriptions, namespace names, or internal field names to the open-source repo — use generic placeholders in examples only. Real values belong in staff-machine private config (file or MCP `env`). See [SECURITY.md](./SECURITY.md).
 
-> **Caveat — source names with hyphens:** the default-`apiKey` shortcut (`apiKey` omitted → `${sourceName}`) only works when the source name is also a valid environment-variable identifier (letters, digits, underscore; no leading digit). A name like `internal-corpus` triggers a startup error — supply `apiKey` explicitly for hyphenated source names.
+### Remote schema manifest (`_mcp_config`)
 
-> **Note — bare-map with source named `sources`:** a payload like `{"sources": {"indexName": "rag-hybrid"}}` is interpreted as a sources-map (one source named `sources`). For multi-source file layout or an explicit `defaultSource`, use the wrapped `{ "defaultSource"?, "sources": { ... } }` shape.
+When a Pinecone project has a schema manifest upserted into the reserved `_mcp_config` namespace (record id `schema_manifest`), the MCP server **loads it automatically at startup** for:
+
+- **Multi-source mode:** each source that does not already have local `namespaces` in `PINECONE_CONFIG_FILE`.
+- **Single-key mode:** when using only `PINECONE_API_KEY` + `PINECONE_INDEX_NAME`.
+
+The manifest supplies optional source-level `description` and per-namespace `description` + `metadata_schema` (same effect as a config file). Local declarations always win; remote loading is skipped when local `namespaces` are set for that source.
+
+- **Opt out:** set `PINECONE_DISABLE_REMOTE_SCHEMA=true` or pass `--disable-remote-schema`.
+- **Failures are non-fatal:** missing manifest, network errors, or malformed JSON log a warning and the server falls back to live namespace sampling (same as having no declared schema).
+- **Publishing:** Alliance ingestion (`cloud_rag/schema_update.py`) rebuilds and upserts manifests independently of document ingestion.
+
+Colon-format `PINECONE_SOURCES` plus remote manifest loading is the recommended staff setup — API keys and index names in `mcp.json`, descriptions and schemas in Pinecone.
 
 ### MCP tools and routing
 
@@ -184,7 +184,7 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
 
 **External MCP config (single source, unchanged):** see [Quick start](#quick-start-single-pinecone-project) above.
 
-**Internal MCP config (merged sources, JSON inline):**
+**Internal MCP config (merged sources, colon format + remote schema):**
 
 ```json
 {
@@ -195,19 +195,18 @@ Multi-source mode supports two operational profiles. **Never** ship a merged int
       "env": {
         "api_key_1": "pcsk_...",
         "api_key_2": "pcsk_...",
-        "PINECONE_SOURCES": {
-          "api_key_1": { "indexName": "rag-hybrid", "description": "..." },
-          "api_key_2": { "indexName": "rag-hybrid" }
-        }
+        "PINECONE_SOURCES": "api_key_1:${api_key_1}:rag-hybrid;api_key_2:${api_key_2}:rag-hybrid"
       }
     }
   }
 }
 ```
 
-Colon format also works here: `"PINECONE_SOURCES": "api_key_1:${PINECONE_API_KEY_1}:index_name_1;..."`.
+Descriptions and namespace schemas are loaded from each project's `_mcp_config` namespace at startup (see [Remote schema manifest](#remote-schema-manifest-_mcp_config)). Use `PINECONE_CONFIG_FILE` instead when you need local overrides.
 
-Prefer JSON-shaped `PINECONE_SOURCES` or `PINECONE_CONFIG_FILE` with `${ENV_VAR}` indirection over embedding raw API keys directly. For internal deployments, add optional `description` and `namespaces` in JSON on staff machines only — never in public examples or committed constants. See [SECURITY.md](./SECURITY.md).
+Colon format also supports explicit env indirection: `"PINECONE_SOURCES": "api_key_1:${PINECONE_API_KEY_1}:index_name_1;..."`.
+
+Prefer `${ENV_VAR}` indirection over embedding raw API keys directly. For internal deployments, optional `description` and `namespaces` in a JSON config file on staff machines only — never in public examples or committed constants. See [SECURITY.md](./SECURITY.md).
 
 ---
 

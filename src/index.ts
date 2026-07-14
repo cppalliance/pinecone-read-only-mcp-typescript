@@ -15,9 +15,15 @@ import { resolveAllianceConfig } from './alliance/config.js';
 import { PineconeClient } from './core/pinecone-client.js';
 import { createServer } from './core/server/server-context.js';
 import { buildSourceRegistry } from './core/server/source-registry.js';
+import {
+  loadRemoteSchemaForSource,
+  loadRemoteSchemaForSources,
+} from './core/server/remote-schema.js';
+import type { NamespaceDeclaration } from './core/server/source-config.js';
 import { setupAllianceServer } from './alliance/setup.js';
 import {
   error as logError,
+  info as logInfo,
   redactApiKey,
   setLogFormat,
   setLogLevel,
@@ -65,14 +71,53 @@ async function main(): Promise<void> {
 
     let ctx;
     if (config.sources && config.sources.length > 0) {
+      const clients = new Map<string, PineconeClient>();
+      for (const source of config.sources) {
+        clients.set(
+          source.name,
+          new PineconeClient({
+            apiKey: source.apiKey,
+            indexName: source.indexName,
+            sparseIndexName: source.sparseIndexName,
+            rerankModel: source.rerankModel,
+            defaultTopK: config.defaultTopK,
+            requestTimeoutMs: config.requestTimeoutMs,
+          })
+        );
+      }
+
+      let sources = config.sources;
+      const sourcesNeedingRemoteSchema = sources.filter(
+        (s) => !s.namespaces || Object.keys(s.namespaces).length === 0
+      );
+      if (
+        !config.disableRemoteSchema &&
+        !config.checkIndexes &&
+        sourcesNeedingRemoteSchema.length > 0
+      ) {
+        logInfo(
+          `Loading _mcp_config schema manifest for ${sourcesNeedingRemoteSchema.length} source(s) without local namespace declarations...`
+        );
+        const entries = sources.map((definition) => ({
+          definition,
+          client: clients.get(definition.name)!,
+        }));
+        const loaded = await loadRemoteSchemaForSources(entries);
+        sources = loaded.definitions;
+        for (const warning of loaded.warnings) {
+          logWarn(redactApiKey(warning));
+        }
+      }
+
       const sourceRegistry = buildSourceRegistry({
-        sources: config.sources,
-        defaultSource: config.defaultSource ?? config.sources[0]!.name,
+        sources,
+        defaultSource: config.defaultSource ?? sources[0]!.name,
         cacheTtlMs: config.cacheTtlMs,
         defaultTopK: config.defaultTopK,
         requestTimeoutMs: config.requestTimeoutMs,
+        clients,
       });
-      ctx = createServer(config, { sourceRegistry });
+      ctx = createServer({ ...config, sources }, { sourceRegistry });
     } else {
       const client = new PineconeClient({
         apiKey: config.apiKey,
@@ -82,7 +127,24 @@ async function main(): Promise<void> {
         defaultTopK: config.defaultTopK,
         requestTimeoutMs: config.requestTimeoutMs,
       });
-      ctx = createServer(config, { client });
+
+      let declaredNamespaces: Record<string, NamespaceDeclaration> | undefined;
+      if (!config.disableRemoteSchema && !config.checkIndexes) {
+        logInfo('Loading _mcp_config schema manifest...');
+        const loaded = await loadRemoteSchemaForSource(client, {
+          name: 'default',
+          apiKey: config.apiKey,
+          indexName: config.indexName,
+          sparseIndexName: config.sparseIndexName,
+          ...(config.rerankModel !== undefined ? { rerankModel: config.rerankModel } : {}),
+        });
+        if (loaded.warning) {
+          logWarn(redactApiKey(loaded.warning));
+        }
+        declaredNamespaces = loaded.definition.namespaces;
+      }
+
+      ctx = createServer(config, { client, declaredNamespaces });
     }
 
     if (config.checkIndexes) {

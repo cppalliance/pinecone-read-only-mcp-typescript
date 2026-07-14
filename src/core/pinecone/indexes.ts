@@ -230,6 +230,29 @@ export class PineconeIndexSession {
   }
 
   /**
+   * Fetch a record by id and return a flat field bag (metadata merged with top-level scalar fields).
+   * Mirrors Python `_extract_record_fields` for integrated-embedding indexes where `chunk_text`
+   * may appear on the record or inside metadata.
+   */
+  async fetchRecordFields(namespace: string, id: string): Promise<Record<string, unknown> | null> {
+    const pc = this.ensureClient();
+    const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
+    const record = response.records?.[id] as
+      (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
+    if (!record) {
+      return null;
+    }
+    const metadata = record.metadata ?? {};
+    const merged: Record<string, unknown> = { ...metadata };
+    for (const [k, v] of Object.entries(record)) {
+      if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
+        merged[k] = v;
+      }
+    }
+    return merged;
+  }
+
+  /**
    * Verify dense and sparse indexes are reachable (describeIndexStats).
    * Used by `--check-indexes` / `PINECONE_CHECK_INDEXES` before the server starts.
    */

@@ -222,49 +222,6 @@ describe('source-config', () => {
     expect(sources[0]).not.toHaveProperty('namespaces');
   });
 
-  it('resolveSourceDefinitions parses JSON sources-map with description and namespaces', () => {
-    const inline = JSON.stringify({
-      api_key_1: {
-        indexName: 'index_name_1',
-        description: 'Staff corpus hint',
-        namespaces: {
-          example_ns: {
-            description: 'Namespace hint',
-            metadata_schema: { field_a: 'string' },
-          },
-        },
-      },
-    });
-    const env = { api_key_1: 'api-1', PINECONE_SOURCES: inline };
-    const parsed = resolveSourceDefinitions({}, env);
-    expect(parsed?.defaultSource).toBe('api_key_1');
-    expect(parsed?.sources[0]).toMatchObject({
-      name: 'api_key_1',
-      apiKey: 'api-1',
-      indexName: 'index_name_1',
-      description: 'Staff corpus hint',
-    });
-    expect(parsed?.sources[0]?.namespaces?.example_ns).toMatchObject({
-      description: 'Namespace hint',
-      metadata_schema: { field_a: 'string' },
-    });
-  });
-
-  it('resolveSourceDefinitions parses full JSON file shape inline', () => {
-    const inline = JSON.stringify({
-      defaultSource: 'api_key_2',
-      sources: {
-        api_key_1: { apiKey: '${K1}', indexName: 'index_name_1' },
-        api_key_2: { apiKey: '${K2}', indexName: 'index_name_2' },
-      },
-    });
-    const env = { K1: 'api-1', K2: 'api-2', PINECONE_SOURCES: inline };
-    const parsed = resolveSourceDefinitions({}, env);
-    expect(parsed?.defaultSource).toBe('api_key_2');
-    expect(parsed?.sources).toHaveLength(2);
-    expect(parsed?.sources.find((s) => s.name === 'api_key_2')?.apiKey).toBe('api-2');
-  });
-
   it('resolveSourceDefinitions colon format still works (regression)', () => {
     const env = { K1: 'api-1', PINECONE_SOURCES: 'api_key_1:${K1}:index_name_1' };
     const parsed = resolveSourceDefinitions({}, env);
@@ -276,14 +233,16 @@ describe('source-config', () => {
     expect(parsed?.sources[0]).not.toHaveProperty('description');
   });
 
-  it('resolveSourceDefinitions throws on invalid JSON PINECONE_SOURCES', () => {
-    const env = { PINECONE_SOURCES: '{not valid json' };
+  it('resolveSourceDefinitions throws when PINECONE_SOURCES is inline JSON', () => {
+    const env = {
+      PINECONE_SOURCES: JSON.stringify({ api_key_1: { indexName: 'index_name_1' } }),
+    };
     expect(() => resolveSourceDefinitions({}, env)).toThrow(
-      /Failed to parse PINECONE_SOURCES JSON/
+      /PINECONE_SOURCES no longer accepts inline JSON/
     );
   });
 
-  it('resolveSourceDefinitions prefers config file over JSON PINECONE_SOURCES', () => {
+  it('resolveSourceDefinitions prefers config file over colon PINECONE_SOURCES', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
     const filePath = join(dir, 'sources.json');
     writeFileSync(
@@ -296,9 +255,7 @@ describe('source-config', () => {
       })
     );
     const env = {
-      PINECONE_SOURCES: JSON.stringify({
-        from_inline: { apiKey: 'inline-key', indexName: 'inline-index' },
-      }),
+      PINECONE_SOURCES: 'from_inline:sk:inline-index',
       PINECONE_CONFIG_FILE: filePath,
     };
     const parsed = resolveSourceDefinitions({}, env);
@@ -306,38 +263,38 @@ describe('source-config', () => {
     expect(parsed?.sources[0]?.indexName).toBe('file-index');
   });
 
-  it('resolveSourceDefinitions throws when defaulted apiKey env is missing', () => {
-    const inline = JSON.stringify({
-      api_key_1: { indexName: 'index_name_1' },
-    });
-    const env = { PINECONE_SOURCES: inline };
-    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+  it('parseSourcesConfigFile throws when defaulted apiKey env is missing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'defaulted-apikey.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { indexName: 'index_name_1' },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
       /Environment variable api_key_1 is not set/
     );
   });
 
-  it('resolveSourceDefinitions throws when hyphenated source name uses defaulted apiKey', () => {
-    const inline = JSON.stringify({
-      'internal-corpus': { indexName: 'index_name_1' },
-    });
-    const env = { PINECONE_SOURCES: inline };
-    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+  it('parseSourcesConfigFile throws when hyphenated source name uses defaulted apiKey', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'hyphenated.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'internal-corpus',
+        sources: {
+          'internal-corpus': { indexName: 'index_name_1' },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
       /Invalid environment variable reference "\$\{internal-corpus\}"/
     );
-  });
-
-  it('resolveSourceDefinitions treats bare map with source named sources as sources-map', () => {
-    const inline = JSON.stringify({
-      sources: { indexName: 'rag-hybrid' },
-    });
-    const env = { sources: 'api-key-for-sources', PINECONE_SOURCES: inline };
-    const parsed = resolveSourceDefinitions({}, env);
-    expect(parsed?.sources).toHaveLength(1);
-    expect(parsed?.sources[0]).toMatchObject({
-      name: 'sources',
-      apiKey: 'api-key-for-sources',
-      indexName: 'rag-hybrid',
-    });
   });
 
   it('resolveConfig uses PINECONE_SOURCES when set', () => {

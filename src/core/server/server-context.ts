@@ -12,6 +12,7 @@ import type { RecommendedTool } from './query-suggestion.js';
 import type { UrlGenerationResult, UrlGeneratorFn } from './url-registry.js';
 import { buildSourceRegistry, type SourceRegistry } from './source-registry.js';
 import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
+import type { NamespaceDeclaration } from './source-config.js';
 
 export type NamespaceInfo = {
   namespace: string;
@@ -64,6 +65,8 @@ export interface ServerContextComposition {
   urlGenerators?: Iterable<readonly [string, UrlGeneratorFn]>;
   namespaceCacheSeed?: NamespaceCacheSeed;
   suggestionFlowSeed?: SuggestionFlowSeedEntry[];
+  /** Remote or file-loaded namespace declarations for single-key mode. */
+  declaredNamespaces?: Record<string, NamespaceDeclaration>;
 }
 
 type FlowState = {
@@ -123,9 +126,11 @@ export class ServerContext<
   private readonly urlGenerators = new Map<string, UrlGeneratorFn>();
   private readonly suggestionFlow = new Map<string, FlowState>();
   private namespacesCache: NamespacesCacheEntry | null = null;
+  private readonly declaredNamespaces?: Record<string, NamespaceDeclaration>;
 
   constructor(config?: T, composition?: ServerContextComposition, init?: ServerContextInitOptions) {
     this.unconfiguredAlliance = init?.unconfiguredAlliance ?? false;
+    this.declaredNamespaces = composition?.declaredNamespaces;
     if (composition?.client && composition?.sourceRegistry) {
       throw new Error('Cannot pass both client and sourceRegistry in ServerContextComposition.');
     }
@@ -622,7 +627,10 @@ export class ServerContext<
     }
 
     const cfg = this.getConfig();
-    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(this.getClient());
+    const { data, warnings } = await fetchNamespacesWithDeclaredConfig(
+      this.getClient(),
+      this.declaredNamespaces
+    );
     const expiresAt = now + cfg.cacheTtlMs;
     this.namespacesCache = { data, expiresAt, warnings };
     return {

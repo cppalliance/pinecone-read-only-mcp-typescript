@@ -1,12 +1,12 @@
 /**
- * Multi-source Pinecone configuration parsing (inline PINECONE_SOURCES and JSON config file).
+ * Multi-source Pinecone configuration parsing (colon PINECONE_SOURCES and JSON config file).
  */
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { trimOptional } from '../config.js';
 
-/** Per-namespace declaration loaded from JSON config file or JSON-shaped PINECONE_SOURCES. */
+/** Per-namespace declaration loaded from JSON config file or remote `_mcp_config` manifest. */
 export interface NamespaceDeclaration {
   description?: string;
   metadata_schema?: Record<string, string>;
@@ -19,9 +19,9 @@ export interface SourceDefinition {
   indexName: string;
   sparseIndexName?: string;
   rerankModel?: string;
-  /** Optional corpus-level description (JSON config file or JSON-shaped PINECONE_SOURCES only). */
+  /** Optional corpus-level description (JSON config file or remote `_mcp_config` manifest). */
   description?: string;
-  /** Optional per-namespace declarations (JSON config file or JSON-shaped PINECONE_SOURCES only). */
+  /** Optional per-namespace declarations (JSON config file or remote `_mcp_config` manifest). */
   namespaces?: Record<string, NamespaceDeclaration>;
 }
 
@@ -64,7 +64,7 @@ function validateSourceName(name: string): void {
   }
 }
 
-function validateNamespaces(
+export function validateNamespaces(
   sourceName: string,
   raw: unknown
 ): Record<string, NamespaceDeclaration> | undefined {
@@ -233,7 +233,7 @@ function defaultApiKeyForSource(name: string, rawApiKey: unknown): string {
   return trimmed ?? `\${${name}}`;
 }
 
-/** Parse a JSON sources object (config file or inline PINECONE_SOURCES JSON). */
+/** Parse a JSON sources object (config file). */
 export function parseSourcesConfigObject(
   parsed: JsonSourceFile,
   env: NodeJS.ProcessEnv = process.env,
@@ -290,39 +290,6 @@ export function parseSourcesConfigObject(
   return { sources, defaultSource };
 }
 
-function looksLikeSourceEntry(v: unknown): boolean {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
-}
-
-function parseJsonSourcesInline(
-  inline: string,
-  env: NodeJS.ProcessEnv,
-  options?: ParseSourcesOptions
-): { sources: SourceDefinition[]; defaultSource: string } {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(inline);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to parse PINECONE_SOURCES JSON: ${message}`);
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('PINECONE_SOURCES JSON must be a JSON object.');
-  }
-  const obj = parsed as Record<string, unknown>;
-  const sourcesCandidate = obj['sources'];
-  const hasFileShapeSourcesField =
-    sourcesCandidate != null &&
-    typeof sourcesCandidate === 'object' &&
-    !Array.isArray(sourcesCandidate) &&
-    Object.values(sourcesCandidate as Record<string, unknown>).every(looksLikeSourceEntry);
-  const fileShape =
-    obj['defaultSource'] != null || hasFileShapeSourcesField
-      ? (parsed as JsonSourceFile)
-      : ({ sources: parsed } as JsonSourceFile);
-  return parseSourcesConfigObject(fileShape, env, options, 'PINECONE_SOURCES JSON');
-}
-
 /** Parse JSON config file for multi-source setup. */
 export function parseSourcesConfigFile(
   filePath: string,
@@ -356,7 +323,9 @@ export function resolveSourceDefinitions(
   }
   if (inline) {
     if (inline.startsWith('{')) {
-      return parseJsonSourcesInline(inline, env, options);
+      throw new Error(
+        'PINECONE_SOURCES no longer accepts inline JSON. Use PINECONE_CONFIG_FILE for per-source description/namespaces, or rely on automatic "_mcp_config" schema loading (see docs/CONFIGURATION.md).'
+      );
     }
     const sources = parseInlineSources(inline, env, options);
     return { sources, defaultSource: sources[0]!.name };

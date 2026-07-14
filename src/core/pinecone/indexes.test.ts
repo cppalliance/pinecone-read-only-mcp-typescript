@@ -270,4 +270,62 @@ describe('PineconeIndexSession', () => {
       expect(result.errors.some((e) => e.includes('no client'))).toBe(true);
     });
   });
+
+  describe('fetchRecordFields', () => {
+    class FetchFieldsSession extends PineconeIndexSession {
+      constructor(
+        private readonly fetchResponse: {
+          records?: Record<string, { metadata?: Record<string, unknown>; [key: string]: unknown }>;
+        }
+      ) {
+        super('test-api-key', 'test-index');
+      }
+
+      override ensureClient() {
+        return {
+          index: () => ({
+            fetch: vi.fn().mockResolvedValue(this.fetchResponse),
+          }),
+        } as never;
+      }
+    }
+
+    it('merges metadata and top-level scalar fields', async () => {
+      const session = new FetchFieldsSession({
+        records: {
+          schema_manifest: {
+            id: 'schema_manifest',
+            chunk_text: '{"ok":true}',
+            metadata: { extra: 'meta' },
+          },
+        },
+      });
+
+      const fields = await session.fetchRecordFields('_mcp_config', 'schema_manifest');
+      expect(fields).toMatchObject({
+        extra: 'meta',
+        chunk_text: '{"ok":true}',
+        id: 'schema_manifest',
+      });
+    });
+
+    it('returns null when record is missing', async () => {
+      const session = new FetchFieldsSession({ records: {} });
+      const fields = await session.fetchRecordFields('_mcp_config', 'schema_manifest');
+      expect(fields).toBeNull();
+    });
+
+    it('returns metadata-only fields when chunk_text is only in metadata', async () => {
+      const session = new FetchFieldsSession({
+        records: {
+          schema_manifest: {
+            metadata: { chunk_text: '{"from":"metadata"}' },
+          },
+        },
+      });
+
+      const fields = await session.fetchRecordFields('_mcp_config', 'schema_manifest');
+      expect(fields?.chunk_text).toBe('{"from":"metadata"}');
+    });
+  });
 });

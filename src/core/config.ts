@@ -57,6 +57,8 @@ export interface ServerConfigBase {
   disableSuggestFlow: boolean;
   /** When true, on-startup probe verifies dense + sparse indexes exist. */
   checkIndexes: boolean;
+  /** When true, skip loading schema manifest from `_mcp_config` at startup. */
+  disableRemoteSchema: boolean;
   /** Named Pinecone sources when multi-project mode is enabled. */
   sources?: SourceDefinition[];
   /** Default source name when multi-source mode is enabled. */
@@ -150,6 +152,7 @@ export interface ConfigOverrides {
   requestTimeoutMs?: number;
   disableSuggestFlow?: boolean;
   checkIndexes?: boolean;
+  disableRemoteSchema?: boolean;
   sources?: string;
   configFile?: string;
 }
@@ -196,6 +199,8 @@ export function resolveConfig(
   const disableSuggestFlow =
     overrides.disableSuggestFlow ?? asBool(env['PINECONE_DISABLE_SUGGEST_FLOW'], true);
   const checkIndexes = overrides.checkIndexes ?? asBool(env['PINECONE_CHECK_INDEXES'], false);
+  const disableRemoteSchema =
+    overrides.disableRemoteSchema ?? asBool(env['PINECONE_DISABLE_REMOTE_SCHEMA'], false);
 
   const multi = resolveSourceDefinitions(overrides, env, parseSourcesOptions);
   if (multi) {
@@ -217,6 +222,7 @@ export function resolveConfig(
       requestTimeoutMs,
       disableSuggestFlow,
       checkIndexes,
+      disableRemoteSchema,
       sources: multi.sources,
       defaultSource: multi.defaultSource,
     });
@@ -254,6 +260,7 @@ export function resolveConfig(
     requestTimeoutMs,
     disableSuggestFlow,
     checkIndexes,
+    disableRemoteSchema,
   });
 }
 

@@ -90,6 +90,11 @@ export class PineconeClient {
     return this.indexSession.checkIndexes();
   }
 
+  /** Fetch record fields from the dense index (metadata + top-level scalars). */
+  async fetchRecordFields(namespace: string, id: string): Promise<Record<string, unknown> | null> {
+    return this.indexSession.fetchRecordFields(namespace, id);
+  }
+
   private async searchIndex(
     index: SearchableIndex,
     query: string,
