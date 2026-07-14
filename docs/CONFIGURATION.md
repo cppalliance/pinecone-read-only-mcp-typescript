@@ -234,9 +234,9 @@ Prefer `${ENV_VAR}` indirection over embedding raw API keys directly. For intern
 3. `const ctx = createServer(config, { client })` or pass a pre-built `sourceRegistry` for multi-source mode.
 4. `await setupAllianceServer({ context: ctx })` (or `setupCoreServer({ context: ctx })` for generic tools only) then connect an MCP transport.
 
-**Remote `_mcp_config` loading** runs in the **CLI entry point** (`src/index.ts`), not inside `createServer`. To match CLI behavior in a custom embedder:
+**Remote `_mcp_config` loading** runs in the **CLI entry point** (`src/index.ts`), not inside `createServer`. To match CLI behavior in a custom embedder, load remote schema only when `disableRemoteSchema` is false **and** `checkIndexes` is false (skip during `--check-indexes` probe mode):
 
-- **Single-key:** call `loadRemoteSchemaForSource(client, definition)` and pass `declaredNamespaces: loaded.definition.namespaces` in `createServer` composition (when `disableRemoteSchema` is false).
+- **Single-key:** call `loadRemoteSchemaForSource(client, definition)` and pass `declaredNamespaces: loaded.definition.namespaces` in `createServer` composition.
 - **Multi-source:** call `loadRemoteSchemaForSources(entries)` per source, then pass the enriched `sources` to `buildSourceRegistry` / `createServer`.
 
 Pass `config` at setup only when the context is not yet configured; after `createServer` + client injection, pass `{ context: ctx }` only.
