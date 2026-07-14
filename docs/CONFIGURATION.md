@@ -59,7 +59,7 @@ Need more than one Pinecone project in the same MCP entry? See [Multi-source mod
 | `cacheTtlMs` | `--cache-ttl-seconds` | `PINECONE_CACHE_TTL_SECONDS` | `1800` seconds → ms |
 | `requestTimeoutMs` | `--request-timeout-ms` | `PINECONE_REQUEST_TIMEOUT_MS` | `15000` |
 | `disableSuggestFlow` | `--disable-suggest-flow` | `PINECONE_DISABLE_SUGGEST_FLOW` | **Core:** `true` (gate off). **Alliance:** `false` (gate on). Bool parsing: `true`/`1`/`yes`/`on` |
-| `checkIndexes` | `--check-indexes` | `PINECONE_CHECK_INDEXES` | `false` |
+| `checkIndexes` | `--check-indexes` | `PINECONE_CHECK_INDEXES` | `false`; when `true`, probes indexes and exits (skips remote `_mcp_config` loading) |
 | `disableRemoteSchema` | `--disable-remote-schema` | `PINECONE_DISABLE_REMOTE_SCHEMA` | `false` (remote `_mcp_config` loading on) |
 | `sources` | `--sources` | `PINECONE_SOURCES` | Multi-source only; see below |
 | `configFile` | `--config-file` | `PINECONE_CONFIG_FILE` | Multi-source only; see below |
@@ -105,7 +105,9 @@ Semicolon-separated `name:apiKey:indexName` entries:
 PINECONE_SOURCES=api_key_1:${PINECONE_API_KEY_1}:index_name_1;api_key_2:${PINECONE_API_KEY_2}:index_name_2
 ```
 
-API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key. This format never carries `description` or `namespaces` — use JSON for those.
+API keys may contain colons; the parser treats the last `:` segment as `indexName` and everything between `name:` and `:indexName` as the key. This format never carries `description` or `namespaces` inline — use a [JSON config file](#json-config-file-descriptions--namespaces) or the [remote manifest](#remote-schema-manifest-_mcp_config).
+
+> **MCP host `env` values must be strings.** Hosts such as Cursor do not JSON-stringify nested objects in `env`. Set `PINECONE_SOURCES` as a single colon-format string (as above). Inline JSON objects or JSON-shaped `PINECONE_SOURCES` strings (values starting with `{`) are **rejected at startup** — use `PINECONE_CONFIG_FILE` or rely on `_mcp_config` instead.
 
 ### JSON config file (descriptions + namespaces)
 
@@ -153,9 +155,24 @@ When a Pinecone project has a schema manifest upserted into the reserved `_mcp_c
 
 The manifest supplies optional source-level `description` and per-namespace `description` + `metadata_schema` (same effect as a config file). Local declarations always win; remote loading is skipped when local `namespaces` are set for that source.
 
+The manifest body is stored in the record's `chunk_text` field as JSON with this shape:
+
+```json
+{
+  "description": "Optional source-level hint for list_sources",
+  "namespaces": {
+    "example_ns": {
+      "description": "Namespace hint shown by list_namespaces",
+      "metadata_schema": { "field_a": "string" }
+    }
+  }
+}
+```
+
 - **Opt out:** set `PINECONE_DISABLE_REMOTE_SCHEMA=true` or pass `--disable-remote-schema`.
-- **Failures are non-fatal:** missing manifest, network errors, or malformed JSON log a warning and the server falls back to live namespace sampling (same as having no declared schema).
-- **Publishing:** Alliance ingestion (`cloud_rag/schema_update.py`) rebuilds and upserts manifests independently of document ingestion.
+- **Skipped with `--check-indexes`:** index probe mode exits after connectivity checks; remote manifest loading does not run.
+- **Failures are non-fatal:** missing manifest, network errors, timeouts (`requestTimeoutMs`), or malformed JSON log a warning and the server falls back to live namespace sampling (same as having no declared schema).
+- **Publishing:** Alliance ingestion rebuilds and upserts manifests into `_mcp_config` independently of document ingestion (see internal `cloud_rag/schema_update.py` when available).
 
 Colon-format `PINECONE_SOURCES` plus remote manifest loading is the recommended staff setup — API keys and index names in `mcp.json`, descriptions and schemas in Pinecone.
 
@@ -213,10 +230,16 @@ Prefer `${ENV_VAR}` indirection over embedding raw API keys directly. For intern
 ## Library embedding
 
 1. Build `ServerConfig` with `resolveConfig({ apiKey: '...', indexName: '...', ... })` or `resolveAllianceConfig(...)` for the full tool surface.
-2. `const ctx = createServer(config)` then `ctx.setClient(new PineconeClient({ ... }))` (mirrors `src/index.ts`).
-3. `await setupAllianceServer({ context: ctx })` (or `setupCoreServer({ context: ctx })` for generic tools only) then connect an MCP transport.
+2. Create a `PineconeClient` and optionally enrich source definitions with remote schema **before** `createServer` (see below).
+3. `const ctx = createServer(config, { client })` or pass a pre-built `sourceRegistry` for multi-source mode.
+4. `await setupAllianceServer({ context: ctx })` (or `setupCoreServer({ context: ctx })` for generic tools only) then connect an MCP transport.
 
-Pass `config` at setup only when the context is not yet configured; after `createServer` + `setClient`, pass `{ context: ctx }` only.
+**Remote `_mcp_config` loading** runs in the **CLI entry point** (`src/index.ts`), not inside `createServer`. To match CLI behavior in a custom embedder:
+
+- **Single-key:** call `loadRemoteSchemaForSource(client, definition)` and pass `declaredNamespaces: loaded.definition.namespaces` in `createServer` composition (when `disableRemoteSchema` is false).
+- **Multi-source:** call `loadRemoteSchemaForSources(entries)` per source, then pass the enriched `sources` to `buildSourceRegistry` / `createServer`.
+
+Pass `config` at setup only when the context is not yet configured; after `createServer` + client injection, pass `{ context: ctx }` only.
 
 See [README deployment model](../README.md#deployment-model), [examples/quickstart/README.md](../examples/quickstart/README.md) (generic), and [examples/alliance/library-embedding-demo.ts](../examples/alliance/library-embedding-demo.ts) (Alliance surface).
 

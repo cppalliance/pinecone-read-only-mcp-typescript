@@ -116,6 +116,30 @@ describe('remote-schema', () => {
     expect(warning).toMatch(/failed to fetch/);
   });
 
+  it('returns unchanged when chunk_text is empty or whitespace (no warning)', async () => {
+    const client = mockClient(async () => ({ chunk_text: '   ' }));
+    const input = baseDefinition();
+
+    const { definition, warning } = await loadRemoteSchemaForSource(client, input);
+
+    expect(warning).toBeUndefined();
+    expect(definition).toEqual(input);
+  });
+
+  it('returns warning when manifest namespaces fail validation', async () => {
+    const client = mockClient(async () => ({
+      chunk_text: JSON.stringify({
+        namespaces: { ns1: { metadata_schema: { field_a: 123 } } },
+      }),
+    }));
+    const input = baseDefinition();
+
+    const { definition, warning } = await loadRemoteSchemaForSource(client, input);
+
+    expect(definition).toEqual(input);
+    expect(warning).toMatch(/namespaces invalid/);
+  });
+
   it('skips fetch when local namespaces are already set', async () => {
     const fetchFn = vi.fn(async () => ({ chunk_text: '{}' }));
     const client = mockClient(fetchFn);

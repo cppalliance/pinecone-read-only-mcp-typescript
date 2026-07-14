@@ -48,6 +48,7 @@ function parseManifestChunkText(chunkText: string): ManifestParseResult {
   };
 }
 
+/** Fetch and merge `_mcp_config` manifest into a source when local `namespaces` are unset; failures are non-fatal warnings. */
 export async function loadRemoteSchemaForSource(
   client: PineconeClient,
   definition: SourceDefinition
@@ -110,6 +111,7 @@ export async function loadRemoteSchemaForSource(
   return { definition: enriched };
 }
 
+/** Load remote schema manifests for multiple sources in parallel, collecting per-source warnings. */
 export async function loadRemoteSchemaForSources(
   entries: { definition: SourceDefinition; client: PineconeClient }[]
 ): Promise<{ definitions: SourceDefinition[]; warnings: string[] }> {

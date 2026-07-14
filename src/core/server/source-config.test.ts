@@ -159,6 +159,23 @@ describe('source-config', () => {
     expect(first?.namespaces).toBeUndefined();
   });
 
+  it('parseSourcesConfigFile throws when source entry is not an object', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-source-entry.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: 'not-an-object',
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Source "api_key_1" in config file .* must be an object/
+    );
+  });
+
   it('parseSourcesConfigFile throws when source description is not a string', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
     const filePath = join(dir, 'bad-source-description.json');

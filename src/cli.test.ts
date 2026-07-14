@@ -36,4 +36,12 @@ describe('parseCli', () => {
       expect(r.overrides.defaultTopK).toBe(25);
     }
   });
+
+  it('parses --disable-remote-schema', () => {
+    const r = parseCli(['--disable-remote-schema']);
+    expect(r.kind).toBe('config');
+    if (r.kind === 'config') {
+      expect(r.overrides.disableRemoteSchema).toBe(true);
+    }
+  });
 });
