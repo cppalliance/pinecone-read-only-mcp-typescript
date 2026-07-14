@@ -30,6 +30,7 @@ function buildProgramSrcFiles(): string[] {
     .filter((rel) => rel.startsWith('src/'));
 }
 
+// Mirrors tsconfig.build.json's exclude — add any new test-only suffix to both.
 const TEST_CODE = [
   /\.test\.ts$/,
   /\.compile-test\.ts$/,

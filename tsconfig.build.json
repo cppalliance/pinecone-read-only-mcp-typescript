@@ -1,5 +1,7 @@
 {
   "extends": "./tsconfig.json",
+  // New test-only suffixes must also go in TEST_CODE in
+  // src/__tests__/build-excludes-test-code.test.ts, which guards this list.
   "exclude": [
     "node_modules",
     "dist",
