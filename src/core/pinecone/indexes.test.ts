@@ -327,5 +327,26 @@ describe('PineconeIndexSession', () => {
       const fields = await session.fetchRecordFields('_mcp_config', 'schema_manifest');
       expect(fields?.chunk_text).toBe('{"from":"metadata"}');
     });
+
+    it('rejects when fetch exceeds requestTimeoutMs', async () => {
+      class HangingFetchSession extends PineconeIndexSession {
+        constructor() {
+          super('test-api-key', 'test-index', undefined, 50);
+        }
+
+        override ensureClient() {
+          return {
+            index: () => ({
+              fetch: () => new Promise(() => {}),
+            }),
+          } as never;
+        }
+      }
+
+      const session = new HangingFetchSession();
+      await expect(session.fetchRecordFields('_mcp_config', 'schema_manifest')).rejects.toThrow(
+        /Timeout after 50ms while waiting for fetchRecordFields/
+      );
+    });
   });
 });

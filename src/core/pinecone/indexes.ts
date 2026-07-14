@@ -3,6 +3,8 @@
  */
 
 import { Pinecone } from '@pinecone-database/pinecone';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
+import { withTimeout } from '../server/retry.js';
 import { error as logError, info as logInfo } from '../../logger.js';
 import type {
   KeywordIndexNamespacesResult,
@@ -46,7 +48,8 @@ export class PineconeIndexSession {
   constructor(
     private readonly apiKey: string,
     private readonly indexName: string,
-    private readonly sparseIndexName?: string
+    private readonly sparseIndexName?: string,
+    private readonly requestTimeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
   ) {}
 
   /** Sparse index name; defaults to `{indexName}-sparse`. */
@@ -235,21 +238,27 @@ export class PineconeIndexSession {
    * may appear on the record or inside metadata.
    */
   async fetchRecordFields(namespace: string, id: string): Promise<Record<string, unknown> | null> {
-    const pc = this.ensureClient();
-    const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
-    const record = response.records?.[id] as
-      (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
-    if (!record) {
-      return null;
-    }
-    const metadata = record.metadata ?? {};
-    const merged: Record<string, unknown> = { ...metadata };
-    for (const [k, v] of Object.entries(record)) {
-      if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
-        merged[k] = v;
-      }
-    }
-    return merged;
+    return withTimeout(
+      async (_signal) => {
+        const pc = this.ensureClient();
+        const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
+        const record = response.records?.[id] as
+          | (Record<string, unknown> & { metadata?: Record<string, unknown> })
+          | undefined;
+        if (!record) {
+          return null;
+        }
+        const metadata = record.metadata ?? {};
+        const merged: Record<string, unknown> = { ...metadata };
+        for (const [k, v] of Object.entries(record)) {
+          if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
+            merged[k] = v;
+          }
+        }
+        return merged;
+      },
+      { timeoutMs: this.requestTimeoutMs, label: 'fetchRecordFields' }
+    );
   }
 
   /**

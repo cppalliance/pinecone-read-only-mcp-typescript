@@ -15,6 +15,7 @@ import type {
   HybridLegFailed,
 } from '../types.js';
 import { DEFAULT_TOP_K, MAX_TOP_K, COUNT_TOP_K, COUNT_FIELDS } from '../constants.js';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from './config.js';
 import { PineconeIndexSession, type NamespacesWithMetadataResult } from './pinecone/indexes.js';
 import {
   countUniqueDocumentsFromHits,
@@ -39,7 +40,8 @@ export class PineconeClient {
     this.indexSession = new PineconeIndexSession(
       config.apiKey,
       config.indexName,
-      config.sparseIndexName
+      config.sparseIndexName,
+      config.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
     );
     const normalizedRerankModel = config.rerankModel?.trim();
     this.rerankModel = normalizedRerankModel ? normalizedRerankModel : undefined;
