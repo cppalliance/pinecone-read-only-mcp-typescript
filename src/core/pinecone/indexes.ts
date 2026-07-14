@@ -243,8 +243,7 @@ export class PineconeIndexSession {
         const pc = this.ensureClient();
         const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
         const record = response.records?.[id] as
-          | (Record<string, unknown> & { metadata?: Record<string, unknown> })
-          | undefined;
+          (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
         if (!record) {
           return null;
         }
