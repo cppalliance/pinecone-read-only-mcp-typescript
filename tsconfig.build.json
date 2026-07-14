@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.compile-test.ts",
+    "**/test-helpers.ts",
+    "**/__tests__/**"
+  ]
+}
