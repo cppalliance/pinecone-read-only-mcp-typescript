@@ -64,6 +64,19 @@ Or single-shot: `guided_query` (routes across sources when `namespace` is omitte
 
 **Suggest-flow in multi-source mode:** gate state uses compound keys `source:namespace`. Pass the same `source` + `namespace` pair for `suggest_query_params` and gated tools when the namespace exists on multiple sources.
 
+### Design notes
+
+**Chosen:** multi-source server with optional `source` parameter on tools (`SourceRegistry` + `PINECONE_SOURCES` / JSON config), over:
+
+- **Cursor routing rules only:** doesn't fix the UX problem when users forget which MCP entry to use; no code changes.
+- **Thin proxy MCP:** extra package and latency; duplicates routing logic already in `ServerContext`.
+
+**Rationale:** Pinecone SDK v8 supports multiple `Pinecone({ apiKey })` instances per process; MCP has no barrier to aggregating backends. Security is enforced by **deployment profiles** (public-only vs merged config), not per-query MCP authorization. All multi-source results include `source` for LLM provenance.
+
+**Execution semantics:** discovery tools aggregate all sources when `source` is omitted. Execution tools (`query`, `count`, etc.) call `resolveSource`: infer source when the namespace exists on exactly one project; return `VALIDATION` when ambiguous. They do **not** fan out one query to all sources. `guided_query` without `namespace` routes via the aggregated namespace list and sets `selected_source` in `decision_trace`.
+
+**Audit logging:** when a tool resolves a specific source, stderr logs `toolname [source=name]` at INFO (execution tools and discovery tools that pass an explicit `source` filter). Aggregated discovery without `source` does not log per-source lines.
+
 ---
 
 ## `list_sources` (multi-source only)

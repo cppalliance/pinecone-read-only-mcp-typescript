@@ -51,6 +51,35 @@ describe('ServerContext composition API', () => {
     expect(flow.ok).toBe(true);
   });
 
+  it('declaredNamespaces composition seed is used in single-key getNamespacesWithCache', async () => {
+    const listNamespaces = vi.fn().mockResolvedValue(
+      mockNamespacesWithMetadataResult([
+        {
+          namespace: 'mailing',
+          recordCount: 10,
+          metadata: { doc_id: 'string' },
+          schema_source: 'declared',
+        },
+      ])
+    );
+    const client = { listNamespacesWithMetadata: listNamespaces } as unknown as PineconeClient;
+
+    const ctx = new ServerContext(testConfig(), {
+      client,
+      declaredNamespaces: {
+        mailing: {
+          description: 'Mailing list',
+          metadata_schema: { doc_id: 'string' },
+        },
+      },
+    });
+
+    const result = await ctx.getNamespacesWithCache();
+    expect(listNamespaces).toHaveBeenCalledWith({ mailing: { doc_id: 'string' } }, ['mailing']);
+    expect(result.data[0]?.description).toBe('Mailing list');
+    expect(result.data[0]?.schema_source).toBe('declared');
+  });
+
   it('constructs with suggestionFlowSeed and no config without throwing', () => {
     expect(
       () =>

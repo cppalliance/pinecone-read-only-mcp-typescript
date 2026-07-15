@@ -16,6 +16,12 @@ describe('source-config', () => {
     expect(resolveEnvIndirection('${PINECONE_API_KEY_1}', env)).toBe('key-one');
   });
 
+  it('throws on malformed env indirection reference', () => {
+    expect(() => resolveEnvIndirection('${internal-corpus}', {})).toThrow(
+      /Invalid environment variable reference/
+    );
+  });
+
   it('parses inline sources', () => {
     const env = {
       K1: 'api-1',
@@ -153,6 +159,23 @@ describe('source-config', () => {
     expect(first?.namespaces).toBeUndefined();
   });
 
+  it('parseSourcesConfigFile throws when source entry is not an object', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'bad-source-entry.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: 'not-an-object',
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Source "api_key_1" in config file .* must be an object/
+    );
+  });
+
   it('parseSourcesConfigFile throws when source description is not a string', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
     const filePath = join(dir, 'bad-source-description.json');
@@ -214,6 +237,81 @@ describe('source-config', () => {
     const sources = parseInlineSources('api_key_1:sk:idx', {});
     expect(sources[0]).not.toHaveProperty('description');
     expect(sources[0]).not.toHaveProperty('namespaces');
+  });
+
+  it('resolveSourceDefinitions colon format still works (regression)', () => {
+    const env = { K1: 'api-1', PINECONE_SOURCES: 'api_key_1:${K1}:index_name_1' };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.sources[0]).toMatchObject({
+      name: 'api_key_1',
+      apiKey: 'api-1',
+      indexName: 'index_name_1',
+    });
+    expect(parsed?.sources[0]).not.toHaveProperty('description');
+  });
+
+  it('resolveSourceDefinitions throws when PINECONE_SOURCES is inline JSON', () => {
+    const env = {
+      PINECONE_SOURCES: JSON.stringify({ api_key_1: { indexName: 'index_name_1' } }),
+    };
+    expect(() => resolveSourceDefinitions({}, env)).toThrow(
+      /PINECONE_SOURCES no longer accepts inline JSON/
+    );
+  });
+
+  it('resolveSourceDefinitions prefers config file over colon PINECONE_SOURCES', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'sources.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'from_file',
+        sources: {
+          from_file: { apiKey: 'file-key', indexName: 'file-index' },
+        },
+      })
+    );
+    const env = {
+      PINECONE_SOURCES: 'from_inline:sk:inline-index',
+      PINECONE_CONFIG_FILE: filePath,
+    };
+    const parsed = resolveSourceDefinitions({}, env);
+    expect(parsed?.defaultSource).toBe('from_file');
+    expect(parsed?.sources[0]?.indexName).toBe('file-index');
+  });
+
+  it('parseSourcesConfigFile throws when defaulted apiKey env is missing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'defaulted-apikey.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'api_key_1',
+        sources: {
+          api_key_1: { indexName: 'index_name_1' },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Environment variable api_key_1 is not set/
+    );
+  });
+
+  it('parseSourcesConfigFile throws when hyphenated source name uses defaulted apiKey', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pinecone-sources-'));
+    const filePath = join(dir, 'hyphenated.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        defaultSource: 'internal-corpus',
+        sources: {
+          'internal-corpus': { indexName: 'index_name_1' },
+        },
+      })
+    );
+    expect(() => parseSourcesConfigFile(filePath, {})).toThrow(
+      /Invalid environment variable reference "\$\{internal-corpus\}"/
+    );
   });
 
   it('resolveConfig uses PINECONE_SOURCES when set', () => {

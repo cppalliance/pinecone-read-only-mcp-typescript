@@ -69,6 +69,21 @@ describe('PineconeClient', () => {
     });
   });
 
+  describe('fetchRecordFields', () => {
+    it('delegates to indexSession.fetchRecordFields', async () => {
+      const fields = { chunk_text: '{"ok":true}' };
+      const fetchMock = vi.fn().mockResolvedValue(fields);
+      Object.assign(client, {
+        indexSession: { fetchRecordFields: fetchMock },
+      });
+
+      const result = await client.fetchRecordFields('_mcp_config', 'schema_manifest');
+
+      expect(fetchMock).toHaveBeenCalledWith('_mcp_config', 'schema_manifest');
+      expect(result).toEqual(fields);
+    });
+  });
+
   describe('query', () => {
     it('should throw error for empty query', async () => {
       await expect(
