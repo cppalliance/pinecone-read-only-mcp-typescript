@@ -37,10 +37,13 @@ export function teardownServer(): void {
 /**
  * Create and configure the MCP server with generic (core) tools.
  *
- * Registers eight core tools including `guided_query`. Does not register Alliance-specific
- * `suggest_query_params` or built-in Boost/Slack URL generators. Use
- * {@link setupAllianceServer} from `@will-cppa/pinecone-read-only-mcp/alliance` for the
- * full Alliance tool surface (suggest-flow gate on by default).
+ * Registers nine core tools including `guided_query` and `suggest_query_params` (ten
+ * with multi-source `list_sources`). `suggest_query_params` is registered, but the
+ * suggest-flow gate stays off by default for core (`disableSuggestFlow: true`), so core
+ * consumers can query without calling it first. Alliance additionally wires built-in
+ * Boost/Slack URL generators (registered into the `generate_urls` registry, not a
+ * separate MCP tool) and enables the gate by default; use {@link setupAllianceServer}
+ * from `@will-cppa/pinecone-read-only-mcp/alliance` for that.
  */
 export type SetupCoreServerOptions = {
   config?: CoreServerConfig;

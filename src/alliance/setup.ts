@@ -67,8 +67,10 @@ function normalizeSetupAllianceArgs(
 }
 
 /**
- * Create and configure the MCP server with the full Alliance tool surface:
- * all core tools (including `guided_query`) plus `suggest_query_params` and built-in URL generators.
+ * Create and configure the MCP server with the full Alliance tool surface: the same
+ * core tools (including `guided_query` and `suggest_query_params`) plus built-in
+ * Boost/Slack URL generators wired into `generate_urls`, and the suggest-flow gate
+ * enabled by default.
  *
  * When `config` is omitted, resolves env via {@link resolveAllianceConfig} (Alliance index/rerank defaults when unset).
  */

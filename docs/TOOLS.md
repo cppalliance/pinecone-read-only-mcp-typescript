@@ -27,14 +27,14 @@ Promotion process: [deprecation-policy.md § Stable vs experimental](./deprecati
 
 | Setup | Tools | MCP instructions |
 | ----- | ----- | ------------------ |
-| `setupCoreServer` (package root) | **8** (single-key) or **9** (multi-source adds `list_sources`): `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls`, `guided_query` | `CORE_SERVER_INSTRUCTIONS` — includes `guided_query`; no `suggest_query_params` |
-| `setupAllianceServer` / published CLI | **9** (single-key) or **10** (multi-source): core tools plus `suggest_query_params` | `ALLIANCE_SERVER_INSTRUCTIONS` — includes suggest-flow quickstart |
+| `setupCoreServer` (package root) | **9** (single-key) or **10** (multi-source adds `list_sources`): `list_namespaces`, `namespace_router`, `count`, `query`, `keyword_search`, `query_documents`, `generate_urls`, `guided_query`, `suggest_query_params` | `CORE_SERVER_INSTRUCTIONS` — includes `guided_query`; registers `suggest_query_params` but the suggest-flow gate is off by default |
+| `setupAllianceServer` / published CLI | **9** (single-key) or **10** (multi-source): the same core tool surface — Alliance adds built-in Boost/Slack URL generators for `generate_urls` (not an extra MCP tool) and enables the gate by default | `ALLIANCE_SERVER_INSTRUCTIONS` — includes suggest-flow quickstart |
 
 ## Suggest-flow gate
 
 When **`disableSuggestFlow`** is **`false`** (Alliance default via `resolveAllianceConfig` / CLI), tools **`query`**, **`count`**, and **`query_documents`** require a prior successful **`suggest_query_params`** call for the **same namespace string** within the cache TTL (see `PINECONE_CACHE_TTL_SECONDS`). The gate is in-process memory (`requireSuggested`).
 
-When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), the gate is bypassed — suitable for `setupCoreServer` embedders that do not register `suggest_query_params`.
+When **`disableSuggestFlow`** is **`true`** (core default via `resolveConfig`), the gate is bypassed: `setupCoreServer` still registers `suggest_query_params`, but embedders can call it optionally rather than being required to before `query` / `count` / `query_documents`.
 
 **Namespace consistency:** use the **exact same** `namespace` value (including trimming — avoid leading/trailing spaces in one call and not the other) for `suggest_query_params` and downstream gated tools. Mismatches yield `FLOW_GATE` with a suggestion to call `suggest_query_params` first.
 

@@ -49,7 +49,7 @@ Features:
 Notes:
 - Result rows include both \`document_id\` (canonical) and \`paper_number\` (deprecated alias kept for one minor cycle; will be removed in the next major release). Prefer \`document_id\` in new code.`;
 
-/** MCP instructions for {@link setupCoreServer} (eight core tools including guided_query). */
+/** MCP instructions for {@link setupCoreServer} (nine core tools including guided_query and suggest_query_params). */
 export const CORE_SERVER_INSTRUCTIONS = `Quickstart for AI clients: for most user questions, call \`guided_query\` with the user's question — it does namespace routing, suggestion, and execution in one shot and returns \`experimental.decision_trace\` you can show the user. Alternatively call \`list_namespaces\` to discover namespaces, optionally \`namespace_router\` to rank candidates from user intent, then \`query\` (preset fast/detailed/full), \`count\`, \`query_documents\`, \`keyword_search\`, or \`generate_urls\` as needed.
 
 ${SERVER_FEATURES_AND_NOTES}
