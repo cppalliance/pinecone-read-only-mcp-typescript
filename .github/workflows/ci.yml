@@ -33,6 +33,9 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Type check benchmarks
+        run: npm run typecheck:benchmarks
+
       - name: Lint
         run: npm run lint
 
@@ -44,6 +47,9 @@ jobs:
 
       - name: Smoke test CLI
         run: node dist/index.js --help
+
+      - name: Benchmark smoke run
+        run: npm run benchmark:smoke
 
       - name: Run tests with coverage
         run: npm run test:coverage
