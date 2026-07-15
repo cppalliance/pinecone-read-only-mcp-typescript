@@ -34,7 +34,7 @@ type BenchmarkResult = {
   iterations: number;
 };
 
-/** Test double: stub ensureIndexes, searchIndex, rerankResults (no network). */
+/** Test double: stub ensureIndexes and searchIndex (no network). rerankResults on the instance is ineffective post-restructure — query() reranks via rerankResultsImpl(indexSession.ensureClient(), …) instead. */
 type QueryBenchClient = {
   ensureIndexes: () => Promise<{ denseIndex: SearchableIndex; sparseIndex: SearchableIndex }>;
   searchIndex: (
