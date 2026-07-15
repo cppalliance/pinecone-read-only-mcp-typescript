@@ -5,6 +5,7 @@ import { setPineconeClient } from '../core/index.js';
 import { resolveConfig } from '../core/config.js';
 import { getDefaultServerContext } from '../core/server/server-context.js';
 import * as guidedQueryTool from '../core/server/tools/guided-query-tool.js';
+import * as suggestQueryParamsTool from '../core/server/tools/suggest-query-params-tool.js';
 import { registerQueryTool } from '../core/server/tools/query-tool.js';
 import {
   assertToolErrorCode,
@@ -117,6 +118,24 @@ describe('cross-entry-point: core vs Alliance defaults', () => {
 
     expect(registerSpy).toHaveBeenCalledOnce();
     expect(ctx.hasToolsRegistered()).toBe(true);
+    registerSpy.mockRestore();
+  });
+
+  it('core setup registers suggest_query_params handler (#221)', async () => {
+    const cfg = resolveConfig({ apiKey: 'sk-cross', indexName: 'test-index' });
+    const ctx = createTestServerContext({
+      config: cfg,
+      client: new PineconeClient({
+        apiKey: cfg.apiKey,
+        indexName: cfg.indexName,
+        defaultTopK: cfg.defaultTopK,
+      }),
+    });
+    const registerSpy = vi.spyOn(suggestQueryParamsTool, 'registerSuggestQueryParamsTool');
+
+    await setupCoreServer({ context: ctx });
+
+    expect(registerSpy).toHaveBeenCalledOnce();
     registerSpy.mockRestore();
   });
 });

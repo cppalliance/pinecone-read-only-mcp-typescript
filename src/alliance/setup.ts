@@ -5,7 +5,6 @@ import { createServer, type AllianceServerContext } from '../core/server/server-
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServerOnContext, type ServerHandle } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
-import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-tool.js';
 
 /**
  * Options for {@link setupAllianceServer}.
@@ -68,8 +67,10 @@ function normalizeSetupAllianceArgs(
 }
 
 /**
- * Create and configure the MCP server with the full Alliance tool surface:
- * all core tools (including `guided_query`) plus `suggest_query_params` and built-in URL generators.
+ * Create and configure the MCP server with the full Alliance tool surface: the same
+ * core tools (including `guided_query` and `suggest_query_params`) plus built-in
+ * Boost/Slack URL generators wired into `generate_urls`, and the suggest-flow gate
+ * enabled by default.
  *
  * When `config` is omitted, resolves env via {@link resolveAllianceConfig} (Alliance index/rerank defaults when unset).
  */
@@ -114,6 +115,5 @@ export async function setupAllianceServer(
   }
 
   registerBuiltinUrlGenerators(resolvedCtx);
-  registerSuggestQueryParamsTool(server, resolvedCtx);
   return server;
 }

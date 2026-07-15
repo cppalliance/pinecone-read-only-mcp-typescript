@@ -35,6 +35,7 @@ const CORE_TOOLS = [
   'query_documents',
   'generate_urls',
   'guided_query',
+  'suggest_query_params',
 ].sort();
 
 /** A fresh, isolated core server (own context + mock client) so several can coexist. */
@@ -154,6 +155,25 @@ describe('MCP RC-readiness harness (#202)', () => {
     const text = (res.content as Array<{ type: string; text: string }>)[0]?.text ?? '';
     expect(text).toContain('alpha');
     expect(text).toContain('beta');
+
+    await client.close();
+  });
+
+  it('core server executes suggest_query_params over the transport (#221)', async () => {
+    // Proves the tool is not just listed but callable on a core-initialized
+    // server, so a broken registration can't pass by only being enumerated.
+    const server = await freshCoreServer(['wg21']);
+    const client = await connectClient(server);
+
+    const res = await client.callTool({
+      name: 'suggest_query_params',
+      arguments: { namespace: 'wg21', user_query: 'list papers' },
+    });
+    expect(res.isError ?? false).toBe(false);
+    const text = (res.content as Array<{ type: string; text: string }>)[0]?.text ?? '';
+    const body = JSON.parse(text) as { status?: string; namespace_found?: boolean };
+    expect(body.status).toBe('success');
+    expect(body.namespace_found).toBe(true);
 
     await client.close();
   });

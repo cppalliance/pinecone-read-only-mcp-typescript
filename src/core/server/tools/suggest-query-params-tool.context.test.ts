@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerQueryTool } from '../../core/server/tools/query-tool.js';
+import { registerQueryTool } from './query-tool.js';
 import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
-import { suggestQueryParamsResponseSchema } from '../../core/server/response-schemas.js';
+import { suggestQueryParamsResponseSchema } from '../response-schemas.js';
 import {
   createMockServer,
   createTestServerContext,
@@ -9,7 +9,7 @@ import {
   makeHybridQueryResult,
   mockNamespacesWithMetadataResult,
   parseToolJson,
-} from '../../core/server/tools/test-helpers.js';
+} from './test-helpers.js';
 
 const namespaceMetadata = {
   document_number: 'string',
