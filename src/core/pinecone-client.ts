@@ -25,6 +25,7 @@ import {
   sliceMergedHitsToSearchResults,
 } from './pinecone/search.js';
 import { rerankResults as rerankResultsImpl } from './pinecone/rerank.js';
+import { isAppTimeoutError } from './server/retry.js';
 
 export class PineconeClient {
   private readonly rerankModel: string | undefined;
@@ -157,6 +158,8 @@ export class PineconeClient {
       logError('Sparse index search failed', sparseResult.reason);
     }
     if (denseResult.status === 'rejected' && sparseResult.status === 'rejected') {
+      if (isAppTimeoutError(denseResult.reason)) throw denseResult.reason;
+      if (isAppTimeoutError(sparseResult.reason)) throw sparseResult.reason;
       throw new Error('Hybrid search failed: both dense and sparse index searches failed.');
     }
 
