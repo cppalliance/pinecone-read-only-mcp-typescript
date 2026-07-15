@@ -4,6 +4,8 @@
 
 import { COUNT_FIELDS, COUNT_TOP_K } from '../../constants.js';
 import { debug as logDebug, warn as logWarn } from '../../logger.js';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
+import { isAppTimeoutError, runWithPolicy } from '../server/retry.js';
 import type {
   CountResult,
   MergedHit,
@@ -23,7 +25,8 @@ export async function searchIndex(
   topK: number,
   namespace?: string,
   metadataFilter?: Record<string, unknown>,
-  options?: { fields?: string[] }
+  options?: { fields?: string[] },
+  requestTimeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
 ): Promise<PineconeHit[]> {
   // Build query payload in the same shape as Python implementation.
   const queryPayload: Record<string, unknown> = {
@@ -38,42 +41,50 @@ export async function searchIndex(
   }
 
   try {
-    // Preferred path: Pinecone search API.
-    if (typeof index.search === 'function') {
-      const searchOpts: {
-        namespace?: string;
-        query: Record<string, unknown>;
-        fields?: string[];
-      } = {
-        namespace,
-        query: queryPayload,
-      };
-      if (options?.fields?.length) {
-        searchOpts.fields = options.fields;
-      }
-      const result = await index.search(searchOpts);
-      return result?.result?.hits || [];
-    }
+    return await runWithPolicy(
+      async (_signal) => {
+        // Preferred path: Pinecone search API.
+        if (typeof index.search === 'function') {
+          const searchOpts: {
+            namespace?: string;
+            query: Record<string, unknown>;
+            fields?: string[];
+          } = {
+            namespace,
+            query: queryPayload,
+          };
+          if (options?.fields?.length) {
+            searchOpts.fields = options.fields;
+          }
+          const result = await index.search(searchOpts);
+          return result?.result?.hits || [];
+        }
 
-    // Backward-compatible fallback for older API shapes.
-    const target = namespace && index.namespace ? index.namespace(namespace) : index;
-    const queryParams: { query: Record<string, unknown>; fields?: string[] } = {
-      query: {
-        topK,
-        inputs: { text: query },
+        // Backward-compatible fallback for older API shapes.
+        const target = namespace && index.namespace ? index.namespace(namespace) : index;
+        const queryParams: { query: Record<string, unknown>; fields?: string[] } = {
+          query: {
+            topK,
+            inputs: { text: query },
+          },
+        };
+        if (metadataFilter !== undefined) {
+          queryParams.query['filter'] = metadataFilter;
+        }
+        if (options?.fields?.length) {
+          queryParams.fields = options.fields;
+        }
+        const result = target.searchRecords
+          ? await target.searchRecords(queryParams)
+          : { result: { hits: [] as PineconeHit[] } };
+        return result?.result?.hits || [];
       },
-    };
-    if (metadataFilter !== undefined) {
-      queryParams.query['filter'] = metadataFilter;
-    }
-    if (options?.fields?.length) {
-      queryParams.fields = options.fields;
-    }
-    const result = target.searchRecords
-      ? await target.searchRecords(queryParams)
-      : { result: { hits: [] as PineconeHit[] } };
-    return result?.result?.hits || [];
+      { timeoutMs: requestTimeoutMs, label: 'search' }
+    );
   } catch (error) {
+    if (isAppTimeoutError(error)) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Pinecone search failed for namespace "${namespace ?? 'default'}": ${errorMessage}`

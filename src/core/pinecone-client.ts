@@ -105,7 +105,15 @@ export class PineconeClient {
     metadataFilter?: Record<string, unknown>,
     options?: { fields?: string[] }
   ): Promise<PineconeHit[]> {
-    return searchIndexImpl(index, query, topK, namespace, metadataFilter, options);
+    return searchIndexImpl(
+      index,
+      query,
+      topK,
+      namespace,
+      metadataFilter,
+      options,
+      this.indexSession.getRequestTimeoutMs()
+    );
   }
 
   async query(params: QueryParams): Promise<HybridQueryResult> {
@@ -179,7 +187,8 @@ export class PineconeClient {
         this.rerankModel,
         query,
         mergedResults,
-        topK
+        topK,
+        this.indexSession.getRequestTimeoutMs()
       );
       documents = rerankOut.results;
       degraded = rerankOut.degraded;

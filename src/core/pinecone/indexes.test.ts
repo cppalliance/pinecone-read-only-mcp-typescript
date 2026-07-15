@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PineconeIndexSession } from './indexes.js';
 import type { SearchableIndex } from '../../types.js';
 
@@ -28,6 +28,27 @@ class ThrowingEnsureSession extends PineconeIndexSession {
     throw new Error('no client');
   }
 }
+
+/** Session with a short timeout for fake-timer I/O deadline tests. */
+class TimeoutIndexSession extends PineconeIndexSession {
+  constructor(
+    private readonly pair: { dense: SearchableIndex; sparse: SearchableIndex },
+    requestTimeoutMs = 50
+  ) {
+    super('test-api-key', 'test-index', undefined, requestTimeoutMs);
+  }
+
+  override async ensureIndexes(): Promise<{
+    denseIndex: SearchableIndex;
+    sparseIndex: SearchableIndex;
+  }> {
+    return { denseIndex: this.pair.dense, sparseIndex: this.pair.sparse };
+  }
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('PineconeIndexSession', () => {
   describe('listNamespacesFromKeywordIndex', () => {
@@ -65,6 +86,46 @@ describe('PineconeIndexSession', () => {
       if (!result.ok) {
         expect(result.error).toContain('stats unavailable');
       }
+    });
+
+    it('retries describeIndexStats on 503 then succeeds', async () => {
+      let n = 0;
+      const sparse = {
+        describeIndexStats: vi.fn().mockImplementation(async () => {
+          n++;
+          if (n < 2) throw new Error('HTTP 503');
+          return { namespaces: { papers: { recordCount: 7 } } };
+        }),
+      } as unknown as SearchableIndex;
+      const session = new PineconeIndexSessionTestDouble({
+        dense: {} as SearchableIndex,
+        sparse,
+      });
+
+      const result = await session.listNamespacesFromKeywordIndex();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.namespaces).toEqual([{ namespace: 'papers', recordCount: 7 }]);
+      }
+      expect(sparse.describeIndexStats).toHaveBeenCalledTimes(2);
+    });
+
+    it('times out describeIndexStats at requestTimeoutMs', async () => {
+      vi.useFakeTimers();
+      const sparse = {
+        describeIndexStats: vi.fn(() => new Promise(() => {})),
+      } as unknown as SearchableIndex;
+      const session = new TimeoutIndexSession({ dense: {} as SearchableIndex, sparse });
+      const p = session.listNamespacesFromKeywordIndex();
+      const assertion = expect(p).resolves.toMatchObject({
+        ok: false,
+        error: expect.stringMatching(
+          /Timeout after 50ms while waiting for describeIndexStats-sparse/
+        ),
+      });
+      await vi.advanceTimersByTimeAsync(50);
+      await assertion;
     });
   });
 
@@ -139,6 +200,33 @@ describe('PineconeIndexSession', () => {
       expect(rows.namespaces[0]?.metadata['emptyArr']).toBe('array');
       expect(rows.namespaces[0]?.metadata['nested']).toBe('object');
       expect(rows.namespaces[0]?.schema_source).toBe('sampled');
+    });
+
+    it('times out metadata sampling at requestTimeoutMs', async () => {
+      vi.useFakeTimers();
+      const dense = {
+        describeIndexStats: vi.fn().mockResolvedValue({
+          namespaces: { ns1: { recordCount: 2 } },
+          dimension: 4,
+        }),
+        namespace: vi.fn().mockReturnValue({
+          query: vi.fn(() => new Promise(() => {})),
+        }),
+      } as unknown as SearchableIndex;
+      const session = new TimeoutIndexSession({ dense, sparse: {} as SearchableIndex });
+      const p = session.listNamespacesWithMetadata();
+      const assertion = expect(p).resolves.toMatchObject({
+        namespaces: [
+          {
+            namespace: 'ns1',
+            recordCount: 2,
+            metadata: {},
+            schema_source: 'sampled',
+          },
+        ],
+      });
+      await vi.advanceTimersByTimeAsync(50);
+      await assertion;
     });
 
     it('uses declared schema and skips sampling when declaredSchemas provides one', async () => {

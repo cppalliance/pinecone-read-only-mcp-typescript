@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   searchIndex,
   mergeResults,
@@ -7,6 +7,10 @@ import {
   countUniqueDocumentsFromHits,
 } from './search.js';
 import type { PineconeHit, SearchableIndex } from '../../types.js';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('searchIndex', () => {
   it('uses index.search when available and passes fields', async () => {
@@ -58,6 +62,36 @@ describe('searchIndex', () => {
     await expect(searchIndex(index, 'hi', 5, 'my-ns')).rejects.toThrow(
       'Pinecone search failed for namespace "my-ns": boom'
     );
+  });
+
+  it('retries on 503 then succeeds', async () => {
+    let n = 0;
+    const search = vi.fn().mockImplementation(async () => {
+      n++;
+      if (n < 2) throw new Error('HTTP 503');
+      return { result: { hits: [{ _id: '1', _score: 1, fields: {} }] } };
+    });
+    const index = { search } as unknown as SearchableIndex;
+    const hits = await searchIndex(index, 'hi', 5);
+    expect(hits).toHaveLength(1);
+    expect(search).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry on 401', async () => {
+    const search = vi.fn().mockRejectedValue(new Error('HTTP 401'));
+    const index = { search } as unknown as SearchableIndex;
+    await expect(searchIndex(index, 'hi', 5)).rejects.toThrow(/401/);
+    expect(search).toHaveBeenCalledTimes(1);
+  });
+
+  it('times out at requestTimeoutMs and preserves the timeout error prefix', async () => {
+    vi.useFakeTimers();
+    const search = vi.fn(() => new Promise(() => {}));
+    const index = { search } as unknown as SearchableIndex;
+    const p = searchIndex(index, 'hi', 5, undefined, undefined, undefined, 50);
+    const assertion = expect(p).rejects.toThrow(/^Timeout after 50ms while waiting for search/);
+    await vi.advanceTimersByTimeAsync(50);
+    await assertion;
   });
 });
 

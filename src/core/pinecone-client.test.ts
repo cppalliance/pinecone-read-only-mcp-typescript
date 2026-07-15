@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { PineconeClient } from './pinecone-client.js';
 import { resolveConfig } from './config.js';
 import type { SearchableIndex, PineconeHit } from '../types.js';
@@ -30,6 +30,10 @@ describe('PineconeClient', () => {
       indexName: 'test-index',
       rerankModel: 'test-model',
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -441,6 +445,27 @@ describe('PineconeClient', () => {
       await expect(client.keywordSearch({ query: '   ', namespace: 'n' })).rejects.toThrow(
         'Query cannot be empty'
       );
+    });
+
+    it('passes configured requestTimeoutMs to search call sites', async () => {
+      vi.useFakeTimers();
+      const timeoutClient = new PineconeClient({
+        apiKey: 'test-api-key',
+        indexName: 'test-index',
+        requestTimeoutMs: 50,
+      });
+      const testClient = stubPineconeClient(timeoutClient);
+      const search = vi.fn(() => new Promise(() => {}));
+      const sparseRef = { search } as SearchableIndex;
+      testClient.ensureIndexes = async () => ({
+        denseIndex: {} as SearchableIndex,
+        sparseIndex: sparseRef,
+      });
+
+      const p = timeoutClient.keywordSearch({ query: 'q', namespace: 'n' });
+      const assertion = expect(p).rejects.toThrow(/Timeout after 50ms while waiting for search/);
+      await vi.advanceTimersByTimeAsync(50);
+      await assertion;
     });
 
     it('searches sparse index only and maps hits', async () => {

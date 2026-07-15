@@ -4,7 +4,7 @@
 
 import { Pinecone } from '@pinecone-database/pinecone';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
-import { withTimeout } from '../server/retry.js';
+import { runWithPolicy } from '../server/retry.js';
 import { error as logError, info as logInfo } from '../../logger.js';
 import type {
   KeywordIndexNamespacesResult,
@@ -57,6 +57,14 @@ export class PineconeIndexSession {
     return this.sparseIndexName ?? `${this.indexName}-sparse`;
   }
 
+  getRequestTimeoutMs(): number {
+    return this.requestTimeoutMs;
+  }
+
+  private runIo<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    return runWithPolicy(() => fn(), { timeoutMs: this.requestTimeoutMs, label });
+  }
+
   /** Ensure Pinecone client is initialized */
   ensureClient(): Pinecone {
     if (!this.pc) {
@@ -103,8 +111,9 @@ export class PineconeIndexSession {
   async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {
     try {
       const { sparseIndex } = await this.ensureIndexes();
-      const stats = sparseIndex.describeIndexStats
-        ? await sparseIndex.describeIndexStats()
+      const describeStats = sparseIndex.describeIndexStats;
+      const stats = describeStats
+        ? await this.runIo('describeIndexStats-sparse', () => describeStats())
         : undefined;
       const namespaces = stats?.namespaces ?? {};
       const rows = Object.entries(namespaces).map(([namespace, info]) => ({
@@ -134,8 +143,9 @@ export class PineconeIndexSession {
       const { denseIndex } = await this.ensureIndexes();
 
       // Get index stats to find namespaces
-      const stats = denseIndex.describeIndexStats
-        ? await denseIndex.describeIndexStats()
+      const describeStats = denseIndex.describeIndexStats;
+      const stats = describeStats
+        ? await this.runIo('describeIndexStats-dense', () => describeStats())
         : undefined;
       const namespaces = stats?.namespaces ? Object.keys(stats.namespaces) : [];
       const liveSet = new Set(namespaces);
@@ -174,13 +184,16 @@ export class PineconeIndexSession {
             if (recordCount > 0 && denseIndex.namespace) {
               try {
                 const nsObj: NamespaceHandle = denseIndex.namespace(ns);
+                const queryFn = nsObj.query;
                 const sampleQuery =
-                  typeof nsObj.query === 'function'
-                    ? await nsObj.query({
-                        topK: 5,
-                        vector: Array(stats?.dimension ?? 1536).fill(0),
-                        includeMetadata: true,
-                      })
+                  typeof queryFn === 'function'
+                    ? await this.runIo('sampleNamespaceMetadata', () =>
+                        queryFn({
+                          topK: 5,
+                          vector: Array(stats?.dimension ?? 1536).fill(0),
+                          includeMetadata: true,
+                        })
+                      )
                     : { matches: undefined };
 
                 // Collect unique metadata fields and infer types (including string[])
@@ -238,26 +251,23 @@ export class PineconeIndexSession {
    * may appear on the record or inside metadata.
    */
   async fetchRecordFields(namespace: string, id: string): Promise<Record<string, unknown> | null> {
-    return withTimeout(
-      async (_signal) => {
-        const pc = this.ensureClient();
-        const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
-        const record = response.records?.[id] as
-          (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
-        if (!record) {
-          return null;
+    return this.runIo('fetchRecordFields', async () => {
+      const pc = this.ensureClient();
+      const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
+      const record = response.records?.[id] as
+        (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
+      if (!record) {
+        return null;
+      }
+      const metadata = record.metadata ?? {};
+      const merged: Record<string, unknown> = { ...metadata };
+      for (const [k, v] of Object.entries(record)) {
+        if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
+          merged[k] = v;
         }
-        const metadata = record.metadata ?? {};
-        const merged: Record<string, unknown> = { ...metadata };
-        for (const [k, v] of Object.entries(record)) {
-          if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
-            merged[k] = v;
-          }
-        }
-        return merged;
-      },
-      { timeoutMs: this.requestTimeoutMs, label: 'fetchRecordFields' }
-    );
+      }
+      return merged;
+    });
   }
 
   /**
@@ -277,7 +287,8 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          await denseIndex.describeIndexStats();
+          const describeDense = denseIndex.describeIndexStats;
+          await this.runIo('describeIndexStats-dense', () => describeDense());
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Dense index "${denseName}": ${msg}`);
@@ -290,7 +301,8 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          await sparseIndex.describeIndexStats();
+          const describeSparse = sparseIndex.describeIndexStats;
+          await this.runIo('describeIndexStats-sparse', () => describeSparse());
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Sparse index "${sparseName}": ${msg}`);

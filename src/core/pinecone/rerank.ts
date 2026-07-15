@@ -4,6 +4,8 @@
 
 import type { Pinecone } from '@pinecone-database/pinecone';
 import { error as logError, redactApiKey } from '../../logger.js';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
+import { runWithPolicy } from '../server/retry.js';
 import type { MergedHit, SearchResult } from '../../types.js';
 
 export type RerankOutcome = {
@@ -22,28 +24,33 @@ export async function rerankResults(
   rerankModel: string,
   query: string,
   results: MergedHit[],
-  topN: number
+  topN: number,
+  requestTimeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
 ): Promise<RerankOutcome> {
   if (!results || results.length === 0) {
     return { results: [], degraded: false };
   }
 
   try {
-    const rerankResult = await pc.inference.rerank({
-      model: rerankModel,
-      query,
-      // The Pinecone SDK types constrain document values to `Record<string, string>`,
-      // but the underlying HTTP API accepts any JSON value. We pass MergedHit objects
-      // (metadata may contain number/boolean/string[]) and only `chunk_text` — which is
-      // always a string — is accessed via rankFields. The double cast via `as unknown`
-      // is intentional: it bypasses the SDK's over-narrow type without stringifying
-      // metadata values that we need to read back from the returned documents.
-      documents: results as unknown as (string | Record<string, string>)[],
-      topN,
-      rankFields: ['chunk_text'],
-      returnDocuments: true,
-      parameters: { truncate: 'END' },
-    });
+    const rerankResult = await runWithPolicy(
+      async (_signal) =>
+        pc.inference.rerank({
+          model: rerankModel,
+          query,
+          // The Pinecone SDK types constrain document values to `Record<string, string>`,
+          // but the underlying HTTP API accepts any JSON value. We pass MergedHit objects
+          // (metadata may contain number/boolean/string[]) and only `chunk_text` — which is
+          // always a string — is accessed via rankFields. The double cast via `as unknown`
+          // is intentional: it bypasses the SDK's over-narrow type without stringifying
+          // metadata values that we need to read back from the returned documents.
+          documents: results as unknown as (string | Record<string, string>)[],
+          topN,
+          rankFields: ['chunk_text'],
+          returnDocuments: true,
+          parameters: { truncate: 'END' },
+        }),
+      { timeoutMs: requestTimeoutMs, label: 'rerank' }
+    );
 
     const reranked: SearchResult[] = [];
     for (const item of rerankResult.data || []) {
