@@ -5,7 +5,6 @@ import { createServer, type AllianceServerContext } from '../core/server/server-
 import { resolveAllianceConfig } from './config.js';
 import { setupCoreServerOnContext, type ServerHandle } from '../core/setup.js';
 import { registerBuiltinUrlGenerators } from './url-builtins.js';
-import { registerSuggestQueryParamsTool } from './tools/suggest-query-params-tool.js';
 
 /**
  * Options for {@link setupAllianceServer}.
@@ -114,6 +113,5 @@ export async function setupAllianceServer(
   }
 
   registerBuiltinUrlGenerators(resolvedCtx);
-  registerSuggestQueryParamsTool(server, resolvedCtx);
   return server;
 }

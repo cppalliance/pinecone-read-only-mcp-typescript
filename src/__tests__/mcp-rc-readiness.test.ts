@@ -35,6 +35,7 @@ const CORE_TOOLS = [
   'query_documents',
   'generate_urls',
   'guided_query',
+  'suggest_query_params',
 ].sort();
 
 /** A fresh, isolated core server (own context + mock client) so several can coexist. */

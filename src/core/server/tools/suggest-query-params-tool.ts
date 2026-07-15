@@ -1,28 +1,28 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { normalizeNamespace } from '../../core/server/namespace-utils.js';
-import { getNamespacesWithCache } from '../../core/server/namespaces-cache.js';
-import { suggestQueryParams } from '../../core/server/query-suggestion.js';
-import type { ServerContext } from '../../core/server/server-context.js';
-import { markSuggested } from '../../core/server/suggestion-flow.js';
+import { normalizeNamespace } from '../namespace-utils.js';
+import { getNamespacesWithCache } from '../namespaces-cache.js';
+import { suggestQueryParams } from '../query-suggestion.js';
+import type { ServerContext } from '../server-context.js';
+import { markSuggested } from '../suggestion-flow.js';
 import {
   optionalSourceField,
   rejectSourceWithoutContext,
   resolveSourceForTool,
   sourceParamSchema,
   sourceValidationError,
-} from '../../core/server/source-tool-utils.js';
+} from '../source-tool-utils.js';
 import {
   classifyToolCatchError,
   lifecycleToolError,
   logToolError,
   validationToolError,
-} from '../../core/server/tool-error.js';
+} from '../tool-error.js';
 import {
   suggestQueryParamsResponseSchema,
   type SuggestQueryParamsResponse,
-} from '../../core/server/response-schemas.js';
-import { jsonErrorResponse, validatedJsonResponse } from '../../core/server/tool-response.js';
+} from '../response-schemas.js';
+import { jsonErrorResponse, validatedJsonResponse } from '../tool-response.js';
 
 /** Register the suggest_query_params tool on the MCP server. */
 export function registerSuggestQueryParamsTool(server: McpServer, ctx?: ServerContext): void {

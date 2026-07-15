@@ -19,6 +19,7 @@ import { registerKeywordSearchTool } from './server/tools/keyword-search-tool.js
 import { registerListNamespacesTool } from './server/tools/list-namespaces-tool.js';
 import { registerNamespaceRouterTool } from './server/tools/namespace-router-tool.js';
 import { registerQueryDocumentsTool } from './server/tools/query-documents-tool.js';
+import { registerSuggestQueryParamsTool } from './server/tools/suggest-query-params-tool.js';
 import { registerQueryTool } from './server/tools/query-tool.js';
 
 /** MCP server handle with automatic teardown via `await using`. */
@@ -164,6 +165,7 @@ async function registerCoreToolSurface(
   registerQueryDocumentsTool(server, ctx);
   registerGenerateUrlsTool(server, ctx);
   registerGuidedQueryTool(server, ctx);
+  registerSuggestQueryParamsTool(server, ctx);
 
   ctx.getConfig();
   if (ctx.isMultiSource()) {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { registerBuiltinUrlGenerators } from '../../../alliance/url-builtins.js';
 import { guidedQueryResponseSchema } from '../response-schemas.js';
 import { registerQueryTool } from './query-tool.js';
-import { registerSuggestQueryParamsTool } from '../../../alliance/tools/suggest-query-params-tool.js';
+import { registerSuggestQueryParamsTool } from './suggest-query-params-tool.js';
 import { registerGuidedQueryTool } from './guided-query-tool.js';
 import {
   assertToolErrorCode,
