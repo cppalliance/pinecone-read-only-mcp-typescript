@@ -436,5 +436,31 @@ describe('PineconeIndexSession', () => {
         /Timeout after 50ms while waiting for fetchRecordFields/
       );
     });
+
+    it('retries fetch on 503 then succeeds', async () => {
+      let n = 0;
+      class RetryFetchSession extends PineconeIndexSession {
+        override ensureClient() {
+          return {
+            index: () => ({
+              fetch: vi.fn().mockImplementation(async () => {
+                n++;
+                if (n < 2) throw new Error('HTTP 503');
+                return {
+                  records: {
+                    schema_manifest: { metadata: { chunk_text: '{"ok":true}' } },
+                  },
+                };
+              }),
+            }),
+          } as never;
+        }
+      }
+
+      const session = new RetryFetchSession();
+      const fields = await session.fetchRecordFields('_mcp_config', 'schema_manifest');
+      expect(fields?.chunk_text).toBe('{"ok":true}');
+      expect(n).toBe(2);
+    });
   });
 });

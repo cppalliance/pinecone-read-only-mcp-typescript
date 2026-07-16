@@ -4,13 +4,19 @@
 
 import { Pinecone } from '@pinecone-database/pinecone';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
-import { runWithPolicy } from '../server/retry.js';
+import { runWithPolicy, type PolicyOptions } from '../server/retry.js';
 import { error as logError, info as logInfo } from '../../logger.js';
 import type {
   KeywordIndexNamespacesResult,
   NamespaceHandle,
   SearchableIndex,
 } from '../../types.js';
+
+/** Startup probe: fail fast on unreachable indexes instead of retrying. */
+const CHECK_INDEXES_IO_POLICY = { retries: 0 } as const satisfies Pick<
+  PolicyOptions,
+  'retries'
+>;
 
 function inferMetadataFieldType(value: unknown): string {
   if (value === null || value === undefined) {
@@ -61,8 +67,12 @@ export class PineconeIndexSession {
     return this.requestTimeoutMs;
   }
 
-  private runIo<T>(label: string, fn: () => Promise<T>): Promise<T> {
-    return runWithPolicy(() => fn(), { timeoutMs: this.requestTimeoutMs, label });
+  private runIo<T>(
+    label: string,
+    fn: () => Promise<T>,
+    policy?: Pick<PolicyOptions, 'retries' | 'backoffMs'>
+  ): Promise<T> {
+    return runWithPolicy(() => fn(), { timeoutMs: this.requestTimeoutMs, label, ...policy });
   }
 
   /** Ensure Pinecone client is initialized */
@@ -288,7 +298,7 @@ export class PineconeIndexSession {
       } else {
         try {
           const describeDense = denseIndex.describeIndexStats;
-          await this.runIo('describeIndexStats-dense', () => describeDense());
+          await this.runIo('describeIndexStats-dense', () => describeDense(), CHECK_INDEXES_IO_POLICY);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Dense index "${denseName}": ${msg}`);
@@ -302,7 +312,7 @@ export class PineconeIndexSession {
       } else {
         try {
           const describeSparse = sparseIndex.describeIndexStats;
-          await this.runIo('describeIndexStats-sparse', () => describeSparse());
+          await this.runIo('describeIndexStats-sparse', () => describeSparse(), CHECK_INDEXES_IO_POLICY);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Sparse index "${sparseName}": ${msg}`);

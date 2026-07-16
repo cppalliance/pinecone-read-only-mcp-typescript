@@ -21,6 +21,19 @@ function stubPineconeClient(client: PineconeClient): PineconeClientMethodStubs {
   return client as unknown as PineconeClientMethodStubs;
 }
 
+function stubDualLegSearchFailure(
+  testClient: PineconeClientMethodStubs,
+  searchError: Error
+): void {
+  testClient.ensureIndexes = async () => ({
+    denseIndex: {} as SearchableIndex,
+    sparseIndex: {} as SearchableIndex,
+  });
+  testClient.searchIndex = async () => {
+    throw searchError;
+  };
+}
+
 describe('PineconeClient', () => {
   let client: PineconeClient;
 
@@ -147,14 +160,7 @@ describe('PineconeClient', () => {
 
     it('should throw when both dense and sparse searches fail', async () => {
       const testClient = stubPineconeClient(client);
-
-      testClient.ensureIndexes = async () => ({
-        denseIndex: {} as SearchableIndex,
-        sparseIndex: {} as SearchableIndex,
-      });
-      testClient.searchIndex = async () => {
-        throw new Error('index failure');
-      };
+      stubDualLegSearchFailure(testClient, new Error('index failure'));
 
       await expect(
         client.query({
@@ -164,6 +170,23 @@ describe('PineconeClient', () => {
           useReranking: false,
         })
       ).rejects.toThrow('Hybrid search failed: both dense and sparse index searches failed.');
+    });
+
+    it('propagates app timeout when both dense and sparse searches fail', async () => {
+      const testClient = stubPineconeClient(client);
+      stubDualLegSearchFailure(
+        testClient,
+        new Error('Timeout after 50ms while waiting for search')
+      );
+
+      await expect(
+        client.query({
+          query: 'hybrid search',
+          namespace: 'test',
+          topK: 5,
+          useReranking: false,
+        })
+      ).rejects.toThrow('Timeout after 50ms while waiting for search');
     });
   });
 
