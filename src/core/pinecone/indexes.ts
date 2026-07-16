@@ -13,10 +13,7 @@ import type {
 } from '../../types.js';
 
 /** Startup probe: fail fast on unreachable indexes instead of retrying. */
-const CHECK_INDEXES_IO_POLICY = { retries: 0 } as const satisfies Pick<
-  PolicyOptions,
-  'retries'
->;
+const CHECK_INDEXES_IO_POLICY = { retries: 0 } as const satisfies Pick<PolicyOptions, 'retries'>;
 
 function inferMetadataFieldType(value: unknown): string {
   if (value === null || value === undefined) {
@@ -298,7 +295,11 @@ export class PineconeIndexSession {
       } else {
         try {
           const describeDense = denseIndex.describeIndexStats;
-          await this.runIo('describeIndexStats-dense', () => describeDense(), CHECK_INDEXES_IO_POLICY);
+          await this.runIo(
+            'describeIndexStats-dense',
+            () => describeDense(),
+            CHECK_INDEXES_IO_POLICY
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Dense index "${denseName}": ${msg}`);
@@ -312,7 +313,11 @@ export class PineconeIndexSession {
       } else {
         try {
           const describeSparse = sparseIndex.describeIndexStats;
-          await this.runIo('describeIndexStats-sparse', () => describeSparse(), CHECK_INDEXES_IO_POLICY);
+          await this.runIo(
+            'describeIndexStats-sparse',
+            () => describeSparse(),
+            CHECK_INDEXES_IO_POLICY
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Sparse index "${sparseName}": ${msg}`);

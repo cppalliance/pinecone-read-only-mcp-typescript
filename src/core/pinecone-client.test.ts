@@ -21,10 +21,7 @@ function stubPineconeClient(client: PineconeClient): PineconeClientMethodStubs {
   return client as unknown as PineconeClientMethodStubs;
 }
 
-function stubDualLegSearchFailure(
-  testClient: PineconeClientMethodStubs,
-  searchError: Error
-): void {
+function stubDualLegSearchFailure(testClient: PineconeClientMethodStubs, searchError: Error): void {
   testClient.ensureIndexes = async () => ({
     denseIndex: {} as SearchableIndex,
     sparseIndex: {} as SearchableIndex,
