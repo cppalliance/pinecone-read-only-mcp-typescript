@@ -50,6 +50,39 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Mock describeIndexStats that fails when the SDK method is invoked detached. */
+function makeThisSensitiveIndex(
+  result: {
+    namespaces?: Record<string, { recordCount?: number }>;
+    dimension?: number;
+  } = {}
+): SearchableIndex {
+  const index = {
+    describeIndexStats() {
+      if (this !== index) {
+        throw new TypeError('detached SDK method: wrong this binding');
+      }
+      return Promise.resolve(result);
+    },
+  };
+  return index as unknown as SearchableIndex;
+}
+
+/** Mock namespace().query that fails when the SDK method is invoked detached. */
+function makeThisSensitiveNamespaceHandle(
+  matches: Array<{ metadata?: Record<string, unknown> }> = []
+) {
+  const handle = {
+    query() {
+      if (this !== handle) {
+        throw new TypeError('detached SDK method: wrong this binding');
+      }
+      return Promise.resolve({ matches });
+    },
+  };
+  return handle;
+}
+
 describe('PineconeIndexSession', () => {
   describe('listNamespacesFromKeywordIndex', () => {
     it('returns namespace rows when describeIndexStats succeeds', async () => {
@@ -111,6 +144,23 @@ describe('PineconeIndexSession', () => {
       expect(sparse.describeIndexStats).toHaveBeenCalledTimes(2);
     });
 
+    it('invokes describeIndexStats on the sparse index receiver through runIo', async () => {
+      const sparse = makeThisSensitiveIndex({
+        namespaces: { papers: { recordCount: 42 } },
+      });
+      const session = new PineconeIndexSessionTestDouble({
+        dense: {} as SearchableIndex,
+        sparse,
+      });
+
+      const result = await session.listNamespacesFromKeywordIndex();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.namespaces).toEqual([{ namespace: 'papers', recordCount: 42 }]);
+      }
+    });
+
     it('times out describeIndexStats at requestTimeoutMs', async () => {
       vi.useFakeTimers();
       const sparse = {
@@ -163,6 +213,28 @@ describe('PineconeIndexSession', () => {
         recordCount: 0,
         metadata: {},
         schema_source: 'sampled',
+      });
+    });
+
+    it('invokes namespace().query on the namespace receiver through runIo when sampling', async () => {
+      const nsHandle = makeThisSensitiveNamespaceHandle([
+        { metadata: { title: 'T', tags: ['a'] } },
+      ]);
+      const dense = makeThisSensitiveIndex({
+        namespaces: { ns1: { recordCount: 2 } },
+        dimension: 4,
+      }) as SearchableIndex & { namespace: (name: string) => typeof nsHandle };
+      dense.namespace = () => nsHandle;
+      const session = new PineconeIndexSessionTestDouble({
+        dense,
+        sparse: {} as SearchableIndex,
+      });
+
+      const rows = await session.listNamespacesWithMetadata();
+      expect(rows.namespaces).toHaveLength(1);
+      expect(rows.namespaces[0]?.metadata).toMatchObject({
+        title: 'string',
+        tags: 'string[]',
       });
     });
 
@@ -323,6 +395,16 @@ describe('PineconeIndexSession', () => {
   });
 
   describe('checkIndexes', () => {
+    it('invokes describeIndexStats on dense and sparse receivers through runIo', async () => {
+      const dense = makeThisSensitiveIndex();
+      const sparse = makeThisSensitiveIndex();
+      const session = new PineconeIndexSessionTestDouble({ dense, sparse });
+
+      const result = await session.checkIndexes();
+      expect(result.ok).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
     it('returns ok when describeIndexStats succeeds for dense and sparse', async () => {
       const dense = {
         describeIndexStats: vi.fn().mockResolvedValue({}),

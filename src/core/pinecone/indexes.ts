@@ -118,10 +118,11 @@ export class PineconeIndexSession {
   async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {
     try {
       const { sparseIndex } = await this.ensureIndexes();
-      const describeStats = sparseIndex.describeIndexStats;
-      const stats = describeStats
-        ? await this.runIo('describeIndexStats-sparse', () => describeStats())
-        : undefined;
+      // SDK methods must be invoked on the index receiver inside runIo, not detached.
+      const stats =
+        typeof sparseIndex.describeIndexStats === 'function'
+          ? await this.runIo('describeIndexStats-sparse', () => sparseIndex.describeIndexStats!())
+          : undefined;
       const namespaces = stats?.namespaces ?? {};
       const rows = Object.entries(namespaces).map(([namespace, info]) => ({
         namespace,
@@ -150,10 +151,10 @@ export class PineconeIndexSession {
       const { denseIndex } = await this.ensureIndexes();
 
       // Get index stats to find namespaces
-      const describeStats = denseIndex.describeIndexStats;
-      const stats = describeStats
-        ? await this.runIo('describeIndexStats-dense', () => describeStats())
-        : undefined;
+      const stats =
+        typeof denseIndex.describeIndexStats === 'function'
+          ? await this.runIo('describeIndexStats-dense', () => denseIndex.describeIndexStats!())
+          : undefined;
       const namespaces = stats?.namespaces ? Object.keys(stats.namespaces) : [];
       const liveSet = new Set(namespaces);
 
@@ -191,11 +192,10 @@ export class PineconeIndexSession {
             if (recordCount > 0 && denseIndex.namespace) {
               try {
                 const nsObj: NamespaceHandle = denseIndex.namespace(ns);
-                const queryFn = nsObj.query;
                 const sampleQuery =
-                  typeof queryFn === 'function'
+                  typeof nsObj.query === 'function'
                     ? await this.runIo('sampleNamespaceMetadata', () =>
-                        queryFn({
+                        nsObj.query!({
                           topK: 5,
                           vector: Array(stats?.dimension ?? 1536).fill(0),
                           includeMetadata: true,
@@ -294,10 +294,9 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          const describeDense = denseIndex.describeIndexStats;
           await this.runIo(
             'describeIndexStats-dense',
-            () => describeDense(),
+            () => denseIndex.describeIndexStats!(),
             CHECK_INDEXES_IO_POLICY
           );
         } catch (err) {
@@ -312,10 +311,9 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          const describeSparse = sparseIndex.describeIndexStats;
           await this.runIo(
             'describeIndexStats-sparse',
-            () => describeSparse(),
+            () => sparseIndex.describeIndexStats!(),
             CHECK_INDEXES_IO_POLICY
           );
         } catch (err) {
