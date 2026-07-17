@@ -4,13 +4,16 @@
 
 import { Pinecone } from '@pinecone-database/pinecone';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
-import { withTimeout } from '../server/retry.js';
+import { runWithPolicy, type PolicyOptions } from '../server/retry.js';
 import { error as logError, info as logInfo } from '../../logger.js';
 import type {
   KeywordIndexNamespacesResult,
   NamespaceHandle,
   SearchableIndex,
 } from '../../types.js';
+
+/** Startup probe: fail fast on unreachable indexes instead of retrying. */
+const CHECK_INDEXES_IO_POLICY = { retries: 0 } as const satisfies Pick<PolicyOptions, 'retries'>;
 
 function inferMetadataFieldType(value: unknown): string {
   if (value === null || value === undefined) {
@@ -55,6 +58,18 @@ export class PineconeIndexSession {
   /** Sparse index name; defaults to `{indexName}-sparse`. */
   getSparseIndexName(): string {
     return this.sparseIndexName ?? `${this.indexName}-sparse`;
+  }
+
+  getRequestTimeoutMs(): number {
+    return this.requestTimeoutMs;
+  }
+
+  private runIo<T>(
+    label: string,
+    fn: () => Promise<T>,
+    policy?: Pick<PolicyOptions, 'retries' | 'backoffMs'>
+  ): Promise<T> {
+    return runWithPolicy(() => fn(), { timeoutMs: this.requestTimeoutMs, label, ...policy });
   }
 
   /** Ensure Pinecone client is initialized */
@@ -103,9 +118,11 @@ export class PineconeIndexSession {
   async listNamespacesFromKeywordIndex(): Promise<KeywordIndexNamespacesResult> {
     try {
       const { sparseIndex } = await this.ensureIndexes();
-      const stats = sparseIndex.describeIndexStats
-        ? await sparseIndex.describeIndexStats()
-        : undefined;
+      // SDK methods must be invoked on the index receiver inside runIo, not detached.
+      const stats =
+        typeof sparseIndex.describeIndexStats === 'function'
+          ? await this.runIo('describeIndexStats-sparse', () => sparseIndex.describeIndexStats!())
+          : undefined;
       const namespaces = stats?.namespaces ?? {};
       const rows = Object.entries(namespaces).map(([namespace, info]) => ({
         namespace,
@@ -134,9 +151,10 @@ export class PineconeIndexSession {
       const { denseIndex } = await this.ensureIndexes();
 
       // Get index stats to find namespaces
-      const stats = denseIndex.describeIndexStats
-        ? await denseIndex.describeIndexStats()
-        : undefined;
+      const stats =
+        typeof denseIndex.describeIndexStats === 'function'
+          ? await this.runIo('describeIndexStats-dense', () => denseIndex.describeIndexStats!())
+          : undefined;
       const namespaces = stats?.namespaces ? Object.keys(stats.namespaces) : [];
       const liveSet = new Set(namespaces);
 
@@ -176,11 +194,13 @@ export class PineconeIndexSession {
                 const nsObj: NamespaceHandle = denseIndex.namespace(ns);
                 const sampleQuery =
                   typeof nsObj.query === 'function'
-                    ? await nsObj.query({
-                        topK: 5,
-                        vector: Array(stats?.dimension ?? 1536).fill(0),
-                        includeMetadata: true,
-                      })
+                    ? await this.runIo('sampleNamespaceMetadata', () =>
+                        nsObj.query!({
+                          topK: 5,
+                          vector: Array(stats?.dimension ?? 1536).fill(0),
+                          includeMetadata: true,
+                        })
+                      )
                     : { matches: undefined };
 
                 // Collect unique metadata fields and infer types (including string[])
@@ -238,26 +258,23 @@ export class PineconeIndexSession {
    * may appear on the record or inside metadata.
    */
   async fetchRecordFields(namespace: string, id: string): Promise<Record<string, unknown> | null> {
-    return withTimeout(
-      async (_signal) => {
-        const pc = this.ensureClient();
-        const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
-        const record = response.records?.[id] as
-          (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
-        if (!record) {
-          return null;
+    return this.runIo('fetchRecordFields', async () => {
+      const pc = this.ensureClient();
+      const response = await pc.index(this.indexName).fetch({ ids: [id], namespace });
+      const record = response.records?.[id] as
+        (Record<string, unknown> & { metadata?: Record<string, unknown> }) | undefined;
+      if (!record) {
+        return null;
+      }
+      const metadata = record.metadata ?? {};
+      const merged: Record<string, unknown> = { ...metadata };
+      for (const [k, v] of Object.entries(record)) {
+        if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
+          merged[k] = v;
         }
-        const metadata = record.metadata ?? {};
-        const merged: Record<string, unknown> = { ...metadata };
-        for (const [k, v] of Object.entries(record)) {
-          if (k !== 'metadata' && k !== 'values' && k !== 'sparseValues' && !(k in merged)) {
-            merged[k] = v;
-          }
-        }
-        return merged;
-      },
-      { timeoutMs: this.requestTimeoutMs, label: 'fetchRecordFields' }
-    );
+      }
+      return merged;
+    });
   }
 
   /**
@@ -277,7 +294,11 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          await denseIndex.describeIndexStats();
+          await this.runIo(
+            'describeIndexStats-dense',
+            () => denseIndex.describeIndexStats!(),
+            CHECK_INDEXES_IO_POLICY
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Dense index "${denseName}": ${msg}`);
@@ -290,7 +311,11 @@ export class PineconeIndexSession {
         );
       } else {
         try {
-          await sparseIndex.describeIndexStats();
+          await this.runIo(
+            'describeIndexStats-sparse',
+            () => sparseIndex.describeIndexStats!(),
+            CHECK_INDEXES_IO_POLICY
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           errors.push(`Sparse index "${sparseName}": ${msg}`);

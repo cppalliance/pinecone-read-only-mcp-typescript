@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { getLogLevel, error as logError, info } from '../../logger.js';
+import { isAppTimeoutError } from './retry.js';
 
 /** User-facing error message: detailed in DEBUG, generic otherwise. */
 export function getToolErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -81,9 +82,6 @@ export type ToolError = z.infer<typeof toolErrorSchema>;
 
 const DEFAULT_TIMEOUT_SUGGESTION = 'Retry the request, or increase --request-timeout-ms.';
 
-/** Matches {@link withTimeout} rejection message prefix in `retry.ts`. */
-const TIMEOUT_MESSAGE_PATTERN = /^Timeout after \d+ms while waiting for /i;
-
 export function flowGateToolError(namespace: string, message: string): ToolError {
   return {
     code: 'FLOW_GATE',
@@ -136,18 +134,12 @@ export function lifecycleToolError(message: string): ToolError {
   };
 }
 
-function rawErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * Map an unexpected thrown error to {@link ToolError} for MCP responses.
- * Uses raw `Error#message` for timeout detection (DEBUG mode replaces the user message).
  */
 export function classifyToolCatchError(error: unknown, fallbackMessage: string): ToolError {
-  const raw = rawErrorMessage(error);
   const message = getToolErrorMessage(error, fallbackMessage);
-  if (TIMEOUT_MESSAGE_PATTERN.test(raw)) {
+  if (isAppTimeoutError(error)) {
     return timeoutToolError(message);
   }
   return pineconeToolError(message);

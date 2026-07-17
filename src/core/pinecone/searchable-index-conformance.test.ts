@@ -40,4 +40,24 @@ describe('SearchableIndex SDK conformance (#220)', () => {
       expect(typeof namespaceHandle[method]).toBe('function');
     }
   );
+
+  // indexes.ts must call SDK methods on the index/namespace receiver inside runIo;
+  // detached calls throw against the real SDK (wpak-ai PR #225).
+  it('describeIndexStats throws when called detached from the index', () => {
+    const describeIndexStats = index.describeIndexStats as () => Promise<unknown>;
+    expect(() => describeIndexStats()).toThrow(
+      /_describeIndexStats|Cannot read properties of undefined/
+    );
+  });
+
+  it('namespace().query rejects when called detached from the namespace handle', async () => {
+    const query = namespaceHandle.query as (opts: {
+      topK: number;
+      vector: number[];
+      includeMetadata: boolean;
+    }) => Promise<unknown>;
+    await expect(query({ topK: 1, vector: [0], includeMetadata: true })).rejects.toThrow(
+      /_queryCommand|Cannot read properties of undefined/
+    );
+  });
 });

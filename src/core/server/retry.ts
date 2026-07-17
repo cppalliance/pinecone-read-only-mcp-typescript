@@ -7,6 +7,16 @@
  * waiter still rejects immediately on timeout.
  */
 
+import { warn, redactApiKey } from '../../logger.js';
+
+/** Matches {@link withTimeout} rejection message prefix; used by tool-error and callers. */
+export const APP_TIMEOUT_PATTERN = /^Timeout after \d+ms while waiting for /i;
+
+export function isAppTimeoutError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return APP_TIMEOUT_PATTERN.test(msg);
+}
+
 /** Retry policy. */
 export interface RetryOptions {
   /** Total number of attempts after the first try. Default 2. */
@@ -27,6 +37,14 @@ export interface TimeoutOptions {
   label?: string;
 }
 
+/** Per-call timeout + transient retry policy for outbound Pinecone I/O. */
+export interface PolicyOptions {
+  timeoutMs: number;
+  label: string;
+  retries?: number;
+  backoffMs?: number;
+}
+
 /** Default predicate: retry on common transient HTTP statuses (429/5xx) and network-ish messages. */
 export function defaultShouldRetry(error: unknown): boolean {
   if (error instanceof Error) {
@@ -41,6 +59,12 @@ export function defaultShouldRetry(error: unknown): boolean {
     return true;
   }
   return false;
+}
+
+/** Retry 429/5xx + network errors; do NOT retry app-level {@link withTimeout} deadlines. */
+export function transientShouldRetry(error: unknown): boolean {
+  if (isAppTimeoutError(error)) return false;
+  return defaultShouldRetry(error);
 }
 
 /**
@@ -101,4 +125,23 @@ export async function withTimeout<T>(
     // When the deadline wins, `fnPromise` may still reject from abort listeners.
     void fnPromise.catch(() => {});
   }
+}
+
+/**
+ * Compose per-attempt timeout with bounded transient retry for Pinecone I/O.
+ * Each retry gets a fresh timeout window.
+ */
+export function runWithPolicy<T>(
+  fn: (signal: AbortSignal) => Promise<T>,
+  options: PolicyOptions
+): Promise<T> {
+  return withRetry(() => withTimeout(fn, { timeoutMs: options.timeoutMs, label: options.label }), {
+    retries: options.retries,
+    backoffMs: options.backoffMs,
+    shouldRetry: transientShouldRetry,
+    onRetry: (attempt, error) => {
+      const msg = redactApiKey(error instanceof Error ? error.message : String(error));
+      warn(`Retrying ${options.label} (attempt ${attempt})`, msg);
+    },
+  });
 }

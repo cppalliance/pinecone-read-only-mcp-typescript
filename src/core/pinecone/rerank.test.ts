@@ -7,7 +7,7 @@ const sampleMerged: MergedHit[] = [
 ];
 
 function makePc(rerank: ReturnType<typeof vi.fn>) {
-  return { inference: { rerank } } as Parameters<typeof rerankResults>[0];
+  return { inference: { rerank } } as unknown as Parameters<typeof rerankResults>[0];
 }
 
 describe('rerankResults', () => {
@@ -50,6 +50,40 @@ describe('rerankResults', () => {
     expect(out.degradation_reason).toMatch(/^rerank_failed:/);
     expect(out.results[0]?.reranked).toBe(false);
     expect(out.results[0]?.content).toBe('hello');
+  });
+
+  it('retries on 429 then succeeds without degrading', async () => {
+    let n = 0;
+    const rerank = vi.fn().mockImplementation(async () => {
+      n++;
+      if (n < 2) throw new Error('HTTP 429');
+      return {
+        data: [
+          {
+            score: 0.99,
+            document: { _id: '1', chunk_text: 'hello', metadata: { k: 'v' } },
+          },
+        ],
+      };
+    });
+    const pc = makePc(rerank);
+
+    const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);
+
+    expect(out.degraded).toBe(false);
+    expect(out.results[0]?.reranked).toBe(true);
+    expect(rerank).toHaveBeenCalledTimes(2);
+  });
+
+  it('degrades after exhausting retries on persistent 503', async () => {
+    const rerank = vi.fn().mockRejectedValue(new Error('HTTP 503'));
+    const pc = makePc(rerank);
+
+    const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5, 5000);
+
+    expect(out.degraded).toBe(true);
+    expect(out.degradation_reason).toMatch(/^rerank_failed:/);
+    expect(rerank).toHaveBeenCalledTimes(3);
   });
 
   it('returns empty reranked results with degraded=false when data is an empty array', async () => {
