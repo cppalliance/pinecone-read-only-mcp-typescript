@@ -70,6 +70,7 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 ### Fixed
 
 - Legacy module facades no longer silently diverge from an explicit `ServerContext` passed to `setupCoreServer` / `setupAllianceServer`. Mixing legacy facades with `{ context: ctx }` setup now throws with migration guidance instead of dual-state behavior.
+- **Hybrid query degradation:** When exactly one search leg fails and the surviving leg returns zero hits, `query` / `query_documents` / `guided_query` now set `experimental.hybrid_leg_failed` and `experimental.degraded: true` with `degradation_reason` `dense_leg_failed` or `sparse_leg_failed`, so empty results from a leg failure are distinguishable from a legitimately empty namespace. (#228)
 
 ## [0.2.0] - 2026-05-29
 

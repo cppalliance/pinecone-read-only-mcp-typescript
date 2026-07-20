@@ -211,7 +211,7 @@ Each row: `document_id`, `paper_number` (deprecated alias), `title`, `author`, `
 
 ### Rerank and hybrid degradation
 
-When reranking is requested but the rerank API fails, the server still returns **`status: 'success'`** with rows where `reranked: false`, plus **experimental** envelope fields:
+Hybrid `query` / `query_documents` responses use **`status: 'success'`** even when confidence is reduced. The server sets **experimental** envelope fields when reranking fails or when exactly one hybrid leg fails and the surviving leg returns zero hits:
 
 | Field | When set | Meaning |
 | ----- | -------- | ------- |

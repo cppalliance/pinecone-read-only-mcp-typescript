@@ -14,7 +14,13 @@ import type {
   HybridQueryResult,
   HybridLegFailed,
 } from '../types.js';
-import { DEFAULT_TOP_K, MAX_TOP_K, COUNT_TOP_K, COUNT_FIELDS } from '../constants.js';
+import {
+  DEFAULT_TOP_K,
+  MAX_TOP_K,
+  COUNT_TOP_K,
+  COUNT_FIELDS,
+  HYBRID_LEG_FAILED_REASON,
+} from '../constants.js';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from './config.js';
 import { PineconeIndexSession, type NamespacesWithMetadataResult } from './pinecone/indexes.js';
 import {
@@ -197,12 +203,12 @@ export class PineconeClient {
       }
     }
 
-    if (hybridLegFailed === 'dense' && sparseHits.length === 0) {
+    const survivorEmpty =
+      (hybridLegFailed === 'dense' && sparseHits.length === 0) ||
+      (hybridLegFailed === 'sparse' && denseHits.length === 0);
+    if (hybridLegFailed && survivorEmpty) {
       degraded = true;
-      degradation_reason = 'dense_leg_failed';
-    } else if (hybridLegFailed === 'sparse' && denseHits.length === 0) {
-      degraded = true;
-      degradation_reason = 'sparse_leg_failed';
+      degradation_reason = HYBRID_LEG_FAILED_REASON[hybridLegFailed];
     }
 
     logInfo(
