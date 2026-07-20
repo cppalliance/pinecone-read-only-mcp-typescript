@@ -164,17 +164,9 @@ export class PineconeClient {
     }
 
     let hybridLegFailed: HybridLegFailed = null;
-    if (
-      denseResult.status === 'rejected' &&
-      sparseResult.status === 'fulfilled' &&
-      sparseHits.length > 0
-    ) {
+    if (denseResult.status === 'rejected' && sparseResult.status === 'fulfilled') {
       hybridLegFailed = 'dense';
-    } else if (
-      sparseResult.status === 'rejected' &&
-      denseResult.status === 'fulfilled' &&
-      denseHits.length > 0
-    ) {
+    } else if (sparseResult.status === 'rejected' && denseResult.status === 'fulfilled') {
       hybridLegFailed = 'sparse';
     }
 
@@ -203,6 +195,14 @@ export class PineconeClient {
         degradation_reason =
           'rerank_skipped_no_model: set PINECONE_RERANK_MODEL, pass rerankModel in config, or construct PineconeClient from resolveConfig().';
       }
+    }
+
+    if (hybridLegFailed === 'dense' && sparseHits.length === 0) {
+      degraded = true;
+      degradation_reason = 'dense_leg_failed';
+    } else if (hybridLegFailed === 'sparse' && denseHits.length === 0) {
+      degraded = true;
+      degradation_reason = 'sparse_leg_failed';
     }
 
     logInfo(

@@ -215,9 +215,11 @@ When reranking is requested but the rerank API fails, the server still returns *
 
 | Field | When set | Meaning |
 | ----- | -------- | ------- |
-| `experimental.degraded` | `true` | Rerank was attempted and failed (or another degradation path fired) |
-| `experimental.degradation_reason` | string | Human-readable detail for MCP/LLM clients (e.g. `rerank_failed: timeout after 5000ms`) |
-| `experimental.hybrid_leg_failed` | `'dense'` \| `'sparse'` | Exactly one hybrid search leg failed while the other returned hits |
+| `experimental.degraded` | `true` | Rerank was attempted and failed, **or** one hybrid leg failed with an empty survivor |
+| `experimental.degradation_reason` | string | Human-readable detail (e.g. `rerank_failed: timeout after 5000ms`, `dense_leg_failed`, `sparse_leg_failed`) |
+| `experimental.hybrid_leg_failed` | `'dense'` \| `'sparse'` | Exactly one hybrid search leg failed (survivor may have hits or be empty) |
+
+When `hybrid_leg_failed` is set and `degraded` is `false`, the survivor leg returned hits (partial hybrid). When both are set with zero `results`, a leg failed — not a confidently empty namespace.
 
 Treat **`experimental.degraded: true`** as lower confidence even when `status` is `success`. Combine with per-row `reranked`, `preset`, and `use_reranking`. Structured stderr logs may include additional detail.
 

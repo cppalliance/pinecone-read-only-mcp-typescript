@@ -36,7 +36,7 @@ export interface SearchResult {
   reranked: boolean;
 }
 
-/** Which hybrid leg failed when the other produced hits (partial hybrid success). */
+/** Which hybrid leg failed when exactly one of dense/sparse search rejected. */
 export type HybridLegFailed = 'dense' | 'sparse' | null;
 
 /**
@@ -47,11 +47,14 @@ export type RerankSkippedReason = 'no_model';
 
 export interface HybridQueryResult {
   results: SearchResult[];
-  /** True when reranking was attempted and failed (rows may have `reranked: false`). */
+  /**
+   * True when reranking was attempted and failed (rows may have `reranked: false`),
+   * or when exactly one hybrid leg failed and the surviving leg returned zero hits.
+   */
   degraded: boolean;
   /** Present when {@link degraded} is true; suitable for LLM-facing tool output. */
   degradation_reason?: string;
-  /** Set when exactly one of dense/sparse search failed but the other succeeded. */
+  /** Set when exactly one of dense/sparse search failed (regardless of survivor hit count). */
   hybrid_leg_failed: HybridLegFailed;
   /**
    * Set when `useReranking` was true but no rerank model is configured on the client
