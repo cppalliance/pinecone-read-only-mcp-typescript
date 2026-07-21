@@ -26,7 +26,7 @@ Tool responses are sanitized at construction and at the serialization boundary:
 - `src/core/server/source-registry.ts`: multi-source `source_errors` rejection messages are redacted via `redactErrorMessage` when the per-source error map is built.
 - `src/core/server/tool-response.ts`: `jsonResponse` / `jsonErrorResponse` call `redactSensitiveFields()` before JSON serialization (boundary layer).
 
-Document metadata UUIDs and other non-sensitive fields are preserved at every layer.
+Document metadata UUIDs and other non-sensitive fields are preserved throughout MCP response construction, aggregation, and serialization.
 
 ## Private config content (descriptions and schemas)
 
