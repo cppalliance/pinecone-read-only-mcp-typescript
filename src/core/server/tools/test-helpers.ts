@@ -15,6 +15,12 @@ import {
 import type { ToolError, ToolErrorCode } from '../tool-error.js';
 import { toolErrorSchema } from '../tool-error.js';
 
+/** Credential-shaped test token for redaction assertions. Not a real key. */
+export const PCSK_KEY = 'pcsk_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/** Non-sensitive UUID for regression tests (must not be masked). */
+export const UUID_KEY = '12345678-1234-1234-1234-123456789abc';
+
 /** Handler invoked by MCP tool registration (params shape varies by tool). */
 export type ToolHandler = (params: Record<string, unknown>) => Promise<unknown>;
 
@@ -214,6 +220,35 @@ export function makeMockPineconeClient(
     checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
     getSparseIndexName: () => 'sparse',
   };
+}
+
+/** Mock client that rejects namespace listing with the given error message. */
+export function makeFailingSourceClient(
+  rejectionMessage: string,
+  options?: { sparseIndexName?: string }
+) {
+  return {
+    listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error(rejectionMessage)),
+    query: vi.fn(),
+    count: vi.fn(),
+    keywordSearch: vi.fn(),
+    checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
+    getSparseIndexName: () => options?.sparseIndexName ?? 'sparse',
+  };
+}
+
+/** Two-source client map: api_key_1 succeeds; api_key_2 fails with rejectionMessage. */
+export function makePartialFailureMultiSourceClients(
+  rejectionMessage: string,
+  options?: { successNamespaces?: string[] }
+) {
+  return new Map([
+    ['api_key_1', makeMockPineconeClient(options?.successNamespaces ?? ['wg21'])],
+    [
+      'api_key_2',
+      makeFailingSourceClient(rejectionMessage, { sparseIndexName: 'api_key_2-sparse' }),
+    ],
+  ]);
 }
 
 export type MultiSourceTestContext = {

@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getLogLevel, error as logError, info } from '../../logger.js';
+import { getLogLevel, redactApiKey, error as logError, info } from '../../logger.js';
 import { isAppTimeoutError } from './retry.js';
 
 /** User-facing error message: detailed in DEBUG, generic otherwise. */
@@ -111,18 +111,18 @@ export function pineconeToolError(
 ): ToolError {
   return {
     code: 'PINECONE_ERROR',
-    message,
+    message: redactApiKey(message),
     recoverable: options?.recoverable ?? false,
-    ...(options?.suggestion ? { suggestion: options.suggestion } : {}),
+    ...(options?.suggestion ? { suggestion: redactApiKey(options.suggestion) } : {}),
   };
 }
 
 export function timeoutToolError(message: string, options?: { suggestion?: string }): ToolError {
   return {
     code: 'TIMEOUT',
-    message,
+    message: redactApiKey(message),
     recoverable: true,
-    suggestion: options?.suggestion ?? DEFAULT_TIMEOUT_SUGGESTION,
+    suggestion: redactApiKey(options?.suggestion ?? DEFAULT_TIMEOUT_SUGGESTION),
   };
 }
 

@@ -7,7 +7,7 @@
  * waiter still rejects immediately on timeout.
  */
 
-import { warn, redactApiKey } from '../../logger.js';
+import { warn, redactErrorMessage } from '../../logger.js';
 
 /** Matches {@link withTimeout} rejection message prefix; used by tool-error and callers. */
 export const APP_TIMEOUT_PATTERN = /^Timeout after \d+ms while waiting for /i;
@@ -140,7 +140,7 @@ export function runWithPolicy<T>(
     backoffMs: options.backoffMs,
     shouldRetry: transientShouldRetry,
     onRetry: (attempt, error) => {
-      const msg = redactApiKey(error instanceof Error ? error.message : String(error));
+      const msg = redactErrorMessage(error);
       warn(`Retrying ${options.label} (attempt ${attempt})`, msg);
     },
   });

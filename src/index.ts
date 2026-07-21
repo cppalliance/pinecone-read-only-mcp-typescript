@@ -25,6 +25,7 @@ import {
   error as logError,
   info as logInfo,
   redactApiKey,
+  redactErrorMessage,
   setLogFormat,
   setLogLevel,
   warn as logWarn,
@@ -50,7 +51,7 @@ function buildConfigOrExit(): AllianceServerConfig {
   try {
     return resolveAllianceConfig(parsed.overrides);
   } catch (err) {
-    const message = redactApiKey(err instanceof Error ? err.message : String(err));
+    const message = redactErrorMessage(err);
     process.stderr.write(`Error: ${message}\n`);
     process.exit(1);
   }
@@ -199,7 +200,7 @@ async function main(): Promise<void> {
       process.exit(0);
     });
   } catch (error) {
-    const summary = redactApiKey(error instanceof Error ? error.message : String(error));
+    const summary = redactErrorMessage(error);
     logError(`Fatal error in main(): ${summary}`);
     process.exit(1);
   }

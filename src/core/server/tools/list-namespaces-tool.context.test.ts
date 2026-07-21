@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { setLogLevel } from '../../../logger.js';
 import { registerListNamespacesTool } from './list-namespaces-tool.js';
 import { listNamespacesResponseSchema } from '../response-schemas.js';
 import {
@@ -6,9 +7,10 @@ import {
   createMultiSourceTestContext,
   createTestServerContext,
   expectMatchesResponseSchema,
-  makeMockPineconeClient,
+  makePartialFailureMultiSourceClients,
   mockNamespacesWithMetadataResult,
   parseToolJson,
+  PCSK_KEY,
 } from './test-helpers.js';
 
 describe('list_namespaces tool handler (ServerContext instance path)', () => {
@@ -73,19 +75,7 @@ describe('list_namespaces tool handler (ServerContext instance path)', () => {
 
 describe('list_namespaces tool handler (multi-source)', () => {
   it('tags namespaces with source and propagates source_errors on partial failure', async () => {
-    const client1 = makeMockPineconeClient(['wg21']);
-    const client2 = {
-      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('api_key_2 unreachable')),
-      query: vi.fn(),
-      count: vi.fn(),
-      keywordSearch: vi.fn(),
-      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
-      getSparseIndexName: () => 'sparse',
-    };
-    const clients = new Map([
-      ['api_key_1', client1],
-      ['api_key_2', client2],
-    ]);
+    const clients = makePartialFailureMultiSourceClients('api_key_2 unreachable');
     const { ctx } = createMultiSourceTestContext({ clients });
 
     const server = createMockServer();
@@ -97,6 +87,31 @@ describe('list_namespaces tool handler (multi-source)', () => {
     expect(namespaces[0]).toMatchObject({ name: 'wg21', source: 'api_key_1' });
     expect(body['source_errors']).toEqual({ api_key_2: 'api_key_2 unreachable' });
     expect(body['cache_hit']).toBe(false);
+  });
+
+  it('redacts a credential-shaped token embedded in a source_errors rejection message at DEBUG log level', async () => {
+    setLogLevel('DEBUG');
+    try {
+      const clients = makePartialFailureMultiSourceClients(
+        `api_key_2 unreachable: auth failed ${PCSK_KEY}`
+      );
+      const { ctx } = createMultiSourceTestContext({ clients });
+
+      const server = createMockServer();
+      registerListNamespacesTool(server as never, ctx);
+      const raw = await server.getHandler('list_namespaces')!({});
+      const text = raw.content[0]!.text;
+      expect(text).not.toContain(PCSK_KEY);
+      expect(text).toContain('***');
+
+      const body = parseToolJson(raw);
+      expectMatchesResponseSchema(listNamespacesResponseSchema, body);
+      expect(body['source_errors']).toMatchObject({
+        api_key_2: expect.not.stringContaining(PCSK_KEY),
+      });
+    } finally {
+      setLogLevel('INFO');
+    }
   });
 
   it('surfaces schema_source and config_warnings when declarations mismatch live data', async () => {
