@@ -26,6 +26,10 @@ Tagged releases are published to npm from GitHub Actions when a **GitHub Release
 
 - **Breaking (library):** Trimmed internal-only re-exports from the package root and `/alliance` entry to shrink the public surface and blast radius: `trimOptional`, `createUnconfiguredAllianceContext` (core), and the concrete URL generators `generatorMailing`, `generatorSlackCpplang` (alliance). These were internal helpers, not part of the documented API; register built-ins via `registerBuiltinUrlGenerators` and build contexts via `createServer` / `createIsolatedContext`. A snapshot test now guards the runtime export surface so internal symbols cannot leak back in. See [MIGRATION.md](docs/MIGRATION.md#internal-only-re-exports-removed-203). (#203)
 
+### Fixed
+
+- **Hybrid query degradation:** When exactly one search leg fails and the surviving leg returns zero hits, `query` / `query_documents` / `guided_query` now set `experimental.hybrid_leg_failed` and `experimental.degraded: true` with `degradation_reason` `dense_leg_failed` or `sparse_leg_failed`, so empty results from a leg failure are distinguishable from a legitimately empty namespace. (#228)
+
 ## [0.4.0] - 2026-06-24
 
 ### Added

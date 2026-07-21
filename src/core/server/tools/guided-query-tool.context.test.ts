@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SPARSE_LEG_FAILED_REASON } from '../../../constants.js';
 import { registerBuiltinUrlGenerators } from '../../../alliance/url-builtins.js';
 import { guidedQueryResponseSchema } from '../response-schemas.js';
 import { registerQueryTool } from './query-tool.js';
@@ -94,7 +95,7 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
     const query = vi.fn().mockResolvedValue(
       makeHybridQueryResult({
         degraded: true,
-        degradation_reason: 'sparse_leg_empty',
+        degradation_reason: SPARSE_LEG_FAILED_REASON,
         hybrid_leg_failed: 'sparse',
       })
     );
@@ -115,7 +116,7 @@ describe('guided_query tool handler (ServerContext instance path)', () => {
     const resultExperimental = result['experimental'] as Record<string, unknown>;
     expect(resultExperimental['degraded']).toBe(true);
     expect(resultExperimental['hybrid_leg_failed']).toBe('sparse');
-    expect(resultExperimental['degradation_reason']).toBe('sparse_leg_empty');
+    expect(resultExperimental['degradation_reason']).toBe(SPARSE_LEG_FAILED_REASON);
   });
 
   it('enriches urls via ctx builtins when enrich_urls is true', async () => {

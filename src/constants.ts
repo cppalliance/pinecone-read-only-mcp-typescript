@@ -77,3 +77,11 @@ export const ALLIANCE_SERVER_INSTRUCTIONS =
  * @deprecated Use {@link ALLIANCE_SERVER_INSTRUCTIONS} or {@link CORE_SERVER_INSTRUCTIONS}.
  */
 export const SERVER_INSTRUCTIONS = ALLIANCE_SERVER_INSTRUCTIONS;
+
+export const DENSE_LEG_FAILED_REASON = 'dense_leg_failed' as const;
+export const SPARSE_LEG_FAILED_REASON = 'sparse_leg_failed' as const;
+
+export const HYBRID_LEG_FAILED_REASON = {
+  dense: DENSE_LEG_FAILED_REASON,
+  sparse: SPARSE_LEG_FAILED_REASON,
+} as const satisfies Record<'dense' | 'sparse', string>;

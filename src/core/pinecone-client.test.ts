@@ -3,6 +3,7 @@ import { PineconeClient } from './pinecone-client.js';
 import { resolveConfig } from './config.js';
 import type { SearchableIndex, PineconeHit } from '../types.js';
 import * as rerankModule from './pinecone/rerank.js';
+import { DENSE_LEG_FAILED_REASON, SPARSE_LEG_FAILED_REASON } from '../constants.js';
 
 /** Stubs for private methods (assigned at runtime; avoid intersecting private `PineconeClient` members). */
 type PineconeClientMethodStubs = {
@@ -28,6 +29,29 @@ function stubDualLegSearchFailure(testClient: PineconeClientMethodStubs, searchE
   });
   testClient.searchIndex = async () => {
     throw searchError;
+  };
+}
+
+function stubSingleLegHybridFailure(
+  testClient: PineconeClientMethodStubs,
+  options: {
+    failedLeg: 'dense' | 'sparse';
+    survivorHits: PineconeHit[];
+  }
+): void {
+  const denseRef = {} as SearchableIndex;
+  const sparseRef = {} as SearchableIndex;
+  const failedRef = options.failedLeg === 'dense' ? denseRef : sparseRef;
+
+  testClient.ensureIndexes = async () => ({
+    denseIndex: denseRef,
+    sparseIndex: sparseRef,
+  });
+  testClient.searchIndex = async (index) => {
+    if (index === failedRef) {
+      throw new Error(`${options.failedLeg} failure`);
+    }
+    return options.survivorHits;
   };
 }
 
@@ -120,26 +144,16 @@ describe('PineconeClient', () => {
 
     it('should continue hybrid search when one index fails', async () => {
       const testClient = stubPineconeClient(client);
-      const denseRef = {} as SearchableIndex;
-      const sparseRef = {} as SearchableIndex;
-
-      testClient.ensureIndexes = async () => ({
-        denseIndex: denseRef,
-        sparseIndex: sparseRef,
-      });
-
-      testClient.searchIndex = async (index) => {
-        if (index === denseRef) {
-          throw new Error('dense failure');
-        }
-        return [
+      stubSingleLegHybridFailure(testClient, {
+        failedLeg: 'dense',
+        survivorHits: [
           {
             _id: 'doc-1',
             _score: 0.9,
             fields: { chunk_text: 'hybrid content', author: 'tester' },
           },
-        ];
-      };
+        ],
+      });
 
       const out = await client.query({
         query: 'hybrid search',
@@ -153,6 +167,82 @@ describe('PineconeClient', () => {
       expect(out.results[0]?.metadata.author).toBe('tester');
       expect(out.hybrid_leg_failed).toBe('dense');
       expect(out.degraded).toBe(false);
+    });
+
+    it('reports hybrid_leg_failed and degraded when dense fails and sparse returns empty', async () => {
+      const testClient = stubPineconeClient(client);
+      stubSingleLegHybridFailure(testClient, { failedLeg: 'dense', survivorHits: [] });
+
+      const out = await client.query({
+        query: 'hybrid search',
+        namespace: 'test',
+        topK: 5,
+        useReranking: false,
+      });
+
+      expect(out.results).toHaveLength(0);
+      expect(out.hybrid_leg_failed).toBe('dense');
+      expect(out.degraded).toBe(true);
+      expect(out.degradation_reason).toBe(DENSE_LEG_FAILED_REASON);
+    });
+
+    it('reports hybrid_leg_failed and degraded when sparse fails and dense returns empty', async () => {
+      const testClient = stubPineconeClient(client);
+      stubSingleLegHybridFailure(testClient, { failedLeg: 'sparse', survivorHits: [] });
+
+      const out = await client.query({
+        query: 'hybrid search',
+        namespace: 'test',
+        topK: 5,
+        useReranking: false,
+      });
+
+      expect(out.results).toHaveLength(0);
+      expect(out.hybrid_leg_failed).toBe('sparse');
+      expect(out.degraded).toBe(true);
+      expect(out.degradation_reason).toBe(SPARSE_LEG_FAILED_REASON);
+    });
+
+    it('returns no degradation when both legs succeed with empty hits', async () => {
+      const testClient = stubPineconeClient(client);
+      testClient.ensureIndexes = async () => ({
+        denseIndex: {} as SearchableIndex,
+        sparseIndex: {} as SearchableIndex,
+      });
+      testClient.searchIndex = async () => [];
+
+      const out = await client.query({
+        query: 'hybrid search',
+        namespace: 'test',
+        topK: 5,
+        useReranking: false,
+      });
+
+      expect(out.results).toHaveLength(0);
+      expect(out.hybrid_leg_failed).toBeNull();
+      expect(out.degraded).toBe(false);
+      expect(out.degradation_reason).toBeUndefined();
+    });
+
+    it('prioritizes leg-failure degradation_reason over rerank_skipped_no_model when both apply', async () => {
+      const noModelClient = new PineconeClient({
+        apiKey: 'test-api-key',
+        indexName: 'test-index',
+      });
+      const testClient = stubPineconeClient(noModelClient);
+      stubSingleLegHybridFailure(testClient, { failedLeg: 'dense', survivorHits: [] });
+
+      const out = await noModelClient.query({
+        query: 'hybrid search',
+        namespace: 'test',
+        topK: 5,
+        useReranking: true,
+      });
+
+      expect(out.hybrid_leg_failed).toBe('dense');
+      expect(out.degraded).toBe(true);
+      expect(out.degradation_reason).toBe(DENSE_LEG_FAILED_REASON);
+      expect(out.rerank_skipped_reason).toBe('no_model');
     });
 
     it('should throw when both dense and sparse searches fail', async () => {

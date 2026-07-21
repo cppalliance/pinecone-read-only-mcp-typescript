@@ -14,7 +14,13 @@ import type {
   HybridQueryResult,
   HybridLegFailed,
 } from '../types.js';
-import { DEFAULT_TOP_K, MAX_TOP_K, COUNT_TOP_K, COUNT_FIELDS } from '../constants.js';
+import {
+  DEFAULT_TOP_K,
+  MAX_TOP_K,
+  COUNT_TOP_K,
+  COUNT_FIELDS,
+  HYBRID_LEG_FAILED_REASON,
+} from '../constants.js';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from './config.js';
 import { PineconeIndexSession, type NamespacesWithMetadataResult } from './pinecone/indexes.js';
 import {
@@ -164,17 +170,9 @@ export class PineconeClient {
     }
 
     let hybridLegFailed: HybridLegFailed = null;
-    if (
-      denseResult.status === 'rejected' &&
-      sparseResult.status === 'fulfilled' &&
-      sparseHits.length > 0
-    ) {
+    if (denseResult.status === 'rejected' && sparseResult.status === 'fulfilled') {
       hybridLegFailed = 'dense';
-    } else if (
-      sparseResult.status === 'rejected' &&
-      denseResult.status === 'fulfilled' &&
-      denseHits.length > 0
-    ) {
+    } else if (sparseResult.status === 'rejected' && denseResult.status === 'fulfilled') {
       hybridLegFailed = 'sparse';
     }
 
@@ -203,6 +201,14 @@ export class PineconeClient {
         degradation_reason =
           'rerank_skipped_no_model: set PINECONE_RERANK_MODEL, pass rerankModel in config, or construct PineconeClient from resolveConfig().';
       }
+    }
+
+    const survivorEmpty =
+      (hybridLegFailed === 'dense' && sparseHits.length === 0) ||
+      (hybridLegFailed === 'sparse' && denseHits.length === 0);
+    if (hybridLegFailed && survivorEmpty) {
+      degraded = true;
+      degradation_reason = HYBRID_LEG_FAILED_REASON[hybridLegFailed];
     }
 
     logInfo(
