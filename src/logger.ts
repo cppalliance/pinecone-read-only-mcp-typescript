@@ -65,12 +65,21 @@ export function redactApiKey(s: string): string {
   return out;
 }
 
+/** Redact credential-shaped substrings from an error or string value. */
+export function redactErrorMessage(error: unknown): string {
+  return redactApiKey(error instanceof Error ? error.message : String(error));
+}
+
 /** MCP response keys whose string values may carry SDK errors or credentials. */
 const SENSITIVE_RESPONSE_KEYS = new Set(['message', 'suggestion', 'degradation_reason']);
+
+/** Response key whose nested object values (keyed by source name) still need redaction. */
+const SOURCE_ERRORS_KEY = 'source_errors';
 
 /**
  * Recursively redact sensitive string fields in MCP tool payloads.
  * Only keys in {@link SENSITIVE_RESPONSE_KEYS} are masked; other strings (e.g. document UUIDs in metadata) are preserved.
+ * `source_errors` is a special case: its values are keyed by source name, so every string value directly under it is redacted.
  */
 export function redactSensitiveFields(
   value: unknown,
@@ -90,6 +99,21 @@ export function redactSensitiveFields(
   for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
     if (typeof nested === 'string' && SENSITIVE_RESPONSE_KEYS.has(key)) {
       out[key] = redactApiKey(nested);
+    } else if (
+      key === SOURCE_ERRORS_KEY &&
+      nested !== null &&
+      typeof nested === 'object' &&
+      !Array.isArray(nested)
+    ) {
+      seen.add(nested as object);
+      const sourceErrors: Record<string, unknown> = {};
+      for (const [sourceName, sourceValue] of Object.entries(nested as Record<string, unknown>)) {
+        sourceErrors[sourceName] =
+          typeof sourceValue === 'string'
+            ? redactApiKey(sourceValue)
+            : redactSensitiveFields(sourceValue, seen);
+      }
+      out[key] = sourceErrors;
     } else {
       out[key] = redactSensitiveFields(nested, seen);
     }

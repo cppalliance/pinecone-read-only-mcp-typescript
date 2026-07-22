@@ -15,6 +15,8 @@ import {
   makeNamespaceCacheEntry,
   makeSearchResult,
   parseToolJson,
+  PCSK_KEY,
+  UUID_KEY,
 } from './tools/test-helpers.js';
 
 vi.mock('./client-context.js', () => ({
@@ -32,9 +34,6 @@ vi.mock('./suggestion-flow.js', async (importOriginal) => {
     markSuggested: vi.fn(),
   };
 });
-
-const PCSK_KEY = 'pcsk_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const UUID_KEY = '12345678-1234-1234-1234-123456789abc';
 
 const flowOk = {
   ok: true as const,
@@ -78,6 +77,19 @@ describe('redactSensitiveFields', () => {
     expect(out.message).not.toContain(PCSK_KEY);
     expect(out.results[0].metadata.document_id).toBe(UUID_KEY);
   });
+
+  it('redacts string values nested under source_errors regardless of key name', () => {
+    const input = {
+      source_errors: {
+        api_key_2: `unreachable: ${PCSK_KEY}`,
+        api_key_3: 'benign message with no token',
+      },
+    };
+    const out = redactSensitiveFields(input) as typeof input;
+    expect(out.source_errors.api_key_2).not.toContain(PCSK_KEY);
+    expect(out.source_errors.api_key_2).toContain('***');
+    expect(out.source_errors.api_key_3).toBe('benign message with no token');
+  });
 });
 
 describe('MCP response redaction', () => {
@@ -99,6 +111,8 @@ describe('MCP response redaction', () => {
     const err = pineconeToolError(`PINECONE_ERROR with ${PCSK_KEY}`, {
       suggestion: `retry with ${PCSK_KEY}`,
     });
+    expect(err.message).not.toContain(PCSK_KEY);
+    expect(err.suggestion).not.toContain(PCSK_KEY);
     const text = jsonErrorResponse(err).content[0]!.text;
     expect(text).not.toContain(PCSK_KEY);
     expect(text).toContain('***');
@@ -107,6 +121,8 @@ describe('MCP response redaction', () => {
   it('redacts classifyToolCatchError output in DEBUG mode', () => {
     setLogLevel('DEBUG');
     const err = classifyToolCatchError(new Error(`SDK auth failed ${PCSK_KEY}`), 'fallback');
+    expect(err.message).not.toContain(PCSK_KEY);
+    expect(err.message).toContain('***');
     const text = jsonErrorResponse(err).content[0]!.text;
     expect(text).not.toContain(PCSK_KEY);
   });

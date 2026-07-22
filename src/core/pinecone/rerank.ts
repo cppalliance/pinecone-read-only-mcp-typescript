@@ -3,7 +3,7 @@
  */
 
 import type { Pinecone } from '@pinecone-database/pinecone';
-import { error as logError, redactApiKey } from '../../logger.js';
+import { error as logError, redactErrorMessage } from '../../logger.js';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../config.js';
 import { runWithPolicy } from '../server/retry.js';
 import type { MergedHit, SearchResult } from '../../types.js';
@@ -66,7 +66,7 @@ export async function rerankResults(
     return { results: reranked, degraded: false };
   } catch (error) {
     logError('Error reranking results', error);
-    const msg = redactApiKey(error instanceof Error ? error.message : String(error));
+    const msg = redactErrorMessage(error);
     return {
       results: results.slice(0, topN).map((result) => ({
         id: result._id || '',

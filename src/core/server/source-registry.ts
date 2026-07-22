@@ -3,6 +3,7 @@
  */
 
 import { PineconeClient } from '../pinecone-client.js';
+import { redactErrorMessage } from '../../logger.js';
 import type { NamespaceInfo } from './server-context.js';
 import { fetchNamespacesWithDeclaredConfig, type NamespacesCacheEntry } from './namespace-cache.js';
 import type { SourceDefinition } from './source-config.js';
@@ -151,9 +152,7 @@ export class SourceRegistry {
         maxExpires = Math.max(maxExpires, outcome.value.result.expires_at);
       } else {
         cache_hit = false;
-        const message =
-          outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
-        source_errors[name] = message;
+        source_errors[name] = redactErrorMessage(outcome.reason);
       }
     }
     const expires_at = maxExpires > 0 ? maxExpires : Date.now() + this.cacheTtlMs;

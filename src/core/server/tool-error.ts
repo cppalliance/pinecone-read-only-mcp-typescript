@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getLogLevel, error as logError, info } from '../../logger.js';
+import { getLogLevel, redactApiKey, error as logError, info } from '../../logger.js';
 import { isAppTimeoutError } from './retry.js';
 
 /** User-facing error message: detailed in DEBUG, generic otherwise. */
@@ -60,7 +60,7 @@ const timeoutToolErrorSchema = z.object({
   code: z.literal('TIMEOUT'),
   message: z.string(),
   recoverable: z.literal(true),
-  suggestion: z.string().optional(),
+  suggestion: z.string(),
 });
 
 const lifecycleToolErrorSchema = z.object({
@@ -80,7 +80,8 @@ export const toolErrorSchema = z.discriminatedUnion('code', [
 
 export type ToolError = z.infer<typeof toolErrorSchema>;
 
-const DEFAULT_TIMEOUT_SUGGESTION = 'Retry the request, or increase --request-timeout-ms.';
+/** Default TIMEOUT suggestion when the caller does not supply one. */
+export const DEFAULT_TIMEOUT_SUGGESTION = 'Retry the request, or increase --request-timeout-ms.';
 
 export function flowGateToolError(namespace: string, message: string): ToolError {
   return {
@@ -111,18 +112,21 @@ export function pineconeToolError(
 ): ToolError {
   return {
     code: 'PINECONE_ERROR',
-    message,
+    message: redactApiKey(message),
     recoverable: options?.recoverable ?? false,
-    ...(options?.suggestion ? { suggestion: options.suggestion } : {}),
+    ...(options?.suggestion ? { suggestion: redactApiKey(options.suggestion) } : {}),
   };
 }
 
 export function timeoutToolError(message: string, options?: { suggestion?: string }): ToolError {
   return {
     code: 'TIMEOUT',
-    message,
+    message: redactApiKey(message),
     recoverable: true,
-    suggestion: options?.suggestion ?? DEFAULT_TIMEOUT_SUGGESTION,
+    suggestion:
+      options?.suggestion !== undefined
+        ? redactApiKey(options.suggestion)
+        : DEFAULT_TIMEOUT_SUGGESTION,
   };
 }
 

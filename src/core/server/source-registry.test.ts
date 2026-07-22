@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildSourceRegistry } from './source-registry.js';
 import type { SourceDefinition } from './source-config.js';
+import { PCSK_KEY, makeFailingSourceClient } from './tools/test-helpers.js';
 
 const sources: SourceDefinition[] = [
   { name: 'api_key_1', apiKey: 'k1', indexName: 'idx-a', sparseIndexName: 'idx-a-sparse' },
@@ -67,14 +68,14 @@ describe('SourceRegistry', () => {
 
   it('returns partial namespaces and source_errors when one source fails', async () => {
     const client1 = mockClient('api_key_1');
-    const client2 = {
-      listNamespacesWithMetadata: vi.fn().mockRejectedValue(new Error('api_key_2 unreachable')),
-      checkIndexes: vi.fn().mockResolvedValue({ ok: true, errors: [] }),
-      getSparseIndexName: () => 'api_key_2-sparse',
-    };
     const clients = new Map([
       ['api_key_1', client1 as never],
-      ['api_key_2', client2 as never],
+      [
+        'api_key_2',
+        makeFailingSourceClient('api_key_2 unreachable', {
+          sparseIndexName: 'api_key_2-sparse',
+        }) as never,
+      ],
     ]);
     const registry = buildSourceRegistry({
       sources,
@@ -89,6 +90,30 @@ describe('SourceRegistry', () => {
     expect(result.data[0]?.source).toBe('api_key_1');
     expect(result.source_errors).toEqual({ api_key_2: 'api_key_2 unreachable' });
     expect(result.cache_hit).toBe(false);
+  });
+
+  it('redacts credential-shaped tokens in source_errors at construction time', async () => {
+    const client1 = mockClient('api_key_1');
+    const clients = new Map([
+      ['api_key_1', client1 as never],
+      [
+        'api_key_2',
+        makeFailingSourceClient(`api_key_2 unreachable: auth failed ${PCSK_KEY}`, {
+          sparseIndexName: 'api_key_2-sparse',
+        }) as never,
+      ],
+    ]);
+    const registry = buildSourceRegistry({
+      sources,
+      defaultSource: 'api_key_1',
+      cacheTtlMs: 60_000,
+      defaultTopK: 10,
+      requestTimeoutMs: 15_000,
+      clients,
+    });
+    const result = await registry.getAllNamespacesWithCache();
+    expect(result.source_errors?.['api_key_2']).not.toContain(PCSK_KEY);
+    expect(result.source_errors?.['api_key_2']).toContain('***');
   });
 
   it('aggregates warnings across sources in getAllNamespacesWithCache', async () => {

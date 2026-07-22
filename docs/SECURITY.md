@@ -11,6 +11,7 @@
 `src/logger.ts` implements `redactApiKey` and recursive redaction for structured log data:
 
 - UUID-shaped tokens (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) → `***`
+  The UUID mask is intentional: legacy (pre-`pcsk_`) Pinecone API keys are UUID-formatted, so this pattern is a credential mask, not just an incidental document-ID match. Tool-error `message`/`suggestion` therefore use the full `redactApiKey` (including UUID masking), not a document-ID-preserving variant.
 - Modern Pinecone keys (`pcsk_…`) → `***`
 - Substrings after `apiKey` / `api_key` / similar patterns → masked
 - `Authorization: Bearer …` tokens → masked
@@ -19,9 +20,14 @@ Logs go to **stderr**; use `PINECONE_READ_ONLY_MCP_LOG_FORMAT=json` for pipeline
 
 ## MCP response redaction
 
-Tool responses returned to MCP clients (and LLM consumers) are sanitized in `src/core/server/tool-response.ts` via `redactSensitiveFields()` before JSON serialization. Only known sensitive keys are masked (`message`, `suggestion`, `degradation_reason`); document metadata UUIDs and other non-sensitive fields are preserved.
+Tool responses are sanitized at construction and at the serialization boundary:
 
-This covers tool error payloads, hybrid degradation reasons, and SDK error text surfaced in DEBUG log mode — not only stderr logs.
+- `src/core/server/tool-error.ts`: `pineconeToolError` and `timeoutToolError` apply `redactApiKey` to `message` before the `ToolError` object is built; `timeoutToolError` redacts caller-supplied `suggestion` only (the default suggestion is a static string with no secrets).
+- `src/logger.ts`: `redactErrorMessage` redacts credential-shaped substrings from error values; `redactSensitiveFields()` masks known sensitive keys (`message`, `suggestion`, `degradation_reason`) and every string value nested directly under `source_errors` (keyed by source name, not a sensitive field name).
+- `src/core/server/source-registry.ts`: multi-source `source_errors` rejection messages are redacted via `redactErrorMessage` when the per-source error map is built.
+- `src/core/server/tool-response.ts`: `jsonResponse` / `jsonErrorResponse` call `redactSensitiveFields()` before JSON serialization (boundary layer).
+
+Document metadata UUIDs and other non-sensitive fields are preserved throughout MCP response construction, aggregation, and serialization.
 
 ## Private config content (descriptions and schemas)
 

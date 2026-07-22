@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyToolCatchError,
+  DEFAULT_TIMEOUT_SUGGESTION,
   flowGateToolError,
   lifecycleToolError,
+  timeoutToolError,
   toolErrorSchema,
   validationToolError,
 } from './tool-error.js';
@@ -54,6 +56,18 @@ describe('ToolError schema and builders', () => {
     expect(err.code).toBe('TIMEOUT');
     expect(err.recoverable).toBe(true);
     expect(err.suggestion).toMatch(/retry|timeout/i);
+    toolErrorSchema.parse(err);
+  });
+
+  it('TIMEOUT: default suggestion is unredacted literal', () => {
+    const err = timeoutToolError('Timeout after 100ms');
+    expect(err.suggestion).toBe(DEFAULT_TIMEOUT_SUGGESTION);
+    toolErrorSchema.parse(err);
+  });
+
+  it('TIMEOUT: explicit empty suggestion is preserved, not replaced by default', () => {
+    const err = timeoutToolError('Timeout after 100ms', { suggestion: '' });
+    expect(err.suggestion).toBe('');
     toolErrorSchema.parse(err);
   });
 });
