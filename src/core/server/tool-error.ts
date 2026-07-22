@@ -60,7 +60,7 @@ const timeoutToolErrorSchema = z.object({
   code: z.literal('TIMEOUT'),
   message: z.string(),
   recoverable: z.literal(true),
-  suggestion: z.string().optional(),
+  suggestion: z.string(),
 });
 
 const lifecycleToolErrorSchema = z.object({
@@ -80,7 +80,8 @@ export const toolErrorSchema = z.discriminatedUnion('code', [
 
 export type ToolError = z.infer<typeof toolErrorSchema>;
 
-const DEFAULT_TIMEOUT_SUGGESTION = 'Retry the request, or increase --request-timeout-ms.';
+/** Default TIMEOUT suggestion when the caller does not supply one. */
+export const DEFAULT_TIMEOUT_SUGGESTION = 'Retry the request, or increase --request-timeout-ms.';
 
 export function flowGateToolError(namespace: string, message: string): ToolError {
   return {
@@ -122,7 +123,7 @@ export function timeoutToolError(message: string, options?: { suggestion?: strin
     code: 'TIMEOUT',
     message: redactApiKey(message),
     recoverable: true,
-    suggestion: redactApiKey(options?.suggestion ?? DEFAULT_TIMEOUT_SUGGESTION),
+    suggestion: options?.suggestion ? redactApiKey(options.suggestion) : DEFAULT_TIMEOUT_SUGGESTION,
   };
 }
 
