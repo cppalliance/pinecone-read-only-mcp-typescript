@@ -64,4 +64,10 @@ describe('ToolError schema and builders', () => {
     expect(err.suggestion).toBe(DEFAULT_TIMEOUT_SUGGESTION);
     toolErrorSchema.parse(err);
   });
+
+  it('TIMEOUT: explicit empty suggestion is preserved, not replaced by default', () => {
+    const err = timeoutToolError('Timeout after 100ms', { suggestion: '' });
+    expect(err.suggestion).toBe('');
+    toolErrorSchema.parse(err);
+  });
 });

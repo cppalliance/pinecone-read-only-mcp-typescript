@@ -123,7 +123,10 @@ export function timeoutToolError(message: string, options?: { suggestion?: strin
     code: 'TIMEOUT',
     message: redactApiKey(message),
     recoverable: true,
-    suggestion: options?.suggestion ? redactApiKey(options.suggestion) : DEFAULT_TIMEOUT_SUGGESTION,
+    suggestion:
+      options?.suggestion !== undefined
+        ? redactApiKey(options.suggestion)
+        : DEFAULT_TIMEOUT_SUGGESTION,
   };
 }
 
