@@ -161,14 +161,15 @@ export interface PolicyOptions {
 }
 
 /**
- * Default retry predicate. Precedence: reject app timeouts, structured HTTP status,
- * transient Pinecone error names, then network-ish message regex as last resort.
+ * Default retry predicate. Precedence: reject app timeouts; if {@link getHttpStatus}
+ * returns a defined status, use {@link isRetryableHttpStatus} only (no message fallback);
+ * otherwise transient Pinecone error names, then network-ish message regex.
  */
 export function defaultShouldRetry(error: unknown): boolean {
   if (isAppTimeoutError(error)) return false;
 
   const status = getHttpStatus(error);
-  if (status !== undefined && isRetryableHttpStatus(status)) return true;
+  if (status !== undefined) return isRetryableHttpStatus(status);
 
   if (hasTransientPineconeErrorName(error)) return true;
 

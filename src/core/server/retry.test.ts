@@ -55,6 +55,12 @@ describe('defaultShouldRetry', () => {
   it('does not retry AppTimeoutError even via defaultShouldRetry', () => {
     expect(defaultShouldRetry(new AppTimeoutError(50, 'search'))).toBe(false);
   });
+
+  it('does not retry when structured status is non-retryable despite retryable message', () => {
+    const err = Object.assign(new Error('HTTP 503 upstream glitch'), { status: 401 });
+    expect(getHttpStatus(err)).toBe(401);
+    expect(defaultShouldRetry(err)).toBe(false);
+  });
 });
 
 describe('transientShouldRetry', () => {
