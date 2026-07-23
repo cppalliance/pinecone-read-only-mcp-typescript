@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AppTimeoutError } from './retry.js';
 import {
   classifyToolCatchError,
   DEFAULT_TIMEOUT_SUGGESTION,
@@ -48,7 +49,15 @@ describe('ToolError schema and builders', () => {
     expect(parsed.message).toContain('disposed');
   });
 
-  it('TIMEOUT: classifyToolCatchError matches withTimeout message prefix', () => {
+  it('TIMEOUT: classifyToolCatchError matches AppTimeoutError', () => {
+    const err = classifyToolCatchError(new AppTimeoutError(100, 'query'), 'fallback');
+    expect(err.code).toBe('TIMEOUT');
+    expect(err.recoverable).toBe(true);
+    expect(err.suggestion).toMatch(/retry|timeout/i);
+    toolErrorSchema.parse(err);
+  });
+
+  it('TIMEOUT: classifyToolCatchError matches legacy withTimeout message prefix', () => {
     const err = classifyToolCatchError(
       new Error('Timeout after 100ms while waiting for query'),
       'fallback'

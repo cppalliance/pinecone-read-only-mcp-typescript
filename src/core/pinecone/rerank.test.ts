@@ -75,6 +75,31 @@ describe('rerankResults', () => {
     expect(rerank).toHaveBeenCalledTimes(2);
   });
 
+  it('retries on structured 429 without 429 in message then succeeds', async () => {
+    let n = 0;
+    const rerank = vi.fn().mockImplementation(async () => {
+      n++;
+      if (n < 2) {
+        throw Object.assign(new Error('Rate limited'), { status: 429 });
+      }
+      return {
+        data: [
+          {
+            score: 0.99,
+            document: { _id: '1', chunk_text: 'hello', metadata: { k: 'v' } },
+          },
+        ],
+      };
+    });
+    const pc = makePc(rerank);
+
+    const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);
+
+    expect(out.degraded).toBe(false);
+    expect(out.results[0]?.reranked).toBe(true);
+    expect(rerank).toHaveBeenCalledTimes(2);
+  });
+
   it('degrades after exhausting retries on persistent 503', async () => {
     const rerank = vi.fn().mockRejectedValue(new Error('HTTP 503'));
     const pc = makePc(rerank);
