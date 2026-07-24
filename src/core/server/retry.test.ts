@@ -27,6 +27,11 @@ describe('defaultShouldRetry', () => {
     expect(defaultShouldRetry(err)).toBe(true);
   });
 
+  it('retries on structured status 408 without status in message', () => {
+    const err = Object.assign(new Error('Request timeout'), { status: 408 });
+    expect(defaultShouldRetry(err)).toBe(true);
+  });
+
   it('retries on PineconeUnmappedHttpError with Status: 429 in message', () => {
     const err = Object.assign(new Error('Status: 429. Body: throttled'), {
       name: 'PineconeUnmappedHttpError',
@@ -95,6 +100,18 @@ describe('isAppTimeoutError', () => {
   it('matches AppTimeoutError in cause chain', () => {
     const wrapped = new Error('wrapped', { cause: new AppTimeoutError(50, 'search') });
     expect(isAppTimeoutError(wrapped)).toBe(true);
+  });
+
+  it('matches legacy withTimeout message prefix in cause chain', () => {
+    const wrapped = new Error('wrapper', {
+      cause: new Error('Timeout after 50ms while waiting for search'),
+    });
+    expect(isAppTimeoutError(wrapped)).toBe(true);
+  });
+
+  it('does not match generic wrapper without timeout in cause chain', () => {
+    const wrapped = new Error('wrapper', { cause: new Error('upstream failed') });
+    expect(isAppTimeoutError(wrapped)).toBe(false);
   });
 });
 

@@ -102,9 +102,9 @@ export function getHttpStatus(error: unknown): number | undefined {
   });
 }
 
-/** True when `status` is a transient HTTP code (429 or 5xx). */
+/** True when `status` is a transient HTTP code (408, 429, or 5xx). */
 export function isRetryableHttpStatus(status: number): boolean {
-  return status === 429 || (status >= 500 && status < 600);
+  return status === 408 || status === 429 || (status >= 500 && status < 600);
 }
 
 function hasTransientPineconeErrorName(error: unknown): boolean {
@@ -117,7 +117,7 @@ function hasTransientPineconeErrorName(error: unknown): boolean {
 
 /**
  * True for app-level {@link withTimeout} deadlines ({@link AppTimeoutError} or legacy message prefix).
- * Checks the error and its `cause` chain before falling back to {@link APP_TIMEOUT_PATTERN}.
+ * Branded timeouts and {@link APP_TIMEOUT_PATTERN} are matched on the error `cause` chain.
  */
 export function isAppTimeoutError(error: unknown): boolean {
   if (
@@ -128,8 +128,18 @@ export function isAppTimeoutError(error: unknown): boolean {
     return true;
   }
 
-  const msg = error instanceof Error ? error.message : String(error);
-  return APP_TIMEOUT_PATTERN.test(msg);
+  if (
+    forEachErrorInChain(error, (current) =>
+      APP_TIMEOUT_PATTERN.test(current.message) ? true : undefined
+    ) === true
+  ) {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return APP_TIMEOUT_PATTERN.test(String(error));
+  }
+  return false;
 }
 
 /** Retry policy. */
@@ -176,14 +186,17 @@ export function defaultShouldRetry(error: unknown): boolean {
   if (error instanceof Error) {
     if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND/i.test(error.message)) return true;
     if (/\btimeout\b/i.test(error.message)) return true;
+    // 500/501 omitted: structured/Pinecone paths cover 500; 501 is not transient. Plain "HTTP 500" in message alone is not matched here.
     if (/\b(429|502|503|504)\b/.test(error.message)) return true;
   }
   return false;
 }
 
-/** Retry 429/5xx + network errors; do NOT retry app-level {@link withTimeout} deadlines. */
+/**
+ * Retry predicate for {@link runWithPolicy} Pinecone transient I/O.
+ * Delegates to {@link defaultShouldRetry} (including app-timeout exclusion).
+ */
 export function transientShouldRetry(error: unknown): boolean {
-  if (isAppTimeoutError(error)) return false;
   return defaultShouldRetry(error);
 }
 
