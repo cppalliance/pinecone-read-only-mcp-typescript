@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { rerankResults } from './rerank.js';
 import type { MergedHit } from '../../types.js';
+import { makeStructured429Once } from './test-helpers.js';
 
 const sampleMerged: MergedHit[] = [
   { _id: '1', _score: 0.5, chunk_text: 'hello', metadata: { k: 'v' } },
@@ -66,6 +67,25 @@ describe('rerankResults', () => {
         ],
       };
     });
+    const pc = makePc(rerank);
+
+    const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);
+
+    expect(out.degraded).toBe(false);
+    expect(out.results[0]?.reranked).toBe(true);
+    expect(rerank).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries on structured 429 without 429 in message then succeeds', async () => {
+    const success = {
+      data: [
+        {
+          score: 0.99,
+          document: { _id: '1', chunk_text: 'hello', metadata: { k: 'v' } },
+        },
+      ],
+    };
+    const rerank = makeStructured429Once(success);
     const pc = makePc(rerank);
 
     const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);

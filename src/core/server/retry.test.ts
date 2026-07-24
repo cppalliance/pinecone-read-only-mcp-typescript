@@ -6,6 +6,8 @@ import {
   transientShouldRetry,
   isAppTimeoutError,
   runWithPolicy,
+  AppTimeoutError,
+  getHttpStatus,
 } from './retry.js';
 
 afterEach(() => {
@@ -18,6 +20,61 @@ describe('defaultShouldRetry', () => {
   });
   it('does not retry on 400', () => {
     expect(defaultShouldRetry(new Error('HTTP 400'))).toBe(false);
+  });
+
+  it('retries on structured status 429 without 429 in message', () => {
+    const err = Object.assign(new Error('Too many requests'), { status: 429 });
+    expect(defaultShouldRetry(err)).toBe(true);
+  });
+
+  it('retries on structured status 408 without status in message', () => {
+    const err = Object.assign(new Error('Request timeout'), { status: 408 });
+    expect(defaultShouldRetry(err)).toBe(true);
+  });
+
+  it('retries on PineconeUnmappedHttpError with Status: 429 in message', () => {
+    const err = Object.assign(new Error('Status: 429. Body: throttled'), {
+      name: 'PineconeUnmappedHttpError',
+    });
+    expect(defaultShouldRetry(err)).toBe(true);
+    expect(getHttpStatus(err)).toBe(429);
+  });
+
+  it('retries on statusCode 503 without status code in message', () => {
+    const err = Object.assign(new Error('Service unavailable'), { statusCode: 503 });
+    expect(defaultShouldRetry(err)).toBe(true);
+  });
+
+  it('retries on PineconeUnavailableError with reworded message', () => {
+    const err = Object.assign(new Error('Service is down for maintenance'), {
+      name: 'PineconeUnavailableError',
+    });
+    expect(defaultShouldRetry(err)).toBe(true);
+    expect(getHttpStatus(err)).toBe(503);
+  });
+
+  it('retries on ECONNRESET message without structured status', () => {
+    expect(defaultShouldRetry(new Error('ECONNRESET'))).toBe(true);
+  });
+
+  it('retries when retryable network signal is only on cause chain', () => {
+    const wrapped = new Error('Request failed', { cause: new Error('ECONNRESET') });
+    expect(defaultShouldRetry(wrapped)).toBe(true);
+  });
+
+  it('does not retry wrapper with generic cause and no retry signals', () => {
+    const wrapped = new Error('Request failed', { cause: new Error('upstream failed') });
+    expect(defaultShouldRetry(wrapped)).toBe(false);
+  });
+
+  it('does not retry AppTimeoutError even via defaultShouldRetry', () => {
+    expect(defaultShouldRetry(new AppTimeoutError(50, 'search'))).toBe(false);
+  });
+
+  it('does not retry when structured status is non-retryable despite retryable message', () => {
+    const err = Object.assign(new Error('HTTP 503 upstream glitch'), { status: 401 });
+    expect(getHttpStatus(err)).toBe(401);
+    expect(defaultShouldRetry(err)).toBe(false);
   });
 });
 
@@ -35,11 +92,36 @@ describe('transientShouldRetry', () => {
       false
     );
   });
+
+  it('does not retry AppTimeoutError', () => {
+    expect(transientShouldRetry(new AppTimeoutError(50, 'search'))).toBe(false);
+  });
 });
 
 describe('isAppTimeoutError', () => {
   it('matches withTimeout rejection messages', () => {
     expect(isAppTimeoutError(new Error('Timeout after 50ms while waiting for search'))).toBe(true);
+  });
+
+  it('matches AppTimeoutError instances', () => {
+    expect(isAppTimeoutError(new AppTimeoutError(50, 'search'))).toBe(true);
+  });
+
+  it('matches AppTimeoutError in cause chain', () => {
+    const wrapped = new Error('wrapped', { cause: new AppTimeoutError(50, 'search') });
+    expect(isAppTimeoutError(wrapped)).toBe(true);
+  });
+
+  it('matches legacy withTimeout message prefix in cause chain', () => {
+    const wrapped = new Error('wrapper', {
+      cause: new Error('Timeout after 50ms while waiting for search'),
+    });
+    expect(isAppTimeoutError(wrapped)).toBe(true);
+  });
+
+  it('does not match generic wrapper without timeout in cause chain', () => {
+    const wrapped = new Error('wrapper', { cause: new Error('upstream failed') });
+    expect(isAppTimeoutError(wrapped)).toBe(false);
   });
 });
 
@@ -82,7 +164,7 @@ describe('runWithPolicy', () => {
       },
       { timeoutMs: 50, label: 'test', retries: 2, backoffMs: 1 }
     );
-    const assertion = expect(p).rejects.toThrow(/Timeout after 50ms/);
+    const assertion = expect(p).rejects.toBeInstanceOf(AppTimeoutError);
     await vi.advanceTimersByTimeAsync(50);
     await assertion;
     expect(n).toBe(1);
@@ -99,7 +181,7 @@ describe('withTimeout', () => {
         }),
       { timeoutMs: 100, label: 'test' }
     );
-    const assertion = expect(p).rejects.toThrow(/Timeout after 100ms/);
+    const assertion = expect(p).rejects.toBeInstanceOf(AppTimeoutError);
     await vi.advanceTimersByTimeAsync(100);
     await assertion;
   });

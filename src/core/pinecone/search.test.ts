@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { AppTimeoutError } from '../server/retry.js';
+import { makeStructured429Once } from './test-helpers.js';
 import {
   searchIndex,
   mergeResults,
@@ -77,6 +79,15 @@ describe('searchIndex', () => {
     expect(search).toHaveBeenCalledTimes(2);
   });
 
+  it('retries on structured 429 without 429 in message then succeeds', async () => {
+    const success = { result: { hits: [{ _id: '1', _score: 1, fields: {} }] } };
+    const search = makeStructured429Once(success);
+    const index = { search } as unknown as SearchableIndex;
+    const hits = await searchIndex(index, 'hi', 5);
+    expect(hits).toHaveLength(1);
+    expect(search).toHaveBeenCalledTimes(2);
+  });
+
   it('does not retry on 401', async () => {
     const search = vi.fn().mockRejectedValue(new Error('HTTP 401'));
     const index = { search } as unknown as SearchableIndex;
@@ -84,12 +95,12 @@ describe('searchIndex', () => {
     expect(search).toHaveBeenCalledTimes(1);
   });
 
-  it('times out at requestTimeoutMs and preserves the timeout error prefix', async () => {
+  it('times out at requestTimeoutMs and rejects with AppTimeoutError', async () => {
     vi.useFakeTimers();
     const search = vi.fn(() => new Promise(() => {}));
     const index = { search } as unknown as SearchableIndex;
     const p = searchIndex(index, 'hi', 5, undefined, undefined, undefined, 50);
-    const assertion = expect(p).rejects.toThrow(/^Timeout after 50ms while waiting for search/);
+    const assertion = expect(p).rejects.toBeInstanceOf(AppTimeoutError);
     await vi.advanceTimersByTimeAsync(50);
     await assertion;
   });

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { AppTimeoutError } from '../retry.js';
 import { registerQueryTool } from './query-tool.js';
 import { querySuccessResponseSchema } from '../response-schemas.js';
 import {
@@ -136,10 +137,33 @@ describe('query tool handler (ServerContext instance path)', () => {
     );
   });
 
-  it('returns TIMEOUT when client throws timeout error', async () => {
+  it('returns TIMEOUT when client throws legacy timeout message', async () => {
     const query = vi
       .fn()
       .mockRejectedValue(new Error('Timeout after 5000ms while waiting for query'));
+    const ctx = createTestServerContext({
+      client: { query } as never,
+    });
+    ctx.markSuggested('wg21', {
+      recommended_tool: 'fast',
+      suggested_fields: ['title'],
+      user_query: 'q',
+    });
+    const server = createMockServer();
+    registerQueryTool(server as never, ctx);
+    const err = assertToolErrorCode(
+      await server.getHandler('query')!({
+        query_text: 'hello',
+        namespace: 'wg21',
+        preset: 'fast',
+      }),
+      'TIMEOUT'
+    );
+    expect(err.suggestion).toMatch(/retry|timeout/i);
+  });
+
+  it('returns TIMEOUT when client throws AppTimeoutError', async () => {
+    const query = vi.fn().mockRejectedValue(new AppTimeoutError(5000, 'query'));
     const ctx = createTestServerContext({
       client: { query } as never,
     });

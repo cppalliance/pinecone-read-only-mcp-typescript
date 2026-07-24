@@ -9,12 +9,139 @@
 
 import { warn, redactErrorMessage } from '../../logger.js';
 
-/** Matches {@link withTimeout} rejection message prefix; used by tool-error and callers. */
+const ERROR_CHAIN_MAX_DEPTH = 5;
+
+const PINECONE_NAME_TO_HTTP_STATUS: Readonly<Record<string, number>> = {
+  PineconeInternalServerError: 500,
+  PineconeUnavailableError: 503,
+};
+
+const TRANSIENT_PINECONE_ERROR_NAMES = new Set(['PineconeConnectionError']);
+
+const PINECONE_STATUS_MESSAGE_PATTERN = /(?:Status:|with status)\s*(\d{3})/i;
+
+/** Matches {@link withTimeout} rejection message prefix; legacy fallback for plain Error mocks. */
 export const APP_TIMEOUT_PATTERN = /^Timeout after \d+ms while waiting for /i;
 
+/** Branded error thrown by {@link withTimeout} when the per-attempt deadline fires. */
+export class AppTimeoutError extends Error {
+  readonly appTimeout = true as const;
+  readonly timeoutMs: number;
+  readonly label: string;
+
+  constructor(timeoutMs: number, label: string) {
+    super(`Timeout after ${timeoutMs}ms while waiting for ${label}`);
+    this.name = 'AppTimeoutError';
+    this.timeoutMs = timeoutMs;
+    this.label = label;
+  }
+}
+
+function getErrorCause(error: Error): unknown {
+  return (error as Error & { cause?: unknown }).cause;
+}
+
+/**
+ * Walk `error` and its `cause` chain (depth-capped, cycle-safe).
+ * Stops when `visit` returns a non-undefined value or the chain ends.
+ */
+function forEachErrorInChain<T>(
+  error: unknown,
+  visit: (current: Error) => T | undefined
+): T | undefined {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  let depth = 0;
+
+  while (current instanceof Error && depth < ERROR_CHAIN_MAX_DEPTH) {
+    if (seen.has(current)) return undefined;
+    seen.add(current);
+
+    const result = visit(current);
+    if (result !== undefined) return result;
+
+    current = getErrorCause(current);
+    depth++;
+  }
+
+  return undefined;
+}
+
+function readDirectHttpStatus(error: Error): number | undefined {
+  const candidate =
+    (error as Error & { status?: number; statusCode?: number }).status ??
+    (error as Error & { statusCode?: number }).statusCode;
+  if (typeof candidate === 'number' && candidate >= 100 && candidate <= 599) {
+    return candidate;
+  }
+  return undefined;
+}
+
+function readPineconeNamedHttpStatus(error: Error): number | undefined {
+  const mapped = PINECONE_NAME_TO_HTTP_STATUS[error.name];
+  if (mapped !== undefined) return mapped;
+
+  if (error.name === 'PineconeUnmappedHttpError' || error.name === 'PineconeRequestError') {
+    const match = PINECONE_STATUS_MESSAGE_PATTERN.exec(error.message);
+    if (match) {
+      const status = Number(match[1]);
+      if (status >= 100 && status <= 599) return status;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Extract the first HTTP status from `error` and its `cause` chain.
+ * Precedence per link: direct `status`/`statusCode`, then Pinecone `error.name` mappings.
+ */
+export function getHttpStatus(error: unknown): number | undefined {
+  return forEachErrorInChain(error, (current) => {
+    return readDirectHttpStatus(current) ?? readPineconeNamedHttpStatus(current);
+  });
+}
+
+/** True when `status` is a transient HTTP code (408, 429, or 5xx). */
+export function isRetryableHttpStatus(status: number): boolean {
+  return status === 408 || status === 429 || (status >= 500 && status < 600);
+}
+
+function hasTransientPineconeErrorName(error: unknown): boolean {
+  return (
+    forEachErrorInChain(error, (current) =>
+      TRANSIENT_PINECONE_ERROR_NAMES.has(current.name) ? true : undefined
+    ) === true
+  );
+}
+
+/**
+ * True for app-level {@link withTimeout} deadlines ({@link AppTimeoutError} or legacy message prefix).
+ * Branded timeouts and {@link APP_TIMEOUT_PATTERN} are matched on the error `cause` chain.
+ */
 export function isAppTimeoutError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error);
-  return APP_TIMEOUT_PATTERN.test(msg);
+  if (
+    forEachErrorInChain(error, (current) =>
+      current instanceof AppTimeoutError || APP_TIMEOUT_PATTERN.test(current.message)
+        ? true
+        : undefined
+    ) === true
+  ) {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return APP_TIMEOUT_PATTERN.test(String(error));
+  }
+  return false;
+}
+
+function errorMessageLooksRetryable(message: string): boolean {
+  if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND/i.test(message)) return true;
+  if (/\btimeout\b/i.test(message)) return true;
+  // 500/501 omitted: structured/Pinecone paths cover 500; 501 is not transient. Plain "HTTP 500" in message alone is not matched here.
+  if (/\b(429|502|503|504)\b/.test(message)) return true;
+  return false;
 }
 
 /** Retry policy. */
@@ -45,25 +172,31 @@ export interface PolicyOptions {
   backoffMs?: number;
 }
 
-/** Default predicate: retry on common transient HTTP statuses (429/5xx) and network-ish messages. */
+/**
+ * Default retry predicate. Precedence: reject app timeouts; if {@link getHttpStatus}
+ * returns a defined status, use {@link isRetryableHttpStatus} only (no message fallback);
+ * otherwise transient Pinecone error names, then network-ish message regex.
+ */
 export function defaultShouldRetry(error: unknown): boolean {
-  if (error instanceof Error) {
-    const msg = error.message;
-    if (/\b(429|502|503|504)\b/.test(msg)) return true;
-    if (/timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND/i.test(msg)) return true;
-  }
-  const status =
-    (error as { status?: number; statusCode?: number })?.status ??
-    (error as { statusCode?: number })?.statusCode;
-  if (typeof status === 'number' && (status === 429 || (status >= 500 && status < 600))) {
-    return true;
-  }
-  return false;
+  if (isAppTimeoutError(error)) return false;
+
+  const status = getHttpStatus(error);
+  if (status !== undefined) return isRetryableHttpStatus(status);
+
+  if (hasTransientPineconeErrorName(error)) return true;
+
+  return (
+    forEachErrorInChain(error, (current) =>
+      errorMessageLooksRetryable(current.message) ? true : undefined
+    ) === true
+  );
 }
 
-/** Retry 429/5xx + network errors; do NOT retry app-level {@link withTimeout} deadlines. */
+/**
+ * Retry predicate for {@link runWithPolicy} Pinecone transient I/O.
+ * Delegates to {@link defaultShouldRetry} (including app-timeout exclusion).
+ */
 export function transientShouldRetry(error: unknown): boolean {
-  if (isAppTimeoutError(error)) return false;
   return defaultShouldRetry(error);
 }
 
@@ -113,7 +246,7 @@ export async function withTimeout<T>(
     timer = setTimeout(() => {
       // Reject before abort so `Promise.race` observes the timeout error first;
       // abort still notifies cooperative callers.
-      reject(new Error(`Timeout after ${timeoutMs}ms while waiting for ${label}`));
+      reject(new AppTimeoutError(timeoutMs, label));
       controller.abort();
     }, timeoutMs);
   });

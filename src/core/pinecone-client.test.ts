@@ -4,6 +4,7 @@ import { resolveConfig } from './config.js';
 import type { SearchableIndex, PineconeHit } from '../types.js';
 import * as rerankModule from './pinecone/rerank.js';
 import { DENSE_LEG_FAILED_REASON, SPARSE_LEG_FAILED_REASON } from '../constants.js';
+import { AppTimeoutError } from './server/retry.js';
 
 /** Stubs for private methods (assigned at runtime; avoid intersecting private `PineconeClient` members). */
 type PineconeClientMethodStubs = {
@@ -261,10 +262,7 @@ describe('PineconeClient', () => {
 
     it('propagates app timeout when both dense and sparse searches fail', async () => {
       const testClient = stubPineconeClient(client);
-      stubDualLegSearchFailure(
-        testClient,
-        new Error('Timeout after 50ms while waiting for search')
-      );
+      stubDualLegSearchFailure(testClient, new AppTimeoutError(50, 'search'));
 
       await expect(
         client.query({
@@ -273,7 +271,7 @@ describe('PineconeClient', () => {
           topK: 5,
           useReranking: false,
         })
-      ).rejects.toThrow('Timeout after 50ms while waiting for search');
+      ).rejects.toBeInstanceOf(AppTimeoutError);
     });
   });
 
@@ -573,7 +571,7 @@ describe('PineconeClient', () => {
       });
 
       const p = timeoutClient.keywordSearch({ query: 'q', namespace: 'n' });
-      const assertion = expect(p).rejects.toThrow(/Timeout after 50ms while waiting for search/);
+      const assertion = expect(p).rejects.toBeInstanceOf(AppTimeoutError);
       await vi.advanceTimersByTimeAsync(50);
       await assertion;
     });
