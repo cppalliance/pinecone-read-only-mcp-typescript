@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { rerankResults } from './rerank.js';
 import type { MergedHit } from '../../types.js';
+import { makeStructured429Once } from './test-helpers.js';
 
 const sampleMerged: MergedHit[] = [
   { _id: '1', _score: 0.5, chunk_text: 'hello', metadata: { k: 'v' } },
@@ -76,21 +77,15 @@ describe('rerankResults', () => {
   });
 
   it('retries on structured 429 without 429 in message then succeeds', async () => {
-    let n = 0;
-    const rerank = vi.fn().mockImplementation(async () => {
-      n++;
-      if (n < 2) {
-        throw Object.assign(new Error('Rate limited'), { status: 429 });
-      }
-      return {
-        data: [
-          {
-            score: 0.99,
-            document: { _id: '1', chunk_text: 'hello', metadata: { k: 'v' } },
-          },
-        ],
-      };
-    });
+    const success = {
+      data: [
+        {
+          score: 0.99,
+          document: { _id: '1', chunk_text: 'hello', metadata: { k: 'v' } },
+        },
+      ],
+    };
+    const rerank = makeStructured429Once(success);
     const pc = makePc(rerank);
 
     const out = await rerankResults(pc, 'm', 'q', sampleMerged, 5);

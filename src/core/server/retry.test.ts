@@ -57,6 +57,16 @@ describe('defaultShouldRetry', () => {
     expect(defaultShouldRetry(new Error('ECONNRESET'))).toBe(true);
   });
 
+  it('retries when retryable network signal is only on cause chain', () => {
+    const wrapped = new Error('Request failed', { cause: new Error('ECONNRESET') });
+    expect(defaultShouldRetry(wrapped)).toBe(true);
+  });
+
+  it('does not retry wrapper with generic cause and no retry signals', () => {
+    const wrapped = new Error('Request failed', { cause: new Error('upstream failed') });
+    expect(defaultShouldRetry(wrapped)).toBe(false);
+  });
+
   it('does not retry AppTimeoutError even via defaultShouldRetry', () => {
     expect(defaultShouldRetry(new AppTimeoutError(50, 'search'))).toBe(false);
   });

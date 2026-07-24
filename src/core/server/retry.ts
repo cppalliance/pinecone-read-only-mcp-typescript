@@ -45,7 +45,7 @@ function getErrorCause(error: Error): unknown {
  * Walk `error` and its `cause` chain (depth-capped, cycle-safe).
  * Stops when `visit` returns a non-undefined value or the chain ends.
  */
-export function forEachErrorInChain<T>(
+function forEachErrorInChain<T>(
   error: unknown,
   visit: (current: Error) => T | undefined
 ): T | undefined {
@@ -122,15 +122,9 @@ function hasTransientPineconeErrorName(error: unknown): boolean {
 export function isAppTimeoutError(error: unknown): boolean {
   if (
     forEachErrorInChain(error, (current) =>
-      current instanceof AppTimeoutError ? true : undefined
-    ) === true
-  ) {
-    return true;
-  }
-
-  if (
-    forEachErrorInChain(error, (current) =>
-      APP_TIMEOUT_PATTERN.test(current.message) ? true : undefined
+      current instanceof AppTimeoutError || APP_TIMEOUT_PATTERN.test(current.message)
+        ? true
+        : undefined
     ) === true
   ) {
     return true;
@@ -139,6 +133,14 @@ export function isAppTimeoutError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return APP_TIMEOUT_PATTERN.test(String(error));
   }
+  return false;
+}
+
+function errorMessageLooksRetryable(message: string): boolean {
+  if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND/i.test(message)) return true;
+  if (/\btimeout\b/i.test(message)) return true;
+  // 500/501 omitted: structured/Pinecone paths cover 500; 501 is not transient. Plain "HTTP 500" in message alone is not matched here.
+  if (/\b(429|502|503|504)\b/.test(message)) return true;
   return false;
 }
 
@@ -183,13 +185,11 @@ export function defaultShouldRetry(error: unknown): boolean {
 
   if (hasTransientPineconeErrorName(error)) return true;
 
-  if (error instanceof Error) {
-    if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND/i.test(error.message)) return true;
-    if (/\btimeout\b/i.test(error.message)) return true;
-    // 500/501 omitted: structured/Pinecone paths cover 500; 501 is not transient. Plain "HTTP 500" in message alone is not matched here.
-    if (/\b(429|502|503|504)\b/.test(error.message)) return true;
-  }
-  return false;
+  return (
+    forEachErrorInChain(error, (current) =>
+      errorMessageLooksRetryable(current.message) ? true : undefined
+    ) === true
+  );
 }
 
 /**

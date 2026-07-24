@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AppTimeoutError } from '../server/retry.js';
+import { makeStructured429Once } from './test-helpers.js';
 import {
   searchIndex,
   mergeResults,
@@ -79,14 +80,8 @@ describe('searchIndex', () => {
   });
 
   it('retries on structured 429 without 429 in message then succeeds', async () => {
-    let n = 0;
-    const search = vi.fn().mockImplementation(async () => {
-      n++;
-      if (n < 2) {
-        throw Object.assign(new Error('Rate limited'), { status: 429 });
-      }
-      return { result: { hits: [{ _id: '1', _score: 1, fields: {} }] } };
-    });
+    const success = { result: { hits: [{ _id: '1', _score: 1, fields: {} }] } };
+    const search = makeStructured429Once(success);
     const index = { search } as unknown as SearchableIndex;
     const hits = await searchIndex(index, 'hi', 5);
     expect(hits).toHaveLength(1);

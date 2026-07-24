@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PineconeIndexSession } from './indexes.js';
 import type { SearchableIndex } from '../../types.js';
+import { makeStructured429Once } from './test-helpers.js';
 
 /** Subclass so tests inject index handles without calling the real Pinecone SDK. */
 class PineconeIndexSessionTestDouble extends PineconeIndexSession {
@@ -142,6 +143,24 @@ describe('PineconeIndexSession', () => {
         expect(result.namespaces).toEqual([{ namespace: 'papers', recordCount: 7 }]);
       }
       expect(sparse.describeIndexStats).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries describeIndexStats on structured 429 then succeeds', async () => {
+      const stats = { namespaces: { papers: { recordCount: 7 } } };
+      const describeIndexStats = makeStructured429Once(stats);
+      const sparse = { describeIndexStats } as unknown as SearchableIndex;
+      const session = new PineconeIndexSessionTestDouble({
+        dense: {} as SearchableIndex,
+        sparse,
+      });
+
+      const result = await session.listNamespacesFromKeywordIndex();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.namespaces).toEqual([{ namespace: 'papers', recordCount: 7 }]);
+      }
+      expect(describeIndexStats).toHaveBeenCalledTimes(2);
     });
 
     it('invokes describeIndexStats on the sparse index receiver through runIo', async () => {
